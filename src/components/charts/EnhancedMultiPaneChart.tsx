@@ -1630,7 +1630,8 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           background: { type: ColorType.Solid, color: isDark ? "#0f172a" : "#ffffff" },
           textColor: isDark ? "#e2e8f0" : "#1e293b",
           fontSize: isMobile ? 10 : 12,
-          fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+          fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          attributionLogo: false
         },
         grid: {
           vertLines: { 
@@ -1760,6 +1761,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           background: { color: 'transparent' },
           textColor: isDark ? '#d1d5db' : '#4b5563',
           fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+          attributionLogo: false,
         },
         grid: {
           vertLines: { visible: false },
@@ -3035,7 +3037,8 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         background: { type: ColorType.Solid, color: isDark ? "#0f172a" : "#ffffff" },
         textColor: isDark ? "#a5b4fc" : "#3730a3",
         fontSize: 12,
-        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          attributionLogo: false
       },
       rightPriceScale: {
         borderColor: isDark ? "#334155" : "#e2e8f0",
@@ -3200,7 +3203,8 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         background: { type: ColorType.Solid, color: isDark ? "#0f172a" : "#ffffff" },
         textColor: isDark ? "#a5b4fc" : "#3730a3",
         fontSize: 12,
-        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          attributionLogo: false
       },
       rightPriceScale: {
         borderColor: isDark ? "#334155" : "#e2e8f0",
@@ -3346,7 +3350,8 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         background: { type: ColorType.Solid, color: isDark ? "#0f172a" : "#ffffff" },
         textColor: isDark ? "#a5b4fc" : "#3730a3",
         fontSize: 12,
-        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          attributionLogo: false
       },
       rightPriceScale: {
         borderColor: isDark ? "#334155" : "#e2e8f0",
@@ -3602,34 +3607,6 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
     } as React.CSSProperties}>
       <style>
         {`
-          /* Hide TradingView branding from Lightweight Charts */
-          .tv-lightweight-charts::after,
-          .tv-lightweight-charts > div:last-child,
-          .tv-lightweight-charts > svg:last-child,
-          [data-tv-lightweight-charts]::after {
-            display: none !important;
-          }
-          
-          /* Hide watermark and branding elements */
-          .tv-lightweight-charts [class*="watermark"],
-          .tv-lightweight-charts [class*="branding"],
-          .tv-lightweight-charts [class*="logo"] {
-            display: none !important;
-          }
-          
-          /* Hide specific TradingView logo path */
-          .tv-lightweight-charts path[d*="M2 0H0v10h6v9h21.4l.5-1.3 6-15 1-2.7H23.7l-.5 1.3-.2.6a5 5 0 0 0-7-.9V0H2Zm20 17h4l5.2-13 .8-2h-7l-1 2.5-.2.5-1.5 3.8-.3.7V17Zm-.8-10a3 3 0 0 0 .7-2.7A3 3 0 1 0 16.8 7h4.4ZM14 7V2H2v6h6v9h4V7h2Z"] {
-            display: none !important;
-          }
-          
-          /* Additional selectors for chart containers */
-          [class*="chart"]::after,
-          [class*="chart"] > div:last-child,
-          [class*="chart"] > svg:last-child {
-            display: none !important;
-          }
-          
-          /* Target any element with TradingView branding */
           *[class*="tv-"]::after,
           *[class*="tradingview"]::after {
             display: none !important;

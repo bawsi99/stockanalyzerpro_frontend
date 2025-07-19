@@ -245,7 +245,8 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
           background: { type: ColorType.Solid, color: isDark ? "#0f172a" : "#ffffff" },
           textColor: isDark ? "#e2e8f0" : "#1e293b",
           fontSize: 12,
-          fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+          fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          attributionLogo: false
         },
         rightPriceScale: {
           borderColor: isDark ? "#334155" : "#e2e8f0",
@@ -346,6 +347,7 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
           background: { color: 'transparent' },
           textColor: isDark ? '#d1d5db' : '#4b5563',
           fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+          attributionLogo: false,
         },
         grid: {
           vertLines: { visible: false },
