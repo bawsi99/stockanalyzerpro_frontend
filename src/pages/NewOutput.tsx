@@ -11,6 +11,8 @@ import { Progress } from "@/components/ui/progress";
 // Analysis Components
 import CombinedSummaryCard from "@/components/analysis/CombinedSummaryCard";
 import ConsensusSummaryCard from "@/components/analysis/ConsensusSummaryCard";
+import CurrentStatusCard from "@/components/analysis/CurrentStatusCard";
+import TradingLevelsCard from "@/components/analysis/TradingLevelsCard";
 import AIAnalysisCard from "@/components/analysis/AIAnalysisCard";
 import TechnicalAnalysisCard from "@/components/analysis/TechnicalAnalysisCard";
 import AdvancedPatternAnalysisCard from "@/components/analysis/AdvancedPatternAnalysisCard";
@@ -45,7 +47,11 @@ import {
   Shield,
   Zap,
   Eye,
-  Settings
+  Settings,
+  Maximize2,
+  Download,
+  Share,
+  Bookmark
 } from "lucide-react";
 
 // Types and Utils
@@ -396,39 +402,88 @@ const NewOutput: React.FC = () => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
+            {/* Top Row - Summary Cards */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Current Status */}
+              <div className="lg:col-span-1">
+                <CurrentStatusCard 
+                  stockData={analysisData?.stock_data || { current_price: stats?.lastClose || 0 }}
+                  indicators={analysisData?.indicators || {}}
+                />
+              </div>
+
+              {/* Trading Levels */}
+              <div className="lg:col-span-1">
+                <TradingLevelsCard indicators={analysisData?.indicators || {}} />
+              </div>
+
               {/* Consensus Summary */}
               <div className="lg:col-span-1">
                 <ConsensusSummaryCard consensus={consensus} />
               </div>
+            </div>
 
-              {/* Chart */}
-              <div className="lg:col-span-2">
-                <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full">
-                  <CardHeader className="flex-shrink-0">
-                    <div className="flex items-center justify-between">
+            {/* Trading Terminal - Full Width Professional Layout */}
+            <div className="w-full">
+              <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+                <CardHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
                       <CardTitle className="flex items-center text-slate-800">
                         <BarChart3 className="h-5 w-5 mr-2 text-blue-500" />
-                        Price Action & Technical Indicators
+                        Trading Terminal - {stockSymbol}
                       </CardTitle>
-                      <div className="flex space-x-2">
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded">Live</span>
+                        <span>Last: {stats?.lastClose?.toFixed(2) || 'N/A'}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      {/* Timeframe Controls */}
+                      <div className="flex space-x-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                         {timeframeOptions.map((option) => (
                           <Button
                             key={option.value}
-                            variant={selectedTimeframe === option.value ? "default" : "outline"}
+                            variant={selectedTimeframe === option.value ? "default" : "ghost"}
                             size="sm"
                             onClick={() => setSelectedTimeframe(option.value)}
-                            className="text-xs"
+                            className="text-xs h-7 px-2"
                           >
                             {option.label}
                           </Button>
                         ))}
                       </div>
+                      
+                      {/* Chart Type Toggle */}
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-600">Chart:</span>
+                        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                          <Button variant="ghost" size="sm" className="text-xs h-7 px-2">Candle</Button>
+                          <Button variant="ghost" size="sm" className="text-xs h-7 px-2">Line</Button>
+                        </div>
+                      </div>
+
+                      {/* Quick Actions */}
+                      <div className="flex items-center space-x-2">
+                        <Button variant="outline" size="sm" className="text-xs h-7">
+                          <Maximize2 className="h-3 w-3 mr-1" />
+                          Fullscreen
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-xs h-7">
+                          <Settings className="h-3 w-3 mr-1" />
+                          Settings
+                        </Button>
+                      </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 overflow-hidden p-0">
-                    {rawData.length > 0 ? (
-                      <div className="h-[500px] w-full">
+                  </div>
+                </CardHeader>
+                
+                {/* Trading Terminal Content */}
+                <CardContent className="flex-1 overflow-hidden p-0">
+                  {rawData.length > 0 ? (
+                    <div className="h-[900px] w-full flex flex-col">
+                      {/* Chart Container with Professional Layout */}
+                      <div className="flex-1 relative">
                         <EnhancedMultiPaneChart 
                           data={filteredRawData} 
                           overlays={{
@@ -437,18 +492,41 @@ const NewOutput: React.FC = () => {
                           }}
                         />
                       </div>
-                    ) : (
-                      <div className="text-center py-16 text-slate-500">
-                        <BarChart3 className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-                        No chart data available
+                      
+                      {/* Bottom Toolbar */}
+                      <div className="h-12 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between px-4">
+                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                          <span>Zoom: 100%</span>
+                          <span>Range: {selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}</span>
+                          <span>Data Points: {filteredRawData.length}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                            <Download className="h-3 w-3 mr-1" />
+                            Export
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                            <Share className="h-3 w-3 mr-1" />
+                            Share
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                            <Bookmark className="h-3 w-3 mr-1" />
+                            Save
+                          </Button>
+                        </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-16 text-slate-500">
+                      <BarChart3 className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                      No chart data available
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Price Statistics and Sector Analysis */}
+            {/* Bottom Row - Price Statistics and Sector Analysis */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {summaryStats && (
                 <PriceStatisticsCard 
