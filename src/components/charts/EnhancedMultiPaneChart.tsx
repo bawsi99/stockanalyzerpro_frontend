@@ -1769,7 +1769,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         height: chartHeights.volume,
         rightPriceScale: {
           visible: true,
-          borderVisible: false,
+          borderColor: isDark ? "#334155" : "#e2e8f0",
           scaleMargins: { top: 0.1, bottom: 0.1 }, // Better margins for volume visibility
           entireTextOnly: false, // Changed to false to ensure labels display
           autoScale: true,
@@ -1802,10 +1802,15 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         handleScale: false,
         localization: {
           priceFormatter: (price: number) => {
-            if (price >= 1000000000) return `${(price / 1000000000).toFixed(1)}B`;
-            if (price >= 1000000) return `${(price / 1000000).toFixed(1)}M`;
-            if (price >= 1000) return `${(price / 1000).toFixed(1)}K`;
-            return price.toString();
+            // Format volume to 8 characters + thin space for perfect alignment (e.g., "   40.0M")
+            const thinSpace = '\u2009'; // Unicode thin space character
+            if (price >= 1000000) {
+              return `${(price / 1000000).toFixed(1)}M${thinSpace}`.padStart(8, ' ');
+            } else if (price >= 1000) {
+              return `${(price / 1000).toFixed(1)}K${thinSpace}`.padStart(8, ' ');
+            } else {
+              return `${price.toFixed(1)}${thinSpace}`.padStart(8, ' ');
+            }
           },
         },
       });
@@ -1852,6 +1857,13 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         timeScale: {
           ...commonOptions.timeScale,
           scaleMargins: { left: 0.0, right: 0.02 }, // Consistent with main chart
+        },
+        localization: {
+          priceFormatter: (price: number) => {
+            // Format to exactly 7 characters total (e.g., "100.00")
+            const formatted = price.toFixed(2);
+            return formatted.padStart(7, ' ');
+          },
         },
       });
       rsiInstance.current = rsiChart;
@@ -2187,7 +2199,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       const volumeSeries = volumeChart.addSeries(HistogramSeries, {
         color: isDark ? 'rgba(96, 165, 250, 0.8)' : 'rgba(59, 130, 246, 0.8)',
         priceFormat: { type: 'volume' },
-        priceScaleId: 'left',
+        priceScaleId: 'right',
         priceLineVisible: false,
         lastValueVisible: false,
         base: 0,
@@ -2208,7 +2220,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         priceLineStyle: 2,
         crosshairMarkerVisible: true,
         crosshairMarkerRadius: 3,
-        priceScaleId: 'left',
+        priceScaleId: 'right',
         priceFormat: {
           type: 'volume',
           precision: 0,
@@ -2764,7 +2776,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         price: 70,
         color: isDark ? '#ef4444' : '#dc2626',
         lineWidth: 1,
-        lineStyle: 2,
+        lineStyle: 0,
         axisLabelVisible: false,
       });
       
@@ -2772,7 +2784,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         price: 30,
         color: isDark ? '#10b981' : '#059669',
         lineWidth: 1,
-        lineStyle: 2,
+        lineStyle: 0,
         axisLabelVisible: false,
       });
 

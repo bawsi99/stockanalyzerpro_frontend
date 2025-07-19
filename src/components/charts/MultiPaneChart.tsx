@@ -355,7 +355,7 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
         height: chartHeights.volume,
         rightPriceScale: {
           scaleMargins: { top: 0.05, bottom: 0.05 },
-          borderVisible: false,
+          borderColor: isDark ? "#334155" : "#e2e8f0",
           entireTextOnly: true,
         },
         leftPriceScale: {
@@ -385,10 +385,15 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
         handleScale: false,
         localization: {
           priceFormatter: (price: number) => {
-            if (price >= 1000000000) return `${(price / 1000000000).toFixed(1)}B`;
-            if (price >= 1000000) return `${(price / 1000000).toFixed(1)}M`;
-            if (price >= 1000) return `${(price / 1000).toFixed(1)}K`;
-            return price.toString();
+            // Format volume to 8 characters + thin space for perfect alignment (e.g., "   40.0M")
+            const thinSpace = '\u2009'; // Unicode thin space character
+            if (price >= 1000000) {
+              return `${(price / 1000000).toFixed(1)}M${thinSpace}`.padStart(8, ' ');
+            } else if (price >= 1000) {
+              return `${(price / 1000).toFixed(1)}K${thinSpace}`.padStart(8, ' ');
+            } else {
+              return `${price.toFixed(1)}${thinSpace}`.padStart(8, ' ');
+            }
           },
         },
       });
@@ -406,6 +411,13 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
         rightPriceScale: {
           ...commonOptions.rightPriceScale,
           scaleMargins: { top: 0.1, bottom: 0.1 },
+        },
+        localization: {
+          priceFormatter: (price: number) => {
+            // Format to exactly 7 characters total (e.g., "100.00")
+            const formatted = price.toFixed(2);
+            return formatted.padStart(7, ' ');
+          },
         },
       });
       rsiInstance.current = rsiChart;
@@ -445,7 +457,7 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
       const volumeSeries = volumeChart.addSeries(HistogramSeries, {
         color: isDark ? 'rgba(96, 165, 250, 0.8)' : 'rgba(59, 130, 246, 0.8)',
         priceFormat: { type: 'volume' },
-        priceScaleId: 'left',
+        priceScaleId: 'right',
         priceLineVisible: false,
         lastValueVisible: false,
         base: 0,
@@ -464,6 +476,11 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
         priceLineStyle: 2,
         crosshairMarkerVisible: true,
         crosshairMarkerRadius: 4,
+        priceFormat: {
+          type: 'price',
+          precision: 2,
+          minMove: 0.01,
+        },
       });
 
       // Add indicator series
@@ -551,7 +568,7 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
         price: 70,
         color: isDark ? '#ef4444' : '#dc2626',
         lineWidth: 1,
-        lineStyle: 2,
+        lineStyle: 0,
         axisLabelVisible: true,
         axisLabelColor: isDark ? '#ef4444' : '#dc2626',
         axisLabelTextColor: isDark ? '#f8fafc' : '#1e293b',
@@ -562,7 +579,7 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
         price: 30,
         color: isDark ? '#10b981' : '#059669',
         lineWidth: 1,
-        lineStyle: 2,
+        lineStyle: 0,
         axisLabelVisible: true,
         axisLabelColor: isDark ? '#10b981' : '#059669',
         axisLabelTextColor: isDark ? '#f8fafc' : '#1e293b',
@@ -573,7 +590,7 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
         price: 50,
         color: isDark ? '#94a3b8' : '#64748b',
         lineWidth: 1,
-        lineStyle: 2,
+        lineStyle: 0,
         axisLabelVisible: false,
       });
 
