@@ -459,8 +459,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
     atr: boolean;
     obv: boolean;
     volumeAnomaly: boolean;
-    doubleTop: boolean;
-    doubleBottom: boolean;
+    doublePatterns: boolean;
     swingPoints: boolean;
     support: boolean;
     resistance: boolean;
@@ -480,8 +479,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
     atr: false,
     obv: false,
     volumeAnomaly: false,
-    doubleTop: false,
-    doubleBottom: false,
+    doublePatterns: false,
     swingPoints: false,
     support: false,
     resistance: false,
@@ -1706,7 +1704,9 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             return new Date(time * 1000).toLocaleDateString();
           },
           priceFormatter: (price: number) => {
-            return price >= 1 ? price.toFixed(2) : price.toPrecision(4);
+            // Format to exactly 8 characters total for main chart alignment (e.g., " 123.45")
+            const formatted = price >= 1 ? price.toFixed(2) : price.toPrecision(4);
+            return formatted.padStart(8, ' ');
           },
         },
       });
@@ -1859,6 +1859,9 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         timeScale: {
           ...commonOptions.timeScale,
           scaleMargins: { left: 0.0, right: 0.02 }, // Consistent with main chart
+          timeVisible: false, // Hide time labels on RSI chart
+          secondsVisible: false,
+          borderVisible: false,
         },
         localization: {
           priceFormatter: (price: number) => {
@@ -1908,6 +1911,13 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
               maxValue: 100,
               scaleMargins: { top: 0.1, bottom: 0.1 },
             });
+            
+            // Ensure time scale is properly configured
+            rsiChart.timeScale().applyOptions({
+              timeVisible: false,
+              secondsVisible: false,
+              borderVisible: false,
+            });
           }
         } catch (error) {
           console.warn('RSI range enforcement error:', error);
@@ -1945,16 +1955,16 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         const macdLine = macdChart.addSeries(LineSeries, {
           color: isDark ? '#6366f1' : '#3730a3',
           lineWidth: 2,
-          title: 'MACD',
+          title: '',
           priceLineVisible: false,
-          lastValueVisible: true,
+          lastValueVisible: false,
         });
         const signalLine = macdChart.addSeries(LineSeries, {
           color: isDark ? '#f59e42' : '#ea580c',
           lineWidth: 2,
-          title: 'Signal',
+          title: '',
           priceLineVisible: false,
-          lastValueVisible: true,
+          lastValueVisible: false,
         });
         const histogram = macdChart.addSeries(HistogramSeries, {
           color: '', // color will be set per-bar in the data
@@ -2055,8 +2065,8 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         kLine.setData(kData);
         dLine.setData(dData);
         // Reference lines
-        kLine.createPriceLine({ price: 80, color: '#ef4444', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Overbought' });
-        kLine.createPriceLine({ price: 20, color: '#10b981', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Oversold' });
+        kLine.createPriceLine({ price: 80, color: '#ef4444', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+        kLine.createPriceLine({ price: 20, color: '#10b981', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
       }
 
       // --- ATR Chart ---
@@ -2643,6 +2653,13 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                 maxValue: 100,
                 scaleMargins: { top: 0.1, bottom: 0.1 },
               });
+              
+              // Ensure time scale is properly configured
+              rsiChart.timeScale().applyOptions({
+                timeVisible: false,
+                secondsVisible: false,
+                borderVisible: false,
+              });
             }
           } catch (error) {
             console.warn('RSI data-set range enforcement error:', error);
@@ -2809,8 +2826,11 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
 
       // Add double top and double bottom patterns
       const closes = validatedData.map(d => d.close);
-      if (activeIndicators.doubleTop) {
+      if (activeIndicators.doublePatterns) {
         const doubleTops = detectDoubleTop(closes, 0.02, 5);
+        const doubleBottoms = detectDoubleBottom(closes, 0.02, 5);
+        
+        // Draw Double Top patterns
         doubleTops.forEach((pattern) => {
           const lineSeries = candleChart.addSeries(LineSeries, {
             color: '#ef4444',
@@ -2831,9 +2851,8 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             },
           ]);
         });
-      }
-      if (activeIndicators.doubleBottom) {
-        const doubleBottoms = detectDoubleBottom(closes, 0.02, 5);
+        
+        // Draw Double Bottom patterns
         doubleBottoms.forEach((pattern) => {
           const lineSeries = candleChart.addSeries(LineSeries, {
             color: '#22c55e',
@@ -2865,7 +2884,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       setError(`Failed to initialize charts: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setIsLoading(false);
     }
-  }, [validatedData, theme, chartDimensions.width, chartHeights.candle, chartHeights.volume, chartHeights.rsi, indicators, debug, cleanupCharts, activeIndicators.volumeAnomaly, activeIndicators.doubleTop, activeIndicators.doubleBottom, priceChartType]);
+  }, [validatedData, theme, chartDimensions.width, chartHeights.candle, chartHeights.volume, chartHeights.rsi, indicators, debug, cleanupCharts, activeIndicators.volumeAnomaly, activeIndicators.doublePatterns, priceChartType]);
 
   // Handle resize
   useEffect(() => {
@@ -3091,7 +3110,9 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           return new Date(time * 1000).toLocaleDateString();
         },
         priceFormatter: (price: number) => {
-          return price >= 1 ? price.toFixed(2) : price.toPrecision(4);
+          // Format to exactly 8 characters total for MACD alignment (e.g., "  -0.123")
+          const formatted = price >= 1 ? price.toFixed(3) : price.toPrecision(4);
+          return formatted.padStart(8, ' ');
         },
       },
     });
@@ -3100,16 +3121,16 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
     const macdLine = macdChart.addSeries(LineSeries, {
       color: isDark ? '#6366f1' : '#3730a3',
       lineWidth: 2,
-      title: 'MACD',
+      title: '',
       priceLineVisible: false,
-      lastValueVisible: true,
+      lastValueVisible: false,
     });
     const signalLine = macdChart.addSeries(LineSeries, {
       color: isDark ? '#f59e42' : '#ea580c',
       lineWidth: 2,
-      title: 'Signal',
+      title: '',
       priceLineVisible: false,
-      lastValueVisible: true,
+      lastValueVisible: false,
     });
     const histogram = macdChart.addSeries(HistogramSeries, {
       color: '',
@@ -3257,7 +3278,9 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           return new Date(time * 1000).toLocaleDateString();
         },
         priceFormatter: (price: number) => {
-          return price >= 1 ? price.toFixed(2) : price.toPrecision(4);
+          // Format to exactly 7 characters total for Stochastic alignment (e.g., " 80.00")
+          const formatted = price.toFixed(2);
+          return formatted.padStart(7, ' ');
         },
       },
     });
@@ -3289,8 +3312,8 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
     kLine.setData(kData);
     dLine.setData(dData);
     // Reference lines
-    kLine.createPriceLine({ price: 80, color: '#ef4444', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Overbought' });
-    kLine.createPriceLine({ price: 20, color: '#10b981', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Oversold' });
+    kLine.createPriceLine({ price: 80, color: '#ef4444', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+    kLine.createPriceLine({ price: 20, color: '#10b981', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
     // --- Time scale sync ---
     let unsub: (() => void) | null = null;
     try {
@@ -3404,7 +3427,9 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           return new Date(time * 1000).toLocaleDateString();
         },
         priceFormatter: (price: number) => {
-          return price >= 1 ? price.toFixed(2) : price.toPrecision(4);
+          // Format to exactly 8 characters total for ATR alignment (e.g., "  12.34")
+          const formatted = price >= 1 ? price.toFixed(2) : price.toPrecision(4);
+          return formatted.padStart(8, ' ');
         },
       },
     });
@@ -3538,7 +3563,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           setActiveIndicators({
             sma20: false, sma50: false, ema12: false, ema26: false, ema50: false, sma200: false,
             bollingerBands: false, macd: false, stochastic: false, atr: false, obv: false,
-            rsiDivergence: false, doubleTop: false, doubleBottom: false, volumeAnomaly: false,
+            rsiDivergence: false, doublePatterns: false, volumeAnomaly: false,
             swingPoints: false, peaksLows: false, support: false, resistance: false, trianglesFlags: false,
           });
           break;
@@ -3547,7 +3572,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           setActiveIndicators({
             sma20: true, sma50: true, ema12: true, ema26: true, ema50: true, sma200: true,
             bollingerBands: true, macd: true, stochastic: true, atr: true, obv: true,
-            rsiDivergence: true, doubleTop: true, doubleBottom: true, volumeAnomaly: true,
+            rsiDivergence: true, doublePatterns: true, volumeAnomaly: true,
             swingPoints: true, peaksLows: true, support: true, resistance: true, trianglesFlags: true,
           });
           break;
@@ -3578,7 +3603,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       const clearedIndicators = {
         sma20: false, sma50: false, ema12: false, ema26: false, ema50: false, sma200: false,
         bollingerBands: false, macd: false, stochastic: false, atr: false, obv: false,
-        rsiDivergence: false, doubleTop: false, doubleBottom: false, volumeAnomaly: false,
+        rsiDivergence: false, doublePatterns: false, volumeAnomaly: false,
         swingPoints: false, peaksLows: false, support: false, resistance: false, trianglesFlags: false,
       };
       setActiveIndicators(clearedIndicators);
@@ -3590,7 +3615,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       const allIndicators = {
         sma20: true, sma50: true, ema12: true, ema26: true, ema50: true, sma200: true,
         bollingerBands: true, macd: true, stochastic: true, atr: true, obv: true,
-        rsiDivergence: true, doubleTop: true, doubleBottom: true, volumeAnomaly: true,
+        rsiDivergence: true, doublePatterns: true, volumeAnomaly: true,
         swingPoints: true, peaksLows: true, support: true, resistance: true, trianglesFlags: true,
       };
       setActiveIndicators(allIndicators);
@@ -3763,18 +3788,29 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                     }`}
                     title="Bollinger Bands"
                   >
-                    BB
+                    Bollinger Bands
                   </button>
                   <button
                     onClick={() => toggleIndicator('macd')}
                     className={`px-2 py-1 text-xs rounded transition-colors ${
                       activeIndicators.macd
-                        ? 'bg-indigo-600 text-white shadow-sm'
+                        ? 'shadow-sm relative overflow-hidden'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                     }`}
                     title="MACD"
                   >
-                    MACD
+                    {activeIndicators.macd ? (
+                      <div className="flex h-full">
+                        <div className="bg-indigo-600 text-white px-1 py-0.5 flex-1 text-center text-xs font-medium">
+                          MACD
+                        </div>
+                        <div className="bg-orange-500 text-white px-1 py-0.5 flex-1 text-center text-xs font-medium">
+                          Signal
+                        </div>
+                      </div>
+                    ) : (
+                      'MACD'
+                    )}
                   </button>
                   <button
                     onClick={() => toggleIndicator('stochastic')}
@@ -3785,7 +3821,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                     }`}
                     title="Stochastic"
                   >
-                    STOCH
+                    Stochastic
                   </button>
                   <button
                     onClick={() => toggleIndicator('atr')}
@@ -3818,29 +3854,18 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                     }`}
                     title="RSI Divergence"
                   >
-                    RSI-D
+                    RSI Divergence
                   </button>
                   <button
-                    onClick={() => toggleIndicator('doubleTop')}
+                    onClick={() => toggleIndicator('doublePatterns')}
                     className={`px-2 py-1 text-xs rounded transition-colors ${
-                      activeIndicators.doubleTop
-                        ? 'bg-red-600 text-white shadow-sm'
+                      activeIndicators.doublePatterns
+                        ? 'bg-purple-600 text-white shadow-sm'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                     }`}
-                    title="Double Top"
+                    title="Double Top & Bottom Patterns"
                   >
-                    D.Top
-                  </button>
-                  <button
-                    onClick={() => toggleIndicator('doubleBottom')}
-                    className={`px-2 py-1 text-xs rounded transition-colors ${
-                      activeIndicators.doubleBottom
-                        ? 'bg-green-600 text-white shadow-sm'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                    }`}
-                    title="Double Bottom"
-                  >
-                    D.Bottom
+                    Double Patterns
                   </button>
                   <button
                     onClick={() => toggleIndicator('volumeAnomaly')}
@@ -3851,7 +3876,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                     }`}
                     title="Volume Anomaly"
                   >
-                    Vol
+                    Volume Anomaly
                   </button>
                   <button
                     onClick={() => toggleIndicator('peaksLows')}
@@ -3862,7 +3887,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                     }`}
                     title="Peaks/Lows"
                   >
-                    P/L
+                    Peaks/Lows
                   </button>
                   <button
                     onClick={() => toggleIndicator('support')}
@@ -3873,7 +3898,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                     }`}
                     title="Support"
                   >
-                    Sup
+                    Support
                   </button>
                   <button
                     onClick={() => toggleIndicator('resistance')}
@@ -3884,7 +3909,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                     }`}
                     title="Resistance"
                   >
-                    Res
+                    Resistance
                   </button>
                   <button
                     onClick={() => toggleIndicator('trianglesFlags')}
@@ -3895,7 +3920,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                     }`}
                     title="Triangles/Flags"
                   >
-                    T/F
+                    Triangles/Flags
                   </button>
                 </div>
               </div>
@@ -3961,6 +3986,9 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             {/* Stochastic Chart (conditionally rendered) */}
             {activeIndicators.stochastic && (
               <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
+                  Stochastic
+                </div>
                 <div ref={stochasticChartRef} className="w-full" style={{ height: `${chartHeights.stochastic}px` }} />
               </div>
             )}
@@ -3968,6 +3996,9 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             {/* ATR Chart (conditionally rendered) */}
             {activeIndicators.atr && (
               <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
+                  ATR
+                </div>
                 <div ref={atrChartRef} className="w-full" style={{ height: `${chartHeights.atr}px` }} />
               </div>
             )}
@@ -3975,6 +4006,9 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             {/* MACD Chart (conditionally rendered) */}
             {activeIndicators.macd && (
               <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
+                  MACD
+                </div>
                 <div ref={macdChartRef} className="w-full" style={{ height: `${chartHeights.macd}px` }} />
               </div>
             )}

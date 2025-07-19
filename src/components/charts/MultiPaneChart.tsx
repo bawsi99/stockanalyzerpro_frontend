@@ -320,7 +320,9 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
             return new Date(time * 1000).toLocaleDateString();
           },
           priceFormatter: (price: number) => {
-            return price >= 1 ? price.toFixed(2) : price.toPrecision(4);
+            // Format to exactly 8 characters total for main chart alignment (e.g., " 123.45")
+            const formatted = price >= 1 ? price.toFixed(2) : price.toPrecision(4);
+            return formatted.padStart(8, ' ');
           },
         },
       };
@@ -571,10 +573,7 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
         color: isDark ? '#ef4444' : '#dc2626',
         lineWidth: 1,
         lineStyle: 0,
-        axisLabelVisible: true,
-        axisLabelColor: isDark ? '#ef4444' : '#dc2626',
-        axisLabelTextColor: isDark ? '#f8fafc' : '#1e293b',
-        title: 'Overbought',
+        axisLabelVisible: false,
       });
       
       rsiSeries.createPriceLine({
@@ -582,10 +581,7 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
         color: isDark ? '#10b981' : '#059669',
         lineWidth: 1,
         lineStyle: 0,
-        axisLabelVisible: true,
-        axisLabelColor: isDark ? '#10b981' : '#059669',
-        axisLabelTextColor: isDark ? '#f8fafc' : '#1e293b',
-        title: 'Oversold',
+        axisLabelVisible: false,
       });
       
       rsiSeries.createPriceLine({
