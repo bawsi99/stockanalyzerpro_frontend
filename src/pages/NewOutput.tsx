@@ -84,6 +84,7 @@ const NewOutput: React.FC = () => {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [stockSymbol, setStockSymbol] = useState<string>("");
   const [selectedTimeframe, setSelectedTimeframe] = useState('all');
+  const [chartType, setChartType] = useState<'candlestick' | 'line'>('candlestick');
   const [validationResult, setValidationResult] = useState<ChartValidationResult | null>(null);
   const [chartStats, setChartStats] = useState<ChartStats | null>(null);
   const [showDebug, setShowDebug] = useState(false);
@@ -458,8 +459,22 @@ const NewOutput: React.FC = () => {
                       <div className="flex items-center space-x-2">
                         <span className="text-sm text-gray-600">Chart:</span>
                         <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-                          <Button variant="ghost" size="sm" className="text-xs h-7 px-2">Candle</Button>
-                          <Button variant="ghost" size="sm" className="text-xs h-7 px-2">Line</Button>
+                          <Button 
+                            variant={chartType === 'candlestick' ? 'default' : 'ghost'} 
+                            size="sm" 
+                            className="text-xs h-7 px-2"
+                            onClick={() => setChartType('candlestick')}
+                          >
+                            Candle
+                          </Button>
+                          <Button 
+                            variant={chartType === 'line' ? 'default' : 'ghost'} 
+                            size="sm" 
+                            className="text-xs h-7 px-2"
+                            onClick={() => setChartType('line')}
+                          >
+                            Line
+                          </Button>
                         </div>
                       </div>
 
@@ -486,6 +501,8 @@ const NewOutput: React.FC = () => {
                       <div className="flex-1 relative">
                         <EnhancedMultiPaneChart 
                           data={filteredRawData} 
+                          chartType={chartType}
+                          onChartTypeChange={setChartType}
                           overlays={{
                             showRsiDivergence: true,
                             ...(analysisData.overlays || {})

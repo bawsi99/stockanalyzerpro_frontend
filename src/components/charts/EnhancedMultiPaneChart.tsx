@@ -41,7 +41,29 @@ interface EnhancedMultiPaneChartProps {
   overlays?: {
     showRsiDivergence: boolean;
   };
+  chartType?: 'candlestick' | 'line';
+  onChartTypeChange?: (type: 'candlestick' | 'line') => void;
 }
+
+// Add responsive hook at the top of the component
+const useResponsiveChart = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+  
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsTablet(width >= 768 && width < 1024);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+  
+  return { isMobile, isTablet };
+};
 
 // ---- Utility helpers ---- //
 const toTimestamp = (iso: string): UTCTimestamp => {
@@ -381,28 +403,33 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
   debug = false,
   onValidationResult,
   onStatsCalculated,
-  overlays
+  overlays,
+  chartType: externalChartType,
+  onChartTypeChange
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const candleChartRef = useRef<HTMLDivElement>(null);
   const volumeChartRef = useRef<HTMLDivElement>(null);
   const rsiChartRef = useRef<HTMLDivElement>(null);
-  const macdChartRef = useRef<HTMLDivElement>(null); // NEW: MACD chart ref
-  const stochasticChartRef = useRef<HTMLDivElement>(null); // NEW: Stochastic chart ref
-  const atrChartRef = useRef<HTMLDivElement>(null); // NEW: ATR chart ref
+  const macdChartRef = useRef<HTMLDivElement>(null);
+  const stochasticChartRef = useRef<HTMLDivElement>(null);
+  const atrChartRef = useRef<HTMLDivElement>(null);
   
   const chartInstance = useRef<IChartApi | null>(null);
   const volumeInstance = useRef<IChartApi | null>(null);
   const rsiInstance = useRef<IChartApi | null>(null);
-  const macdInstance = useRef<IChartApi | null>(null); // NEW: MACD chart instance
-  const stochasticInstance = useRef<IChartApi | null>(null); // NEW: Stochastic chart instance
-  const atrInstance = useRef<IChartApi | null>(null); // NEW: ATR chart instance
+  const macdInstance = useRef<IChartApi | null>(null);
+  const stochasticInstance = useRef<IChartApi | null>(null);
+  const atrInstance = useRef<IChartApi | null>(null);
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [chartDimensions, setChartDimensions] = useState({ width: 0, height: 0 });
   const validationResult = useMemo(() => validateChartData(data), [data, debug]);
   const chartStats = useMemo(() => calculateChartStats(validationResult.data), [validationResult.data]);
+
+  // Add responsive design hook
+  const { isMobile, isTablet } = useResponsiveChart();
 
   // Indicator state management
   const [activeIndicators, setActiveIndicators] = useState<{
@@ -448,7 +475,18 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
   });
 
   // Chart type state: 'candlestick' or 'line'
-  const [priceChartType, setPriceChartType] = useState<'candlestick' | 'line'>('candlestick');
+  const [internalPriceChartType, setInternalPriceChartType] = useState<'candlestick' | 'line'>('candlestick');
+  
+  // Use external chart type if provided, otherwise use internal state
+  const priceChartType = externalChartType || internalPriceChartType;
+  
+  const setPriceChartType = (type: 'candlestick' | 'line') => {
+    if (onChartTypeChange) {
+      onChartTypeChange(type);
+    } else {
+      setInternalPriceChartType(type);
+    }
+  };
 
   // Add chartReady state for overlay synchronization
   const [chartReady, setChartReady] = useState(false);
@@ -457,33 +495,50 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
   const indicatorSeriesRef = useRef<{ [key: string]: ISeriesApi<LineData | CandlestickData | HistogramData | AreaSeries> }>({});
   const patternSeriesRef = useRef<{ [key: string]: ISeriesApi<LineData | CandlestickData | HistogramData | AreaSeries> }>({});
 
-  // Add this after other refs
   // Ref to track the current main price series (candlestick or line)
   const mainPriceSeriesRef = useRef<ISeriesApi<LineData | CandlestickData> | null>(null);
 
-  // Calculate responsive heights
+  // FIXED: Improved height calculations with better distribution
   const chartHeights = useMemo(() => {
     const totalHeight = height;
-    const headerHeight = 44; // Chart header height
-    const volumeHeight = Math.max(60, totalHeight * 0.08); // 8% of total height
-    const rsiHeight = Math.max(80, totalHeight * 0.12); // 12% of total height
-    const stochasticHeight = 80; // fixed height for stochastic
-    const atrHeight = 60; // fixed height for ATR
-    const macdHeight = 120;
-    // Candle height does not depend on MACD, stochastic, or ATR
-    let candleHeight = totalHeight - volumeHeight - rsiHeight - headerHeight;
-    if (activeIndicators.stochastic) candleHeight -= stochasticHeight;
-    if (activeIndicators.atr) candleHeight -= atrHeight;
-    if (activeIndicators.macd) candleHeight -= macdHeight;
+    const headerHeight = 44;
+    
+    // Responsive height adjustments
+    const volumeHeight = isMobile 
+      ? Math.max(60, totalHeight * 0.12)  // Smaller on mobile
+      : Math.max(80, totalHeight * 0.15); // Normal size
+    
+    const rsiHeight = isMobile
+      ? Math.max(60, totalHeight * 0.15)  // Smaller on mobile
+      : Math.max(100, totalHeight * 0.20); // FIXED: 20% like working version
+    
+    const stochasticHeight = isMobile
+      ? Math.max(60, totalHeight * 0.08)
+      : Math.max(80, totalHeight * 0.10);
+    
+    const atrHeight = isMobile
+      ? Math.max(50, totalHeight * 0.06)
+      : Math.max(60, totalHeight * 0.08);
+    
+    const macdHeight = isMobile
+      ? Math.max(80, totalHeight * 0.12)
+      : Math.max(120, totalHeight * 0.15);
+    
+    // Calculate remaining height for main chart
+    let remainingHeight = totalHeight - headerHeight - volumeHeight - rsiHeight;
+    if (activeIndicators.stochastic) remainingHeight -= stochasticHeight;
+    if (activeIndicators.atr) remainingHeight -= atrHeight;
+    if (activeIndicators.macd) remainingHeight -= macdHeight;
+    
     return {
-      candle: Math.max(300, candleHeight),
+      candle: Math.max(300, remainingHeight),
       volume: volumeHeight,
       rsi: rsiHeight,
       stochastic: stochasticHeight,
       atr: atrHeight,
       macd: macdHeight,
     };
-  }, [height, activeIndicators.stochastic, activeIndicators.atr, activeIndicators.macd]);
+  }, [height, activeIndicators.stochastic, activeIndicators.atr, activeIndicators.macd, isMobile]);
 
   // Validate data
   const validatedData = useMemo(() => {
@@ -1289,19 +1344,41 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
     return () => cleanupRsiDivergenceOverlays(patternSeriesRef, chartInstance, rsiInstance, debug);
   }, [showRsiDivergence, rsiDivergences, validatedData, chartInstance, rsiInstance, priceChartType, chartDimensions.width, debug, chartReady]);
 
-  // Debounced resize handler
+  // FIXED: Improved debounced resize handler with better chart resizing
   const debouncedResize = useCallback(() => {
     let timeoutId: NodeJS.Timeout;
     return () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        if (containerRef.current) {
-          const { width } = containerRef.current.getBoundingClientRect();
-          setChartDimensions({ width, height });
+        if (!containerRef.current) return;
+        
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setChartDimensions({ width, height });
+        
+        // Apply resize to all charts immediately
+        const charts = [
+          chartInstance.current,
+          volumeInstance.current,
+          rsiInstance.current,
+          macdInstance.current,
+          stochasticInstance.current,
+          atrInstance.current
+        ].filter(Boolean);
+        
+        charts.forEach(chart => {
+          try {
+            chart?.applyOptions({ width });
+          } catch (error) {
+            if (debug) console.warn('Chart resize failed:', error);
+          }
+        });
+        
+        if (debug) {
+          console.log('Applied chart resize:', { width, height });
         }
       }, 100);
     };
-  }, [height]);
+  }, [height, debug]);
 
   // Indicator toggle handler
   const toggleIndicator = useCallback((indicator: keyof typeof activeIndicators) => {
@@ -1526,42 +1603,13 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
 
       const isDark = theme === "dark";
       
-      // Common chart options
-      const commonOptions = {
+      // FIXED: Unified theme system for consistent styling
+      const createChartTheme = (isDark: boolean) => ({
         layout: {
           background: { type: ColorType.Solid, color: isDark ? "#0f172a" : "#ffffff" },
           textColor: isDark ? "#e2e8f0" : "#1e293b",
-          fontSize: 12,
+          fontSize: isMobile ? 10 : 12,
           fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-        },
-        rightPriceScale: {
-          borderColor: isDark ? "#334155" : "#e2e8f0",
-          scaleMargins: { top: 0.05, bottom: 0.15 },
-          autoScale: false,
-          entireTextOnly: true,
-          ticksVisible: true,
-          borderVisible: true,
-        },
-        leftPriceScale: {
-          visible: true,
-          borderColor: isDark ? "#334155" : "#e2e8f0",
-          scaleMargins: { top: 0.05, bottom: 0.15 },
-          ticksVisible: true,
-          borderVisible: true,
-        },
-        timeScale: {
-          borderColor: isDark ? "#334155" : "#e2e8f0",
-          timeVisible: true,
-          secondsVisible: false,
-          rightOffset: 8,
-          barSpacing: 6,
-          minBarSpacing: 2,
-          fixLeftEdge: true,
-          fixRightEdge: true,
-          tickMarkFormatter: (time: number) => {
-            const date = new Date(time * 1000);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          },
         },
         grid: {
           vertLines: { 
@@ -1573,6 +1621,48 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
             color: isDark ? "#1e293b" : "#f1f5f9",
             visible: true,
             style: 2,
+          },
+        },
+        priceScale: {
+          borderColor: isDark ? "#334155" : "#e2e8f0",
+          scaleMargins: { top: 0.05, bottom: 0.15 },
+          autoScale: true,
+          entireTextOnly: true,
+          ticksVisible: true,
+          borderVisible: true,
+        },
+        timeScale: {
+          borderColor: isDark ? "#334155" : "#e2e8f0",
+          timeVisible: true,
+          secondsVisible: false,
+          rightOffset: isMobile ? 4 : 8,
+          barSpacing: isMobile ? 4 : 6,
+          minBarSpacing: isMobile ? 1 : 2,
+          fixLeftEdge: true,
+          fixRightEdge: true,
+          tickMarkFormatter: (time: number) => {
+            const date = new Date(time * 1000);
+            return isMobile 
+              ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          },
+        },
+        crosshair: {
+          vertLine: {
+            color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+            width: 1,
+            style: 0,
+            visible: true,
+            labelVisible: true,
+            labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
+          },
+          horzLine: {
+            color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+            width: 1,
+            style: 0,
+            visible: true,
+            labelVisible: true,
+            labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
           },
         },
         handleScroll: {
@@ -1587,24 +1677,6 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
           pinch: true,
           axisDoubleClickReset: true,
         },
-        crosshair: {
-          vertLine: {
-            color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
-            width: 1 as number, // Cast for library compatibility
-            style: 0,
-            visible: true,
-            labelVisible: true,
-            labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
-          },
-          horzLine: {
-            color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
-            width: 1 as number, // Cast for library compatibility
-            style: 0,
-            visible: true,
-            labelVisible: true,
-            labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
-          },
-        },
         localization: {
           timeFormatter: (time: number) => {
             return new Date(time * 1000).toLocaleDateString();
@@ -1612,6 +1684,21 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
           priceFormatter: (price: number) => {
             return price >= 1 ? price.toFixed(2) : price.toPrecision(4);
           },
+        },
+      });
+
+      const themeConfig = createChartTheme(isDark);
+      
+      // Common chart options using unified theme
+      const commonOptions = {
+        ...themeConfig,
+        rightPriceScale: {
+          ...themeConfig.priceScale,
+          autoScale: false,
+        },
+        leftPriceScale: {
+          ...themeConfig.priceScale,
+          visible: true,
         },
       };
 
@@ -1645,16 +1732,16 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
         width: chartDimensions.width || volumeChartRef.current.clientWidth,
         height: chartHeights.volume,
         rightPriceScale: {
-          scaleMargins: { top: 0.1, bottom: 0.1 },
-          borderVisible: false,
-          entireTextOnly: true,
-          visible: true,
-          autoScale: true,
-          ticksVisible: true,
-        },
-        leftPriceScale: {
           visible: false,
           borderVisible: false,
+        },
+        leftPriceScale: {
+          visible: true,
+          borderVisible: false,
+          scaleMargins: { top: 0.05, bottom: 0.05 },
+          entireTextOnly: true,
+          autoScale: true,
+          ticksVisible: true,
         },
         timeScale: {
           visible: false,
@@ -1980,7 +2067,7 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
       const volumeSeries = volumeChart.addSeries(HistogramSeries, {
         color: isDark ? 'rgba(96, 165, 250, 0.8)' : 'rgba(59, 130, 246, 0.8)',
         priceFormat: { type: 'volume' },
-        priceScaleId: 'right',
+        priceScaleId: 'left',
         priceLineVisible: false,
         lastValueVisible: false,
         base: 0,
@@ -2001,7 +2088,7 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
         priceLineStyle: 2,
         crosshairMarkerVisible: true,
         crosshairMarkerRadius: 3,
-        priceScaleId: 'right',
+        priceScaleId: 'left',
         priceFormat: {
           type: 'volume',
           precision: 0,
@@ -2327,7 +2414,7 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
             lastValueVisible: false,
             priceLineVisible: false,
             title: 'Volume Anomaly',
-            priceScaleId: 'right',
+            priceScaleId: 'left',
           });
           const anomalyMarkerData = anomalies.map(anom => ({
             time: toTimestamp(validatedData[anom.index].date),
@@ -2612,20 +2699,31 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
     };
   }, [cleanupCharts]);
 
-  // Handle chart resize
+  // FIXED: Improved chart resize handling
   useEffect(() => {
     if (chartDimensions.width > 0) {
-      chartInstance.current?.applyOptions({ width: chartDimensions.width });
-      volumeInstance.current?.applyOptions({ width: chartDimensions.width });
-      rsiInstance.current?.applyOptions({ width: chartDimensions.width });
-      macdInstance.current?.applyOptions({ width: chartDimensions.width }); // NEW: resize MACD chart
-      stochasticInstance.current?.applyOptions({ width: chartDimensions.width }); // NEW: resize Stochastic chart
-      atrInstance.current?.applyOptions({ width: chartDimensions.width }); // NEW: resize ATR chart
+      const charts = [
+        chartInstance.current,
+        volumeInstance.current,
+        rsiInstance.current,
+        macdInstance.current,
+        stochasticInstance.current,
+        atrInstance.current
+      ].filter(Boolean);
+      
+      charts.forEach(chart => {
+        try {
+          chart?.applyOptions({ width: chartDimensions.width });
+        } catch (error) {
+          if (debug) console.warn('Chart resize failed:', error);
+        }
+      });
+      
       if (debug) {
-        console.log('Applied chart resize:', chartDimensions.width);
+        console.log('Applied chart resize to all charts:', chartDimensions.width);
       }
     }
-  }, [chartDimensions.width]);
+  }, [chartDimensions.width, debug]);
 
   // --- MACD Chart Effect ---
   useEffect(() => {
@@ -3127,7 +3225,7 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
           toggleIndicator('obv');
           break;
         case 'c':
-          setPriceChartType(prev => prev === 'candlestick' ? 'line' : 'candlestick');
+          setPriceChartType(priceChartType === 'candlestick' ? 'line' : 'candlestick');
           break;
         case 'r':
           // Reset view
@@ -3495,34 +3593,7 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
                 </div>
               </div>
               
-              {/* Chart Type Controls - Compact */}
-              <div className="flex flex-col items-center">
-                <h4 className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Chart</h4>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => setPriceChartType('candlestick')}
-                    className={`px-2 py-1 text-xs rounded transition-colors ${
-                      priceChartType === 'candlestick'
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                    }`}
-                    title="Candlestick"
-                  >
-                    Candle
-                  </button>
-                  <button
-                    onClick={() => setPriceChartType('line')}
-                    className={`px-2 py-1 text-xs rounded transition-colors ${
-                      priceChartType === 'line'
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                    }`}
-                    title="Line"
-                  >
-                    Line
-                  </button>
-                </div>
-              </div>
+
               
               {/* Pan Controls - Compact */}
               <div className="flex flex-col items-center">
@@ -3644,39 +3715,69 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
               </div>
             )}
 
+            {/* FIXED: Consistent chart container styling */}
             {/* Candlestick Chart */}
-            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 flex-1">
-              {/* Legend/label section removed */}
+            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 flex-1 shadow-sm">
+              <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  {priceChartType === 'candlestick' ? 'Price Chart' : 'Line Chart'}
+                </h3>
+              </div>
               <div ref={candleChartRef} className="w-full" style={{ height: `${chartHeights.candle}px` }} />
             </div>
 
             {/* Volume Chart */}
-            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900">
-              {/* Legend/label section removed */}
+            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+              <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">Volume</h3>
+              </div>
               <div ref={volumeChartRef} className="w-full" style={{ height: `${chartHeights.volume}px` }} />
             </div>
 
             {/* RSI Chart */}
-            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900">
-              {/* Legend/label section removed */}
+            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+              <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">RSI (14)</h3>
+                <div className="flex space-x-4 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 rounded-full bg-red-500 mr-1"></div>
+                    <span>Overbought (70)</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 rounded-full bg-green-500 mr-1"></div>
+                    <span>Oversold (30)</span>
+                  </div>
+                </div>
+              </div>
               <div ref={rsiChartRef} className="w-full" style={{ height: `${chartHeights.rsi}px` }} />
             </div>
+
             {/* Stochastic Chart (conditionally rendered) */}
             {activeIndicators.stochastic && (
-              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900">
+              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">Stochastic</h3>
+                </div>
                 <div ref={stochasticChartRef} className="w-full" style={{ height: `${chartHeights.stochastic}px` }} />
               </div>
             )}
+
             {/* ATR Chart (conditionally rendered) */}
             {activeIndicators.atr && (
-              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900">
+              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">ATR (14)</h3>
+                </div>
                 <div ref={atrChartRef} className="w-full" style={{ height: `${chartHeights.atr}px` }} />
               </div>
             )}
+
             {/* MACD Chart (conditionally rendered) */}
             {activeIndicators.macd && (
-              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900">
-                {/* Legend/label section removed */}
+              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">MACD</h3>
+                </div>
                 <div ref={macdChartRef} className="w-full" style={{ height: `${chartHeights.macd}px` }} />
               </div>
             )}
