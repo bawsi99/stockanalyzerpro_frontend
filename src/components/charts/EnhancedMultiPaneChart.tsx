@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo, useImperativeHandle } from "react";
 import {
   createChart,
   IChartApi,
@@ -43,6 +43,11 @@ interface EnhancedMultiPaneChartProps {
   };
   chartType?: 'candlestick' | 'line';
   onChartTypeChange?: (type: 'candlestick' | 'line') => void;
+  onClearAll?: () => void;
+  onShowAll?: () => void;
+  onToggleShortcuts?: () => void;
+  showShortcuts?: boolean;
+  onActiveIndicatorsChange?: (indicators: any) => void;
 }
 
 // Add responsive hook at the top of the component
@@ -396,7 +401,7 @@ function cleanupSupportResistanceOverlays(patternSeriesRef, chartInstance, debug
 }
 
 // ---- Component ---- //
-const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({ 
+const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps>(({ 
   data, 
   theme = "light",
   height = 600,
@@ -405,8 +410,13 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
   onStatsCalculated,
   overlays,
   chartType: externalChartType,
-  onChartTypeChange
-}) => {
+  onChartTypeChange,
+  onClearAll,
+  onShowAll,
+  onToggleShortcuts,
+  showShortcuts: externalShowShortcuts,
+  onActiveIndicatorsChange
+}, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const candleChartRef = useRef<HTMLDivElement>(null);
   const volumeChartRef = useRef<HTMLDivElement>(null);
@@ -452,6 +462,7 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
     resistance: boolean;
     trianglesFlags: boolean;
     rsiDivergence: boolean;
+    peaksLows: boolean;
   }>({
     sma20: false,
     sma50: false,
@@ -472,6 +483,7 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
     resistance: false,
     trianglesFlags: false,
     rsiDivergence: false,
+    peaksLows: false,
   });
 
   // Chart type state: 'candlestick' or 'line'
@@ -498,40 +510,40 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
   // Ref to track the current main price series (candlestick or line)
   const mainPriceSeriesRef = useRef<ISeriesApi<LineData | CandlestickData> | null>(null);
 
-  // FIXED: Improved height calculations with better distribution
+  // FIXED: Improved height calculations with better distribution - prioritize main chart
   const chartHeights = useMemo(() => {
     const totalHeight = height;
     const headerHeight = 44;
     
-    // Responsive height adjustments
+    // Responsive height adjustments - give more space to main chart
     const volumeHeight = isMobile 
-      ? Math.max(60, totalHeight * 0.12)  // Smaller on mobile
-      : Math.max(80, totalHeight * 0.15); // Normal size
+      ? Math.max(50, totalHeight * 0.08)   // Reduced from 0.12 to 0.08
+      : Math.max(60, totalHeight * 0.10);  // Reduced from 0.15 to 0.10
     
     const rsiHeight = isMobile
-      ? Math.max(60, totalHeight * 0.15)  // Smaller on mobile
-      : Math.max(100, totalHeight * 0.20); // FIXED: 20% like working version
+      ? Math.max(50, totalHeight * 0.10)   // Reduced from 0.15 to 0.10
+      : Math.max(80, totalHeight * 0.12);  // Reduced from 0.20 to 0.12
     
     const stochasticHeight = isMobile
-      ? Math.max(60, totalHeight * 0.08)
-      : Math.max(80, totalHeight * 0.10);
+      ? Math.max(50, totalHeight * 0.06)   // Reduced from 0.08 to 0.06
+      : Math.max(60, totalHeight * 0.08);  // Reduced from 0.10 to 0.08
     
     const atrHeight = isMobile
-      ? Math.max(50, totalHeight * 0.06)
-      : Math.max(60, totalHeight * 0.08);
+      ? Math.max(40, totalHeight * 0.05)   // Reduced from 0.06 to 0.05
+      : Math.max(50, totalHeight * 0.06);  // Reduced from 0.08 to 0.06
     
     const macdHeight = isMobile
-      ? Math.max(80, totalHeight * 0.12)
-      : Math.max(120, totalHeight * 0.15);
+      ? Math.max(60, totalHeight * 0.08)   // Reduced from 0.12 to 0.08
+      : Math.max(80, totalHeight * 0.10);  // Reduced from 0.15 to 0.10
     
-    // Calculate remaining height for main chart
+    // Calculate remaining height for main chart - prioritize this
     let remainingHeight = totalHeight - headerHeight - volumeHeight - rsiHeight;
     if (activeIndicators.stochastic) remainingHeight -= stochasticHeight;
     if (activeIndicators.atr) remainingHeight -= atrHeight;
     if (activeIndicators.macd) remainingHeight -= macdHeight;
     
     return {
-      candle: Math.max(300, remainingHeight),
+      candle: Math.max(400, remainingHeight), // Increased minimum from 300 to 400
       volume: volumeHeight,
       rsi: rsiHeight,
       stochastic: stochasticHeight,
@@ -681,6 +693,11 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
 
   // Add to pattern state management
   const [showRsiDivergence, setShowRsiDivergence] = useState(false);
+
+  // Connect activeIndicators.rsiDivergence to showRsiDivergence
+  useEffect(() => {
+    setShowRsiDivergence(activeIndicators.rsiDivergence);
+  }, [activeIndicators.rsiDivergence]);
 
   // Calculate divergences once (static data)
   const rsiDivergences = useMemo<Divergence[]>(() => {
@@ -1625,7 +1642,7 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
         },
         priceScale: {
           borderColor: isDark ? "#334155" : "#e2e8f0",
-          scaleMargins: { top: 0.05, bottom: 0.15 },
+          scaleMargins: { top: 0.03, bottom: 0.08 }, // Reduced margins for more chart space
           autoScale: true,
           entireTextOnly: true,
           ticksVisible: true,
@@ -1640,6 +1657,8 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
           minBarSpacing: isMobile ? 1 : 2,
           fixLeftEdge: true,
           fixRightEdge: true,
+          // Reduced margins for more chart space
+          scaleMargins: { left: 0.0, right: 0.02 },
           tickMarkFormatter: (time: number) => {
             const date = new Date(time * 1000);
             return isMobile 
@@ -1698,7 +1717,7 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
         },
         leftPriceScale: {
           ...themeConfig.priceScale,
-          visible: true,
+          visible: false, // Hide left price scale to save space
         },
       };
 
@@ -1714,6 +1733,18 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
         grid: {
           ...commonOptions.grid,
           vertLines: { ...commonOptions.grid.vertLines, visible: false },
+        },
+        // Enhanced space utilization
+        leftPriceScale: {
+          visible: false, // Hide left price scale to save space
+        },
+        rightPriceScale: {
+          ...commonOptions.rightPriceScale,
+          scaleMargins: { top: 0.02, bottom: 0.05 }, // Minimal margins
+        },
+        timeScale: {
+          ...commonOptions.timeScale,
+          scaleMargins: { left: 0.0, right: 0.01 }, // Zero left margin to eliminate space
         },
       });
       chartInstance.current = candleChart;
@@ -3245,7 +3276,7 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
             sma20: false, sma50: false, ema12: false, ema26: false, ema50: false, sma200: false,
             bollingerBands: false, macd: false, stochastic: false, atr: false, obv: false,
             rsiDivergence: false, doubleTop: false, doubleBottom: false, volumeAnomaly: false,
-            peaksLows: false, support: false, resistance: false, trianglesFlags: false,
+            swingPoints: false, peaksLows: false, support: false, resistance: false, trianglesFlags: false,
           });
           break;
         case 'enter':
@@ -3254,7 +3285,7 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
             sma20: true, sma50: true, ema12: true, ema26: true, ema50: true, sma200: true,
             bollingerBands: true, macd: true, stochastic: true, atr: true, obv: true,
             rsiDivergence: true, doubleTop: true, doubleBottom: true, volumeAnomaly: true,
-            peaksLows: true, support: true, resistance: true, trianglesFlags: true,
+            swingPoints: true, peaksLows: true, support: true, resistance: true, trianglesFlags: true,
           });
           break;
       }
@@ -3265,10 +3296,49 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
   }, [chartReady, toggleIndicator]);
 
   // Add chart interaction hints
-  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [internalShowShortcuts, setInternalShowShortcuts] = useState(false);
+  
+  // Use external showShortcuts if provided, otherwise use internal state
+  const showShortcuts = externalShowShortcuts !== undefined ? externalShowShortcuts : internalShowShortcuts;
+  
+  const setShowShortcuts = (value: boolean) => {
+    if (onToggleShortcuts) {
+      onToggleShortcuts();
+    } else {
+      setInternalShowShortcuts(value);
+    }
+  };
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    clearAllIndicators: () => {
+      const clearedIndicators = {
+        sma20: false, sma50: false, ema12: false, ema26: false, ema50: false, sma200: false,
+        bollingerBands: false, macd: false, stochastic: false, atr: false, obv: false,
+        rsiDivergence: false, doubleTop: false, doubleBottom: false, volumeAnomaly: false,
+        swingPoints: false, peaksLows: false, support: false, resistance: false, trianglesFlags: false,
+      };
+      setActiveIndicators(clearedIndicators);
+      if (onActiveIndicatorsChange) {
+        onActiveIndicatorsChange(clearedIndicators);
+      }
+    },
+    showAllIndicators: () => {
+      const allIndicators = {
+        sma20: true, sma50: true, ema12: true, ema26: true, ema50: true, sma200: true,
+        bollingerBands: true, macd: true, stochastic: true, atr: true, obv: true,
+        rsiDivergence: true, doubleTop: true, doubleBottom: true, volumeAnomaly: true,
+        swingPoints: true, peaksLows: true, support: true, resistance: true, trianglesFlags: true,
+      };
+      setActiveIndicators(allIndicators);
+      if (onActiveIndicatorsChange) {
+        onActiveIndicatorsChange(allIndicators);
+      }
+    }
+  }));
 
   return (
-    <div className="w-full h-full flex flex-col" style={{
+    <div className="w-full h-full flex flex-col gap-1" style={{
       // Hide TradingView branding
       '--tv-lightweight-charts-after': 'none',
     } as React.CSSProperties}>
@@ -3380,9 +3450,8 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
           <div className="flex flex-col space-y-2 w-full h-full">
             {/* Chart Controls */}
             <div className="flex flex-wrap gap-3 px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-              {/* Technical Indicators - Compact Layout */}
+              {/* All Indicators and Patterns - Combined Layout */}
               <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Technical Indicators</h4>
                 <div className="grid grid-cols-6 gap-1">
                   <button
                     onClick={() => toggleIndicator('sma20')}
@@ -3516,174 +3585,91 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
                   >
                     RSI-D
                   </button>
-                </div>
-              </div>
-              
-              {/* Pattern Recognition - Compact Layout */}
-              <div className="flex flex-col">
-                <h4 className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Patterns</h4>
-                <div className="grid grid-cols-2 gap-1">
                   <button
                     onClick={() => toggleIndicator('doubleTop')}
-                    className={`flex items-center px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 transition-colors text-xs ${
-                      activeIndicators.doubleTop ? 'bg-red-100 text-red-700' : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      activeIndicators.doubleTop
+                        ? 'bg-red-600 text-white shadow-sm'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                     }`}
-                    type="button"
                     title="Double Top"
                   >
-                    <div className="w-2 h-2 rounded-full mr-1" style={{background: 'rgb(239, 68, 68)'}}></div>
-                    <span>D.Top</span>
+                    D.Top
                   </button>
                   <button
                     onClick={() => toggleIndicator('doubleBottom')}
-                    className={`flex items-center px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 transition-colors text-xs ${
-                      activeIndicators.doubleBottom ? 'bg-green-100 text-green-700' : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      activeIndicators.doubleBottom
+                        ? 'bg-green-600 text-white shadow-sm'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                     }`}
-                    type="button"
                     title="Double Bottom"
                   >
-                    <div className="w-2 h-2 rounded-full mr-1" style={{background: 'rgb(34, 197, 94)'}}></div>
-                    <span>D.Bottom</span>
+                    D.Bottom
                   </button>
                   <button
                     onClick={() => toggleIndicator('volumeAnomaly')}
-                    className={`flex items-center px-2 py-1 rounded bg-orange-100 text-orange-700 transition-colors text-xs`}
-                    type="button"
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      activeIndicators.volumeAnomaly
+                        ? 'bg-orange-600 text-white shadow-sm'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
                     title="Volume Anomaly"
                   >
-                    <div className="w-2 h-2 rounded-full mr-1" style={{background: 'rgb(245, 158, 66)'}}></div>
-                    <span>Vol</span>
+                    Vol
                   </button>
                   <button
                     onClick={() => toggleIndicator('peaksLows')}
-                    className={`flex items-center px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 text-xs`}
-                    type="button"
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      activeIndicators.peaksLows
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
                     title="Peaks/Lows"
                   >
-                    <div className="w-2 h-2 rounded-full mr-1" style={{background: 'rgb(59, 130, 246)'}}></div>
-                    <span>P/L</span>
+                    P/L
                   </button>
                   <button
                     onClick={() => toggleIndicator('support')}
-                    className={`flex items-center px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 text-xs`}
-                    type="button"
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      activeIndicators.support
+                        ? 'bg-green-600 text-white shadow-sm'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
                     title="Support"
                   >
-                    <div className="w-2 h-2 rounded-full mr-1" style={{background: 'rgb(22, 163, 74)'}}></div>
-                    <span>Sup</span>
+                    Sup
                   </button>
                   <button
                     onClick={() => toggleIndicator('resistance')}
-                    className={`flex items-center px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 text-xs`}
-                    type="button"
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      activeIndicators.resistance
+                        ? 'bg-red-600 text-white shadow-sm'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
                     title="Resistance"
                   >
-                    <div className="w-2 h-2 rounded-full mr-1" style={{background: 'rgb(220, 38, 38)'}}></div>
-                    <span>Res</span>
+                    Res
                   </button>
                   <button
                     onClick={() => toggleIndicator('trianglesFlags')}
-                    className={`flex items-center px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 text-xs`}
-                    type="button"
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      activeIndicators.trianglesFlags
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
                     title="Triangles/Flags"
                   >
-                    <div className="w-2 h-2 rounded-full mr-1" style={{background: 'rgb(162, 28, 175)'}}></div>
-                    <span>T/F</span>
+                    T/F
                   </button>
                 </div>
               </div>
               
 
               
-              {/* Pan Controls - Compact */}
-              <div className="flex flex-col items-center">
-                <h4 className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Pan</h4>
-                <div className="grid grid-cols-3 gap-1">
-                  <div></div>
-                  <button
-                    onClick={() => {
-                      if (chartInstance.current) {
-                        chartInstance.current.timeScale().scrollToPosition(0, false);
-                      }
-                    }}
-                    className="w-6 h-6 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center justify-center text-xs"
-                    title="Pan Left"
-                  >
-                    ←
-                  </button>
-                  <div></div>
-                  <button
-                    onClick={() => {
-                      if (chartInstance.current) {
-                        chartInstance.current.timeScale().scrollToPosition(0, false);
-                      }
-                    }}
-                    className="w-6 h-6 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors flex items-center justify-center text-xs"
-                    title="Reset View"
-                  >
-                    ⌂
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (chartInstance.current) {
-                        const dataLength = validatedData.length;
-                        chartInstance.current.timeScale().scrollToPosition(dataLength - 1, false);
-                      }
-                    }}
-                    className="w-6 h-6 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center justify-center text-xs"
-                    title="Pan Right"
-                  >
-                    →
-                  </button>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                </div>
-              </div>
+
               
-              {/* Quick Actions - Compact */}
-              <div className="flex flex-col items-center">
-                <h4 className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Actions</h4>
-                <div className="flex flex-col gap-1">
-                  <button
-                    onClick={() => {
-                      // Reset all indicators
-                      setActiveIndicators({
-                        sma20: false, sma50: false, ema12: false, ema26: false, ema50: false, sma200: false,
-                        bollingerBands: false, macd: false, stochastic: false, atr: false, obv: false,
-                        rsiDivergence: false, doubleTop: false, doubleBottom: false, volumeAnomaly: false,
-                        peaksLows: false, support: false, resistance: false, trianglesFlags: false,
-                      });
-                    }}
-                    className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                    title="Clear All"
-                  >
-                    Clear
-                  </button>
-                  <button
-                    onClick={() => {
-                      // Show all indicators
-                      setActiveIndicators({
-                        sma20: true, sma50: true, ema12: true, ema26: true, ema50: true, sma200: true,
-                        bollingerBands: true, macd: true, stochastic: true, atr: true, obv: true,
-                        rsiDivergence: true, doubleTop: true, doubleBottom: true, volumeAnomaly: true,
-                        peaksLows: true, support: true, resistance: true, trianglesFlags: true,
-                      });
-                    }}
-                    className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                    title="Show All"
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setShowShortcuts(!showShortcuts)}
-                    className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                    title="Keyboard Shortcuts"
-                  >
-                    {showShortcuts ? 'Hide' : 'Keys'}
-                  </button>
-                </div>
-              </div>
+
             </div>
 
             {/* Keyboard Shortcuts Help Overlay */}
@@ -3715,39 +3701,24 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
               </div>
             )}
 
-            {/* FIXED: Consistent chart container styling */}
-            {/* Candlestick Chart */}
-            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 flex-1 shadow-sm">
-              <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  {priceChartType === 'candlestick' ? 'Price Chart' : 'Line Chart'}
-                </h3>
-              </div>
+            {/* FIXED: Enhanced chart container styling with better space utilization */}
+            {/* Main Price Chart - Enhanced prominence */}
+            <div className="relative rounded-lg border-2 border-blue-200 dark:border-blue-700 overflow-hidden bg-white dark:bg-gray-900 flex-1 shadow-lg">
               <div ref={candleChartRef} className="w-full" style={{ height: `${chartHeights.candle}px` }} />
             </div>
 
-            {/* Volume Chart */}
+            {/* Volume Chart - Compact styling */}
             <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
-              <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">Volume</h3>
+              <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
+                Volume
               </div>
               <div ref={volumeChartRef} className="w-full" style={{ height: `${chartHeights.volume}px` }} />
             </div>
 
-            {/* RSI Chart */}
+            {/* RSI Chart - Compact styling */}
             <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
-              <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">RSI (14)</h3>
-                <div className="flex space-x-4 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 rounded-full bg-red-500 mr-1"></div>
-                    <span>Overbought (70)</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 rounded-full bg-green-500 mr-1"></div>
-                    <span>Oversold (30)</span>
-                  </div>
-                </div>
+              <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
+                RSI
               </div>
               <div ref={rsiChartRef} className="w-full" style={{ height: `${chartHeights.rsi}px` }} />
             </div>
@@ -3755,9 +3726,6 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
             {/* Stochastic Chart (conditionally rendered) */}
             {activeIndicators.stochastic && (
               <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
-                <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">Stochastic</h3>
-                </div>
                 <div ref={stochasticChartRef} className="w-full" style={{ height: `${chartHeights.stochastic}px` }} />
               </div>
             )}
@@ -3765,9 +3733,6 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
             {/* ATR Chart (conditionally rendered) */}
             {activeIndicators.atr && (
               <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
-                <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">ATR (14)</h3>
-                </div>
                 <div ref={atrChartRef} className="w-full" style={{ height: `${chartHeights.atr}px` }} />
               </div>
             )}
@@ -3775,9 +3740,6 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
             {/* MACD Chart (conditionally rendered) */}
             {activeIndicators.macd && (
               <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
-                <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">MACD</h3>
-                </div>
                 <div ref={macdChartRef} className="w-full" style={{ height: `${chartHeights.macd}px` }} />
               </div>
             )}
@@ -3786,6 +3748,6 @@ const EnhancedMultiPaneChart: React.FC<EnhancedMultiPaneChartProps> = ({
       )}
     </div>
   );
-};
+});
 
 export default EnhancedMultiPaneChart; 

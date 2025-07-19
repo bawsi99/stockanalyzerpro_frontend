@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
@@ -89,6 +89,8 @@ const NewOutput: React.FC = () => {
   const [chartStats, setChartStats] = useState<ChartStats | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const chartRef = useRef<any>(null);
 
   // Filtered data
   const filteredRawData = useMemo(() => 
@@ -333,6 +335,19 @@ const NewOutput: React.FC = () => {
     }
   };
 
+  // Action button functions
+  const clearAllIndicators = () => {
+    if (chartRef.current && chartRef.current.clearAllIndicators) {
+      chartRef.current.clearAllIndicators();
+    }
+  };
+
+  const showAllIndicators = () => {
+    if (chartRef.current && chartRef.current.showAllIndicators) {
+      chartRef.current.showAllIndicators();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <Header />
@@ -484,9 +499,29 @@ const NewOutput: React.FC = () => {
                           <Maximize2 className="h-3 w-3 mr-1" />
                           Fullscreen
                         </Button>
-                        <Button variant="outline" size="sm" className="text-xs h-7">
-                          <Settings className="h-3 w-3 mr-1" />
-                          Settings
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-7 bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                          onClick={clearAllIndicators}
+                        >
+                          Clear
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-7 bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                          onClick={showAllIndicators}
+                        >
+                          All
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-7 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                          onClick={() => setShowShortcuts(!showShortcuts)}
+                        >
+                          {showShortcuts ? 'Hide' : 'Keys'}
                         </Button>
                       </div>
                     </div>
@@ -496,13 +531,19 @@ const NewOutput: React.FC = () => {
                 {/* Trading Terminal Content */}
                 <CardContent className="flex-1 overflow-hidden p-0">
                   {rawData.length > 0 ? (
-                    <div className="h-[900px] w-full flex flex-col">
+                    <div className="h-[1000px] w-full flex flex-col">
                       {/* Chart Container with Professional Layout */}
                       <div className="flex-1 relative">
                         <EnhancedMultiPaneChart 
+                          ref={chartRef}
                           data={filteredRawData} 
+                          height={950} // Explicit height to utilize full space
                           chartType={chartType}
                           onChartTypeChange={setChartType}
+                          onClearAll={clearAllIndicators}
+                          onShowAll={showAllIndicators}
+                          onToggleShortcuts={() => setShowShortcuts(!showShortcuts)}
+                          showShortcuts={showShortcuts}
                           overlays={{
                             showRsiDivergence: true,
                             ...(analysisData.overlays || {})
@@ -510,28 +551,7 @@ const NewOutput: React.FC = () => {
                         />
                       </div>
                       
-                      {/* Bottom Toolbar */}
-                      <div className="h-12 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between px-4">
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <span>Zoom: 100%</span>
-                          <span>Range: {selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}</span>
-                          <span>Data Points: {filteredRawData.length}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                            <Download className="h-3 w-3 mr-1" />
-                            Export
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                            <Share className="h-3 w-3 mr-1" />
-                            Share
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                            <Bookmark className="h-3 w-3 mr-1" />
-                            Save
-                          </Button>
-                        </div>
-                      </div>
+
                     </div>
                   ) : (
                     <div className="text-center py-16 text-slate-500">
