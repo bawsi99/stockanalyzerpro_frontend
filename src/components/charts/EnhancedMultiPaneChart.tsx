@@ -156,7 +156,9 @@ function calcRSI(values: number[], period = 14): (number | null)[] {
         const avgGain = gainSum / period;
         const avgLoss = lossSum / period;
         const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-        rsi.push(100 - 100 / (1 + rs));
+        const rsiValue = 100 - 100 / (1 + rs);
+        // Ensure RSI value is within 0-100 range
+        rsi.push(Math.max(0, Math.min(100, rsiValue)));
       } else {
         rsi.push(null);
       }
@@ -166,7 +168,9 @@ function calcRSI(values: number[], period = 14): (number | null)[] {
     gainSum = (gainSum * (period - 1) + gain) / period;
     lossSum = (lossSum * (period - 1) + loss) / period;
     const rs = lossSum === 0 ? 100 : gainSum / lossSum;
-    rsi.push(100 - 100 / (1 + rs));
+    const rsiValue = 100 - 100 / (1 + rs);
+    // Ensure RSI value is within 0-100 range
+    rsi.push(Math.max(0, Math.min(100, rsiValue)));
   }
 
   rsi.unshift(null);
@@ -510,40 +514,40 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
   // Ref to track the current main price series (candlestick or line)
   const mainPriceSeriesRef = useRef<ISeriesApi<LineData | CandlestickData> | null>(null);
 
-  // FIXED: Improved height calculations with better distribution - prioritize main chart
+  // FIXED: Improved height calculations with better distribution - ensure RSI visibility
   const chartHeights = useMemo(() => {
     const totalHeight = height;
     const headerHeight = 44;
     
-    // Responsive height adjustments - give more space to main chart
+    // Responsive height adjustments - ensure minimum visibility for all charts
     const volumeHeight = isMobile 
-      ? Math.max(50, totalHeight * 0.08)   // Reduced from 0.12 to 0.08
-      : Math.max(60, totalHeight * 0.10);  // Reduced from 0.15 to 0.10
+      ? Math.max(80, totalHeight * 0.12)   // Increased minimum for better visibility
+      : Math.max(100, totalHeight * 0.15); // Increased minimum for better visibility
     
     const rsiHeight = isMobile
-      ? Math.max(50, totalHeight * 0.10)   // Reduced from 0.15 to 0.10
-      : Math.max(80, totalHeight * 0.12);  // Reduced from 0.20 to 0.12
+      ? Math.max(120, totalHeight * 0.18)  // Significantly increased for RSI visibility
+      : Math.max(150, totalHeight * 0.20); // Significantly increased for RSI visibility
     
     const stochasticHeight = isMobile
-      ? Math.max(50, totalHeight * 0.06)   // Reduced from 0.08 to 0.06
-      : Math.max(60, totalHeight * 0.08);  // Reduced from 0.10 to 0.08
+      ? Math.max(80, totalHeight * 0.10)   // Increased minimum
+      : Math.max(100, totalHeight * 0.12); // Increased minimum
     
     const atrHeight = isMobile
-      ? Math.max(40, totalHeight * 0.05)   // Reduced from 0.06 to 0.05
-      : Math.max(50, totalHeight * 0.06);  // Reduced from 0.08 to 0.06
+      ? Math.max(60, totalHeight * 0.08)   // Increased minimum
+      : Math.max(80, totalHeight * 0.10);  // Increased minimum
     
     const macdHeight = isMobile
-      ? Math.max(60, totalHeight * 0.08)   // Reduced from 0.12 to 0.08
-      : Math.max(80, totalHeight * 0.10);  // Reduced from 0.15 to 0.10
+      ? Math.max(100, totalHeight * 0.12)  // Increased minimum
+      : Math.max(120, totalHeight * 0.15); // Increased minimum
     
-    // Calculate remaining height for main chart - prioritize this
+    // Calculate remaining height for main chart - ensure it still gets good space
     let remainingHeight = totalHeight - headerHeight - volumeHeight - rsiHeight;
     if (activeIndicators.stochastic) remainingHeight -= stochasticHeight;
     if (activeIndicators.atr) remainingHeight -= atrHeight;
     if (activeIndicators.macd) remainingHeight -= macdHeight;
     
     return {
-      candle: Math.max(400, remainingHeight), // Increased minimum from 300 to 400
+      candle: Math.max(350, remainingHeight), // Slightly reduced minimum to accommodate other charts
       volume: volumeHeight,
       rsi: rsiHeight,
       stochastic: stochasticHeight,
@@ -1644,7 +1648,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           borderColor: isDark ? "#334155" : "#e2e8f0",
           scaleMargins: { top: 0.03, bottom: 0.08 }, // Reduced margins for more chart space
           autoScale: true,
-          entireTextOnly: true,
+          entireTextOnly: false, // Changed to false to ensure labels display
           ticksVisible: true,
           borderVisible: true,
         },
@@ -1713,7 +1717,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         ...themeConfig,
         rightPriceScale: {
           ...themeConfig.priceScale,
-          autoScale: false,
+          autoScale: true, // Enable autoScale for proper axis labels
         },
         leftPriceScale: {
           ...themeConfig.priceScale,
@@ -1741,6 +1745,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         rightPriceScale: {
           ...commonOptions.rightPriceScale,
           scaleMargins: { top: 0.02, bottom: 0.05 }, // Minimal margins
+          autoScale: true, // Ensure autoScale is enabled
         },
         timeScale: {
           ...commonOptions.timeScale,
@@ -1763,16 +1768,16 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         width: chartDimensions.width || volumeChartRef.current.clientWidth,
         height: chartHeights.volume,
         rightPriceScale: {
-          visible: false,
-          borderVisible: false,
-        },
-        leftPriceScale: {
           visible: true,
           borderVisible: false,
-          scaleMargins: { top: 0.05, bottom: 0.05 },
-          entireTextOnly: true,
+          scaleMargins: { top: 0.1, bottom: 0.1 }, // Better margins for volume visibility
+          entireTextOnly: false, // Changed to false to ensure labels display
           autoScale: true,
           ticksVisible: true,
+        },
+        leftPriceScale: {
+          visible: false,
+          borderVisible: false,
         },
         timeScale: {
           visible: false,
@@ -1817,11 +1822,95 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         },
         rightPriceScale: {
           ...commonOptions.rightPriceScale,
-          scaleMargins: { top: 0.05, bottom: 0.1 },
+          scaleMargins: { top: 0.1, bottom: 0.1 }, // Proper margins for full visibility
+          autoScale: false, // Disable autoScale to use fixed range
+          minValue: 0, // Set minimum RSI value
+          maxValue: 100, // Set maximum RSI value
+          entireTextOnly: false, // Ensure all labels are visible
+          ticksVisible: true, // Ensure tick marks are visible
+          // Force display of full 0-100 range
+          visible: true,
+          borderVisible: true,
+          // Increase scale width to accommodate labels
+          size: 80, // Increase from default ~54px to 80px
+          // Enhanced tick configuration for 0-100 range
+          tickMarkFormatter: (value: number) => {
+            // Show every 10 points: 0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100
+            if (value % 10 === 0) {
+              return value.toString();
+            }
+            return '';
+          },
+          // Force the scale to show the full range
+          autoScaleInfoProvider: () => ({
+            priceRange: {
+              minValue: 0,
+              maxValue: 100,
+            },
+          }),
+        },
+        timeScale: {
+          ...commonOptions.timeScale,
+          scaleMargins: { left: 0.0, right: 0.02 }, // Consistent with main chart
         },
       });
       rsiInstance.current = rsiChart;
-
+      
+      // Enhanced RSI chart range enforcement
+      const enforceRsiRange = () => {
+        try {
+          if (rsiChart) {
+            rsiChart.applyOptions({
+              rightPriceScale: {
+                minValue: 0,
+                maxValue: 100,
+                autoScale: false,
+                entireTextOnly: false,
+                ticksVisible: true,
+                size: 80,
+                scaleMargins: { top: 0.1, bottom: 0.1 },
+                tickMarkFormatter: (value: number) => {
+                  if (value % 10 === 0) {
+                    return value.toString();
+                  }
+                  return '';
+                },
+                autoScaleInfoProvider: () => ({
+                  priceRange: {
+                    minValue: 0,
+                    maxValue: 100,
+                  },
+                }),
+              }
+            });
+            
+            // Force the chart to recalculate and display the full range
+            rsiChart.resize(rsiChartRef.current?.clientWidth || 800, chartHeights.rsi);
+            
+            // Additional enforcement by setting visible range
+            rsiChart.priceScale('right').setAutoScale(false);
+            rsiChart.priceScale('right').applyOptions({
+              minValue: 0,
+              maxValue: 100,
+              scaleMargins: { top: 0.1, bottom: 0.1 },
+            });
+          }
+        } catch (error) {
+          console.warn('RSI range enforcement error:', error);
+        }
+      };
+      
+      // Initial enforcement
+      enforceRsiRange();
+      
+      // Ensure RSI range is set after data is loaded with multiple attempts
+      setTimeout(enforceRsiRange, 100);
+      setTimeout(enforceRsiRange, 500);
+      setTimeout(enforceRsiRange, 1000);
+      
+      // Additional enforcement after a longer delay to ensure it sticks
+      setTimeout(enforceRsiRange, 2000);
+      
       // --- MACD Chart ---
       if (activeIndicators.macd && macdChartRef.current) {
         const macdChart = createChart(macdChartRef.current, {
@@ -2133,14 +2222,76 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       const rsiSeries = rsiChart.addSeries(LineSeries, {
         color: isDark ? '#f59e0b' : '#d97706',
         lineWidth: 2,
-        priceScaleId: 'rsi',
         lastValueVisible: true,
         priceLineVisible: false,
-        title: 'RSI (14)',
         priceLineWidth: 1,
         priceLineStyle: 2,
         crosshairMarkerVisible: true,
         crosshairMarkerRadius: 4,
+      });
+
+      // Enhanced RSI reference lines for full range visualization
+      // 100 (Maximum) - Gray dashed line
+      const rsiMaxLine = rsiChart.addSeries(LineSeries, {
+        color: isDark ? '#6b7280' : '#9ca3af',
+        lineWidth: 1,
+        lineStyle: 2, // Dashed line
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+
+      // 80 (Strong Overbought) - Orange dashed line
+      const rsiStrongOverboughtLine = rsiChart.addSeries(LineSeries, {
+        color: isDark ? '#f97316' : '#ea580c',
+        lineWidth: 1,
+        lineStyle: 2, // Dashed line
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+
+      // 70 (Overbought) - Red dashed line
+      const overboughtLine = rsiChart.addSeries(LineSeries, {
+        color: isDark ? '#ef4444' : '#dc2626',
+        lineWidth: 1,
+        lineStyle: 2, // Dashed line
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+
+      // 50 (Neutral) - Gray dashed line
+      const rsiNeutralLine = rsiChart.addSeries(LineSeries, {
+        color: isDark ? '#6b7280' : '#9ca3af',
+        lineWidth: 1,
+        lineStyle: 2, // Dashed line
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+
+      // 30 (Oversold) - Green dashed line
+      const oversoldLine = rsiChart.addSeries(LineSeries, {
+        color: isDark ? '#22c55e' : '#16a34a',
+        lineWidth: 1,
+        lineStyle: 2, // Dashed line
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+
+      // 20 (Strong Oversold) - Dark green dashed line
+      const rsiStrongOversoldLine = rsiChart.addSeries(LineSeries, {
+        color: isDark ? '#15803d' : '#166534',
+        lineWidth: 1,
+        lineStyle: 2, // Dashed line
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+
+      // 0 (Minimum) - Gray dashed line
+      const rsiMinLine = rsiChart.addSeries(LineSeries, {
+        color: isDark ? '#6b7280' : '#9ca3af',
+        lineWidth: 1,
+        lineStyle: 2, // Dashed line
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
 
       // Add indicator series with visibility control
@@ -2329,6 +2480,24 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           value: indicators.rsi14[idx],
         }))
         .filter(d => d.value !== null) as LineData[];
+      
+      // Ensure RSI data has proper range for display
+      if (rsiData.length > 0) {
+        // Filter out any invalid values and ensure proper range
+        const validRsiData = rsiData.filter(d => 
+          d.value !== null && 
+          d.value !== undefined && 
+          !isNaN(d.value) && 
+          d.value >= 0 && 
+          d.value <= 100
+        );
+        
+        if (validRsiData.length > 0) {
+          // Replace with valid data
+          rsiData.length = 0;
+          rsiData.push(...validRsiData);
+        }
+      }
 
       // Prepare indicator data
       const sma20Data = validatedData
@@ -2422,6 +2591,97 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         rsiSeries.setData(rsiData);
         obvSeries.setData(obvData);
         
+        // Enhanced RSI range enforcement after data is set
+        const enforceRsiRangeAfterData = () => {
+          try {
+            if (rsiChart) {
+              rsiChart.applyOptions({
+                rightPriceScale: {
+                  minValue: 0,
+                  maxValue: 100,
+                  autoScale: false,
+                  entireTextOnly: false,
+                  ticksVisible: true,
+                  size: 80,
+                  scaleMargins: { top: 0.1, bottom: 0.1 },
+                  tickMarkFormatter: (value: number) => {
+                    if (value % 10 === 0) {
+                      return value.toString();
+                    }
+                    return '';
+                  },
+                  autoScaleInfoProvider: () => ({
+                    priceRange: {
+                      minValue: 0,
+                      maxValue: 100,
+                    },
+                  }),
+                }
+              });
+              
+              // Force the chart to recalculate and display the full range
+              rsiChart.resize(rsiChartRef.current?.clientWidth || 800, chartHeights.rsi);
+              
+              // Additional enforcement by setting visible range
+              rsiChart.priceScale('right').setAutoScale(false);
+              rsiChart.priceScale('right').applyOptions({
+                minValue: 0,
+                maxValue: 100,
+                scaleMargins: { top: 0.1, bottom: 0.1 },
+              });
+            }
+          } catch (error) {
+            console.warn('RSI data-set range enforcement error:', error);
+          }
+        };
+        
+        // Enforce range immediately after data is set
+        enforceRsiRangeAfterData();
+        
+        // Additional enforcement with delays to ensure it sticks
+        setTimeout(enforceRsiRangeAfterData, 50);
+        setTimeout(enforceRsiRangeAfterData, 200);
+        setTimeout(enforceRsiRangeAfterData, 500);
+        
+        // Set data for comprehensive RSI reference lines (0, 20, 30, 50, 70, 80, 100)
+        const rsiMaxData = validatedData.map<LineData>(d => ({
+          time: toTimestamp(d.date),
+          value: 100,
+        }));
+        const rsiStrongOverboughtData = validatedData.map<LineData>(d => ({
+          time: toTimestamp(d.date),
+          value: 80,
+        }));
+        const overboughtData = validatedData.map<LineData>(d => ({
+          time: toTimestamp(d.date),
+          value: 70,
+        }));
+        const rsiNeutralData = validatedData.map<LineData>(d => ({
+          time: toTimestamp(d.date),
+          value: 50,
+        }));
+        const oversoldData = validatedData.map<LineData>(d => ({
+          time: toTimestamp(d.date),
+          value: 30,
+        }));
+        const rsiStrongOversoldData = validatedData.map<LineData>(d => ({
+          time: toTimestamp(d.date),
+          value: 20,
+        }));
+        const rsiMinData = validatedData.map<LineData>(d => ({
+          time: toTimestamp(d.date),
+          value: 0,
+        }));
+        
+        // Set data for all reference lines
+        rsiMaxLine.setData(rsiMaxData);
+        rsiStrongOverboughtLine.setData(rsiStrongOverboughtData);
+        overboughtLine.setData(overboughtData);
+        rsiNeutralLine.setData(rsiNeutralData);
+        oversoldLine.setData(oversoldData);
+        rsiStrongOversoldLine.setData(rsiStrongOversoldData);
+        rsiMinLine.setData(rsiMinData);
+        
         // Set indicator data
         indicatorSeriesRef.current['sma20'].setData(sma20Data);
         indicatorSeriesRef.current['sma50'].setData(sma50Data);
@@ -2499,32 +2759,18 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         throw new Error(`Failed to set chart data: ${dataError instanceof Error ? dataError.message : 'Unknown error'}`);
       }
 
-      // Add RSI reference lines
+      // Add only essential RSI reference lines (70 and 30)
       rsiSeries.createPriceLine({
         price: 70,
         color: isDark ? '#ef4444' : '#dc2626',
         lineWidth: 1,
         lineStyle: 2,
-        axisLabelVisible: true,
-        axisLabelColor: isDark ? '#ef4444' : '#dc2626',
-        axisLabelTextColor: isDark ? '#f8fafc' : '#1e293b',
-        title: 'Overbought',
+        axisLabelVisible: false,
       });
       
       rsiSeries.createPriceLine({
         price: 30,
         color: isDark ? '#10b981' : '#059669',
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: true,
-        axisLabelColor: isDark ? '#10b981' : '#059669',
-        axisLabelTextColor: isDark ? '#f8fafc' : '#1e293b',
-        title: 'Oversold',
-      });
-      
-      rsiSeries.createPriceLine({
-        price: 50,
-        color: isDark ? '#94a3b8' : '#64748b',
         lineWidth: 1,
         lineStyle: 2,
         axisLabelVisible: false,
@@ -3338,7 +3584,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
   }));
 
   return (
-    <div className="w-full h-full flex flex-col gap-1" style={{
+    <div className="w-full h-full flex flex-col gap-2" style={{
       // Hide TradingView branding
       '--tv-lightweight-charts-after': 'none',
     } as React.CSSProperties}>
@@ -3715,10 +3961,10 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
               <div ref={volumeChartRef} className="w-full" style={{ height: `${chartHeights.volume}px` }} />
             </div>
 
-            {/* RSI Chart - Compact styling */}
+            {/* RSI Chart - Enhanced with full range indicators */}
             <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
               <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
-                RSI
+                RSI(14)
               </div>
               <div ref={rsiChartRef} className="w-full" style={{ height: `${chartHeights.rsi}px` }} />
             </div>
