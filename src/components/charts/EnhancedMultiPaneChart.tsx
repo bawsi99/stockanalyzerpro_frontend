@@ -2066,6 +2066,13 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             ...commonOptions.rightPriceScale,
             scaleMargins: { top: 0.05, bottom: 0.1 },
           },
+          timeScale: {
+            ...commonOptions.timeScale,
+            // Ensure MACD chart has same time scale behavior as main chart
+            timeVisible: true,
+            borderVisible: true,
+            visible: true,
+          },
         });
         macdInstance.current = macdChart;
         // MACD, Signal, Histogram series
@@ -2116,27 +2123,10 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         macdLine.setData(macdData);
         signalLine.setData(signalData);
         histogram.setData(histogramData);
-        // Sync time scale
-        candleChart.timeScale().subscribeVisibleTimeRangeChange(() => {
-          try {
-            const timeRange = candleChart.timeScale().getVisibleRange();
-            if (timeRange && timeRange.from && timeRange.to) {
-              setTimeout(() => {
-                try {
-                  macdChart.timeScale().setVisibleRange(timeRange);
-                } catch (syncError) {
-                  if (debug) {
-                    console.warn('MACD time scale sync error:', syncError);
-                  }
-                }
-              }, 10);
-            }
-          } catch (error) {
-            if (debug) {
-              console.warn('MACD time range change error:', error);
-            }
-          }
-        });
+        
+        // MACD chart will be synchronized with main chart in the time scale sync section below
+        
+        // MACD chart time scale is synchronized in the main time scale sync section below
       }
 
       // --- Stochastic Chart ---
@@ -3009,6 +2999,9 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         if (rsiChart && rsiData.length > 0) {
           rsiChart.timeScale().scrollToPosition(rsiData.length - 1, false);
         }
+        if (activeIndicators.macd && macdInstance.current && validatedData.length > 0) {
+          macdInstance.current.timeScale().scrollToPosition(validatedData.length - 1, false);
+        }
 
         if (debug) {
           console.log('All series data set successfully');
@@ -3112,7 +3105,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       setError(`Failed to initialize charts: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setIsLoading(false);
     }
-  }, [validatedData, theme, chartDimensions.width, chartHeights.candle, chartHeights.volume, chartHeights.rsi, indicators, debug, cleanupCharts, activeIndicators.volumeAnomaly, activeIndicators.doublePatterns, priceChartType]);
+  }, [validatedData, theme, chartDimensions.width, chartHeights.candle, chartHeights.volume, chartHeights.rsi, indicators, debug, cleanupCharts, activeIndicators.volumeAnomaly, activeIndicators.doublePatterns, activeIndicators.macd, activeIndicators.stochastic, activeIndicators.atr, priceChartType]);
 
   // Handle resize
   useEffect(() => {
@@ -3264,6 +3257,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
   }, [chartDimensions.width, debug]);
 
   // --- MACD Chart Effect ---
+  // This effect is now simplified to only handle MACD chart cleanup when indicator is disabled
   useEffect(() => {
     if (!activeIndicators.macd) {
       // Remove MACD chart if exists
@@ -3274,162 +3268,8 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       if (macdChartRef.current) {
         macdChartRef.current.innerHTML = '';
       }
-      return;
     }
-    if (!macdChartRef.current || !chartInstance.current || validatedData.length === 0) return;
-    // Create MACD chart
-    const isDark = theme === "dark";
-    const macdChart = createChart(macdChartRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: isDark ? "#0f172a" : "#ffffff" },
-        textColor: isDark ? "#a5b4fc" : "#3730a3",
-        fontSize: 12,
-        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          attributionLogo: false
-      },
-      rightPriceScale: {
-        borderColor: isDark ? "#334155" : "#e2e8f0",
-        scaleMargins: { top: 0.05, bottom: 0.1 },
-        autoScale: false,
-        entireTextOnly: true,
-        ticksVisible: true,
-        borderVisible: true,
-      },
-      width: chartDimensions.width || macdChartRef.current.clientWidth,
-      height: chartHeights.macd,
-      grid: {
-        vertLines: { color: isDark ? "#1e293b" : "#f1f5f9", visible: true, style: 2 },
-        horzLines: { color: isDark ? "#1e293b" : "#f1f5f9", visible: true, style: 2 },
-      },
-      timeScale: {
-        borderColor: isDark ? "#334155" : "#e2e8f0",
-        timeVisible: true,
-        secondsVisible: false,
-        rightOffset: 8,
-        barSpacing: 6,
-        minBarSpacing: 2,
-        fixLeftEdge: true,
-        fixRightEdge: true,
-        tickMarkFormatter: (time: number) => {
-          const date = new Date(time * 1000);
-          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        },
-      },
-      crosshair: {
-        vertLine: {
-          color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
-          width: 1,
-          style: 0,
-          visible: true,
-          labelVisible: true,
-          labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
-        },
-        horzLine: {
-          color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
-          width: 1,
-          style: 0,
-          visible: true,
-          labelVisible: true,
-          labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
-        },
-      },
-      localization: {
-        timeFormatter: (time: number) => {
-          return new Date(time * 1000).toLocaleDateString();
-        },
-        priceFormatter: (price: number) => {
-          // Format to exactly 8 characters total for MACD alignment (e.g., "  -0.123")
-          const formatted = price >= 1 ? price.toFixed(3) : price.toPrecision(4);
-          return formatted.padStart(8, ' ');
-        },
-      },
-    });
-    macdInstance.current = macdChart;
-    // MACD, Signal, Histogram series
-    const macdLine = macdChart.addSeries(LineSeries, {
-      color: isDark ? '#6366f1' : '#3730a3',
-      lineWidth: 2,
-      title: '',
-      priceLineVisible: false,
-      lastValueVisible: false,
-    });
-    const signalLine = macdChart.addSeries(LineSeries, {
-      color: isDark ? '#f59e42' : '#ea580c',
-      lineWidth: 2,
-      title: '',
-      priceLineVisible: false,
-      lastValueVisible: false,
-    });
-    const histogram = macdChart.addSeries(HistogramSeries, {
-      color: '',
-      priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
-      priceLineVisible: false,
-      lastValueVisible: false,
-      base: 0,
-    });
-    // Prepare MACD data
-    const macdData = validatedData.map((d, idx) => ({
-      time: toTimestamp(d.date),
-      value: indicators.macd.macd[idx],
-    })).filter(d => d.value !== null);
-    const signalData = validatedData.map((d, idx) => ({
-      time: toTimestamp(d.date),
-      value: indicators.macd.signal[idx],
-    })).filter(d => d.value !== null);
-    const histogramData = validatedData.map((d, idx) => {
-      const value = indicators.macd.histogram[idx];
-      if (value === null || value === undefined) return null;
-      const color = value >= 0
-        ? (isDark ? '#22c55e' : '#16a34a')
-        : (isDark ? '#ef4444' : '#dc2626');
-      return {
-        time: toTimestamp(d.date) as UTCTimestamp,
-        value,
-        color,
-      };
-    }).filter(
-      d => d !== null && typeof d.value === 'number' && !isNaN(d.value)
-    ) as Array<{ time: UTCTimestamp, value: number, color: string }>;
-    macdLine.setData(macdData);
-    signalLine.setData(signalData);
-    histogram.setData(histogramData);
-    // --- Time scale sync ---
-    let unsub: (() => void) | null = null;
-    try {
-      const sync = () => {
-        // Check if component is still mounted
-        if (!isMountedRef.current) return;
-        
-        try {
-          const timeRange = chartInstance.current?.timeScale().getVisibleRange();
-          if (timeRange && macdChart && chartInstance.current) {
-            macdChart.timeScale().setVisibleRange(timeRange);
-          }
-        } catch (syncError) {
-          if (debug) console.warn('MACD sync error:', syncError);
-        }
-      };
-      chartInstance.current?.timeScale().subscribeVisibleTimeRangeChange(sync);
-      unsub = () => {
-        try {
-          chartInstance.current?.timeScale().unsubscribeVisibleTimeRangeChange(sync);
-        } catch (unsubError) {
-          if (debug) console.warn('MACD unsub error:', unsubError);
-        }
-      };
-    } catch (err) { /* No-op: cleanup error is non-fatal, but log for debugging */ if (debug) console.warn('Cleanup error (MACD sync):', err); }
-    // Cleanup
-    return () => {
-      if (macdInstance.current) {
-        macdInstance.current.remove();
-        macdInstance.current = null;
-      }
-      if (macdChartRef.current) {
-        macdChartRef.current.innerHTML = '';
-      }
-      if (unsub) unsub();
-    };
-  }, [activeIndicators.macd, macdChartRef, chartInstance, indicators.macd, validatedData, chartDimensions.width, chartHeights.macd, theme]);
+  }, [activeIndicators.macd]);
 
 
 
