@@ -1756,9 +1756,9 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             return new Date(time * 1000).toLocaleDateString();
           },
           priceFormatter: (price: number) => {
-            // Format to exactly 8 characters total for main chart alignment (e.g., " 123.45")
+            // Format to exactly 7 characters total for consistent alignment (e.g., " 123.45")
             const formatted = price >= 1 ? price.toFixed(2) : price.toPrecision(4);
-            return formatted.padStart(8, ' ');
+            return formatted.padStart(7, ' ');
           },
         },
       });
@@ -1872,14 +1872,13 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         },
         localization: {
           priceFormatter: (price: number) => {
-            // Format volume to 8 characters + thin space for perfect alignment (e.g., "   40.0M")
-            const thinSpace = '\u2009'; // Unicode thin space character
+            // Format volume to 8 characters total for consistent alignment (e.g., "  40.0M")
             if (price >= 1000000) {
-              return `${(price / 1000000).toFixed(1)}M${thinSpace}`.padStart(8, ' ');
+              return `${(price / 1000000).toFixed(1)}M`.padStart(8, ' ');
             } else if (price >= 1000) {
-              return `${(price / 1000).toFixed(1)}K${thinSpace}`.padStart(8, ' ');
+              return `${(price / 1000).toFixed(1)}K`.padStart(8, ' ');
             } else {
-              return `${price.toFixed(1)}${thinSpace}`.padStart(8, ' ');
+              return `${price.toFixed(1)}`.padStart(8, ' ');
             }
           },
         },
@@ -1947,9 +1946,10 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         },
         localization: {
           priceFormatter: (price: number) => {
-            // Format to exactly 7 characters total (e.g., "100.00")
+            // Format to exactly 7 characters total + thin space (e.g., "100.00 ")
+            const thinSpace = '\u2009'; // Unicode thin space character
             const formatted = price.toFixed(2);
-            return formatted.padStart(7, ' ');
+            return formatted.padStart(7, ' ') + thinSpace;
           },
         },
       });
@@ -2073,8 +2073,38 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             borderVisible: true,
             visible: true,
           },
+          localization: {
+            timeFormatter: (time: number) => {
+              return new Date(time * 1000).toLocaleDateString();
+            },
+            priceFormatter: (price: number) => {
+              // Format to exactly 7 characters total for consistent alignment (e.g., " -0.123")
+              const formatted = price.toFixed(3);
+              return formatted.padStart(7, ' ');
+            },
+          },
         });
+        
+        // Apply priceFormatter directly to the price scale after chart creation
+        setTimeout(() => {
+          if (macdChart && macdChart.priceScale) {
+            macdChart.priceScale('right').applyOptions({
+              localization: {
+                priceFormatter: (price: number) => {
+                  const formatted = price.toFixed(3);
+                  return formatted.padStart(7, ' ');
+                },
+              },
+            });
+          }
+        }, 100);
         macdInstance.current = macdChart;
+        
+        // Debug: Check if MACD chart was created
+        console.log('MACD chart created:', !!macdChart);
+        if (macdChart && macdChart.priceScale) {
+          console.log('MACD chart has priceScale');
+        }
         // MACD, Signal, Histogram series
         const macdLine = macdChart.addSeries(LineSeries, {
           color: isDark ? '#6366f1' : '#3730a3',
@@ -2132,25 +2162,108 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       // --- Stochastic Chart ---
       if (activeIndicators.stochastic && stochasticChartRef.current) {
         const stochasticChart = createChart(stochasticChartRef.current, {
-          ...commonOptions,
+          layout: {
+            background: { type: ColorType.Solid, color: isDark ? "#0f172a" : "#ffffff" },
+            textColor: isDark ? '#0ea5e9' : '#0369a1',
+            fontSize: isMobile ? 10 : 12,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            attributionLogo: false
+          },
+          grid: {
+            vertLines: { 
+              color: isDark ? "#1e293b" : "#f1f5f9",
+              visible: true,
+              style: 2,
+            },
+            horzLines: { 
+              color: isDark ? "#1e293b" : "#f1f5f9",
+              visible: true,
+              style: 2,
+            },
+          },
           width: chartDimensions.width || stochasticChartRef.current.clientWidth,
           height: chartHeights.stochastic,
-          layout: {
-            ...commonOptions.layout,
-            textColor: isDark ? '#0ea5e9' : '#0369a1',
-          },
           rightPriceScale: {
-            ...commonOptions.rightPriceScale,
+            borderColor: isDark ? "#334155" : "#e2e8f0",
             scaleMargins: { top: 0.05, bottom: 0.1 },
+            autoScale: true,
+            entireTextOnly: false,
+            ticksVisible: true,
+            borderVisible: true,
+          },
+          leftPriceScale: {
+            visible: false,
           },
           timeScale: {
-            ...commonOptions.timeScale,
+            borderColor: isDark ? "#334155" : "#e2e8f0",
             timeVisible: false,
+            secondsVisible: false,
+            rightOffset: isMobile ? 4 : 8,
+            barSpacing: isMobile ? 4 : 6,
+            minBarSpacing: isMobile ? 1 : 2,
+            fixLeftEdge: true,
+            fixRightEdge: true,
+            scaleMargins: { left: 0.0, right: 0.01 },
             borderVisible: false,
             visible: false,
           },
+          crosshair: {
+            vertLine: {
+              color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+              width: 1,
+              style: 0,
+              visible: true,
+              labelVisible: true,
+              labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
+            },
+            horzLine: {
+              color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+              width: 1,
+              style: 0,
+              visible: true,
+              labelVisible: true,
+              labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
+            },
+          },
+          handleScroll: {
+            mouseWheel: true,
+            pressedMouseMove: true,
+            horzTouchDrag: true,
+            vertTouchDrag: true,
+          },
+          handleScale: {
+            axisPressedMouseMove: false,
+            mouseWheel: true,
+            pinch: true,
+            axisDoubleClickReset: true,
+          },
+          localization: {
+            timeFormatter: (time: number) => {
+              return new Date(time * 1000).toLocaleDateString();
+            },
+            priceFormatter: (price: number) => {
+              // Format to exactly 8 characters total for consistent alignment (e.g., "  80.00")
+              const formatted = price.toFixed(2);
+              return formatted.padStart(8, ' ');
+            },
+          },
         });
         stochasticInstance.current = stochasticChart;
+        
+        // Debug: Check if chart was created and apply priceFormatter
+        console.log('Stochastic chart created:', !!stochasticChart);
+        if (stochasticChart && stochasticChart.priceScale) {
+          console.log('Applying priceFormatter to Stochastic chart');
+          stochasticChart.priceScale('right').applyOptions({
+            localization: {
+              priceFormatter: (price: number) => {
+                console.log('Stochastic priceFormatter called with:', price);
+                const formatted = price.toFixed(2);
+                return formatted.padStart(8, ' ');
+              },
+            },
+          });
+        }
         // Stochastic %K and %D lines
         const kLine = stochasticChart.addSeries(LineSeries, {
           color: isDark ? '#0ea5e9' : '#0369a1',
@@ -2158,6 +2271,11 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           title: '%K',
           priceLineVisible: false,
           lastValueVisible: true,
+          priceFormat: {
+            type: 'price',
+            precision: 2,
+            minMove: 0.01,
+          },
         });
         const dLine = stochasticChart.addSeries(LineSeries, {
           color: isDark ? '#f59e42' : '#ea580c',
@@ -2165,6 +2283,11 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           title: '%D',
           priceLineVisible: false,
           lastValueVisible: true,
+          priceFormat: {
+            type: 'price',
+            precision: 2,
+            minMove: 0.01,
+          },
         });
         // Prepare data
         const kData = validatedData.map((d, idx) => ({
@@ -2180,30 +2303,129 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         // Reference lines
         kLine.createPriceLine({ price: 80, color: '#ef4444', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
         kLine.createPriceLine({ price: 20, color: '#10b981', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+        
+        // Apply priceFormatter after data is set
+        setTimeout(() => {
+          if (stochasticChart && stochasticChart.priceScale) {
+            console.log('Applying priceFormatter to Stochastic chart after data');
+            stochasticChart.priceScale('right').applyOptions({
+              localization: {
+                priceFormatter: (price: number) => {
+                  console.log('Stochastic priceFormatter called with:', price);
+                  const formatted = price.toFixed(2);
+                  return formatted.padStart(8, ' ');
+                },
+              },
+            });
+          }
+        }, 200);
       }
 
       // --- ATR Chart ---
       if (activeIndicators.atr && atrChartRef.current) {
         const atrChart = createChart(atrChartRef.current, {
-          ...commonOptions,
+          layout: {
+            background: { type: ColorType.Solid, color: isDark ? "#0f172a" : "#ffffff" },
+            textColor: isDark ? '#f87171' : '#b91c1c',
+            fontSize: isMobile ? 10 : 12,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            attributionLogo: false
+          },
+          grid: {
+            vertLines: { 
+              color: isDark ? "#1e293b" : "#f1f5f9",
+              visible: true,
+              style: 2,
+            },
+            horzLines: { 
+              color: isDark ? "#1e293b" : "#f1f5f9",
+              visible: true,
+              style: 2,
+            },
+          },
           width: chartDimensions.width || atrChartRef.current.clientWidth,
           height: chartHeights.atr,
-          layout: {
-            ...commonOptions.layout,
-            textColor: isDark ? '#f87171' : '#b91c1c',
-          },
           rightPriceScale: {
-            ...commonOptions.rightPriceScale,
+            borderColor: isDark ? "#334155" : "#e2e8f0",
             scaleMargins: { top: 0.05, bottom: 0.1 },
+            autoScale: true,
+            entireTextOnly: false,
+            ticksVisible: true,
+            borderVisible: true,
+          },
+          leftPriceScale: {
+            visible: false,
           },
           timeScale: {
-            ...commonOptions.timeScale,
+            borderColor: isDark ? "#334155" : "#e2e8f0",
             timeVisible: false,
+            secondsVisible: false,
+            rightOffset: isMobile ? 4 : 8,
+            barSpacing: isMobile ? 4 : 6,
+            minBarSpacing: isMobile ? 1 : 2,
+            fixLeftEdge: true,
+            fixRightEdge: true,
+            scaleMargins: { left: 0.0, right: 0.01 },
             borderVisible: false,
             visible: false,
           },
+          crosshair: {
+            vertLine: {
+              color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+              width: 1,
+              style: 0,
+              visible: true,
+              labelVisible: true,
+              labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
+            },
+            horzLine: {
+              color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+              width: 1,
+              style: 0,
+              visible: true,
+              labelVisible: true,
+              labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
+            },
+          },
+          handleScroll: {
+            mouseWheel: true,
+            pressedMouseMove: true,
+            horzTouchDrag: true,
+            vertTouchDrag: true,
+          },
+          handleScale: {
+            axisPressedMouseMove: false,
+            mouseWheel: true,
+            pinch: true,
+            axisDoubleClickReset: true,
+          },
+          localization: {
+            timeFormatter: (time: number) => {
+              return new Date(time * 1000).toLocaleDateString();
+            },
+            priceFormatter: (price: number) => {
+              // Format to exactly 9 characters total for consistent alignment (e.g., "   12.34")
+              const formatted = price.toFixed(2);
+              return formatted.padStart(9, ' ');
+            },
+          },
         });
         atrInstance.current = atrChart;
+        
+        // Debug: Check if chart was created and apply priceFormatter
+        console.log('ATR chart created:', !!atrChart);
+        if (atrChart && atrChart.priceScale) {
+          console.log('Applying priceFormatter to ATR chart');
+          atrChart.priceScale('right').applyOptions({
+            localization: {
+              priceFormatter: (price: number) => {
+                console.log('ATR priceFormatter called with:', price);
+                const formatted = price.toFixed(2);
+                return formatted.padStart(9, ' ');
+              },
+            },
+          });
+        }
         // ATR line
         const atrLine = atrChart.addSeries(LineSeries, {
           color: isDark ? '#f87171' : '#b91c1c',
@@ -2211,6 +2433,11 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           title: '',
           priceLineVisible: false,
           lastValueVisible: true,
+          priceFormat: {
+            type: 'price',
+            precision: 2,
+            minMove: 0.01,
+          },
         });
         // Prepare data
         const atrData = validatedData.map((d, idx) => ({
@@ -2218,6 +2445,22 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           value: indicators.atr[idx],
         })).filter(d => d.value !== null);
         atrLine.setData(atrData);
+        
+        // Apply priceFormatter after data is set
+        setTimeout(() => {
+          if (atrChart && atrChart.priceScale) {
+            console.log('Applying priceFormatter to ATR chart after data');
+            atrChart.priceScale('right').applyOptions({
+              localization: {
+                priceFormatter: (price: number) => {
+                  console.log('ATR priceFormatter called with:', price);
+                  const formatted = price.toFixed(2);
+                  return formatted.padStart(9, ' ');
+                },
+              },
+            });
+          }
+        }, 200);
       }
 
       // Initialize global timeout tracking if not exists

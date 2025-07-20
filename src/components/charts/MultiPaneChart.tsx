@@ -320,9 +320,9 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
             return new Date(time * 1000).toLocaleDateString();
           },
           priceFormatter: (price: number) => {
-            // Format to exactly 8 characters total for main chart alignment (e.g., " 123.45")
+            // Format to exactly 7 characters total for consistent alignment (e.g., " 123.45")
             const formatted = price >= 1 ? price.toFixed(2) : price.toPrecision(4);
-            return formatted.padStart(8, ' ');
+            return formatted.padStart(7, ' ');
           },
         },
       };
@@ -389,14 +389,13 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
         handleScale: false,
         localization: {
           priceFormatter: (price: number) => {
-            // Format volume to 8 characters + thin space for perfect alignment (e.g., "   40.0M")
-            const thinSpace = '\u2009'; // Unicode thin space character
+            // Format volume to 7 characters total for consistent alignment (e.g., " 40.0M")
             if (price >= 1000000) {
-              return `${(price / 1000000).toFixed(1)}M${thinSpace}`.padStart(8, ' ');
+              return `${(price / 1000000).toFixed(1)}M`.padStart(7, ' ');
             } else if (price >= 1000) {
-              return `${(price / 1000).toFixed(1)}K${thinSpace}`.padStart(8, ' ');
+              return `${(price / 1000).toFixed(1)}K`.padStart(7, ' ');
             } else {
-              return `${price.toFixed(1)}${thinSpace}`.padStart(8, ' ');
+              return `${price.toFixed(1)}`.padStart(7, ' ');
             }
           },
         },
