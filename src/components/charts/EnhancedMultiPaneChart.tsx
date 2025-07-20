@@ -1813,12 +1813,13 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         },
         leftPriceScale: {
           visible: false,
-          borderColor: isDark ? "#334155" : "#e2e8f0",
+          borderColor: 'transparent',
           scaleMargins: { top: 0.1, bottom: 0.1 },
           autoScale: true,
           ticksVisible: false,
           position: 'left',
           entireTextOnly: false,
+          borderVisible: false,
         },
         timeScale: {
           visible: false,
@@ -1839,8 +1840,18 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             labelVisible: false,
           },
         },
-        handleScroll: false,
-        handleScale: false,
+        handleScroll: {
+          mouseWheel: true,
+          pressedMouseMove: true,
+          horzTouchDrag: true,
+          vertTouchDrag: true,
+        },
+        handleScale: {
+          axisPressedMouseMove: false,
+          mouseWheel: true,
+          pinch: true,
+          axisDoubleClickReset: true,
+        },
         localization: {
           priceFormatter: (price: number) => {
             // Format volume to 8 characters + thin space for perfect alignment (e.g., "   40.0M")
@@ -1903,6 +1914,19 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           borderVisible: false,
           visible: false, // Explicitly hide the entire time scale
         },
+        // Disable panning controls while keeping zoom functionality
+        handleScroll: {
+          mouseWheel: true, // Keep zoom with mouse wheel
+          pressedMouseMove: false, // Disable dragging up and down
+          horzTouchDrag: false, // Disable horizontal touch dragging
+          vertTouchDrag: false, // Disable vertical touch dragging
+        },
+        handleScale: {
+          axisPressedMouseMove: false,
+          mouseWheel: true, // Keep zoom with mouse wheel
+          pinch: true, // Keep pinch zoom
+          axisDoubleClickReset: true,
+        },
         localization: {
           priceFormatter: (price: number) => {
             // Format to exactly 7 characters total (e.g., "100.00")
@@ -1938,6 +1962,19 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                     maxValue: 100,
                   },
                 }),
+              },
+              // Maintain disabled panning controls
+              handleScroll: {
+                mouseWheel: true, // Keep zoom with mouse wheel
+                pressedMouseMove: false, // Disable dragging up and down
+                horzTouchDrag: false, // Disable horizontal touch dragging
+                vertTouchDrag: false, // Disable vertical touch dragging
+              },
+              handleScale: {
+                axisPressedMouseMove: false,
+                mouseWheel: true, // Keep zoom with mouse wheel
+                pinch: true, // Keep pinch zoom
+                axisDoubleClickReset: true,
               }
             });
             
@@ -2293,12 +2330,12 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         priceLineStyle: 2,
       });
       
-      // Add OBV series to volume chart with separate price scale
+      // Add OBV series to volume chart with normalized values and custom formatter
       const obvSeries = volumeChart.addSeries(LineSeries, {
         color: isDark ? '#a855f7' : '#7c3aed',
         lineWidth: 2,
         lineStyle: 0,
-        title: 'OBV',
+        title: '',
         visible: activeIndicators.obv,
         lastValueVisible: activeIndicators.obv,
         priceLineVisible: false,
@@ -2661,12 +2698,32 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         }))
         .filter(d => d.value !== null) as LineData[];
 
+      // Store original OBV values for hover tooltips
+      const originalObvValues = indicators.obv;
+      
+      // Normalize OBV values to be in the same range as volume to prevent squeezing
+      const volumes = validatedData.map(d => d.volume);
+      const volumeMax = Math.max(...volumes);
+      const obvValues = indicators.obv.filter(v => v !== null) as number[];
+      const obvMin = Math.min(...obvValues);
+      const obvMax = Math.max(...obvValues);
+      const obvRange = obvMax - obvMin;
+      
+      // Create OBV data with normalized values for display
       const obvData = validatedData
-        .map<LineData>((d, idx) => ({
-          time: toTimestamp(d.date),
-          value: indicators.obv[idx],
-        }))
-        .filter(d => d.value !== null) as LineData[];
+        .map<LineData>((d, idx) => {
+          const obvValue = indicators.obv[idx];
+          if (obvValue === null) return null;
+          
+          // Normalize OBV to volume range (0 to volumeMax)
+          const normalizedValue = ((obvValue - obvMin) / obvRange) * volumeMax;
+          
+          return {
+            time: toTimestamp(d.date),
+            value: normalizedValue,
+          };
+        })
+        .filter(d => d !== null) as LineData[];
 
       if (debug) {
         console.log('Chart data prepared:', {
@@ -2688,6 +2745,72 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         volumeSeries.setData(volumeData);
         rsiSeries.setData(rsiData);
         obvSeries.setData(obvData);
+        
+        // Custom tooltip for volume chart
+        volumeChart.subscribeCrosshairMove((param) => {
+          const tooltip = document.getElementById('volume-tooltip');
+          if (!tooltip) return;
+          
+          if (param.time && param.seriesData) {
+            const volumeDataPoint = param.seriesData.get(volumeSeries);
+            const obvDataPoint = param.seriesData.get(obvSeries);
+            
+            if (volumeDataPoint || obvDataPoint) {
+              const timeIndex = validatedData.findIndex(d => toTimestamp(d.date) === param.time);
+              if (timeIndex !== -1) {
+                let tooltipText = '';
+                
+                if (volumeDataPoint) {
+                  const volume = validatedData[timeIndex].volume;
+                  tooltipText += `Volume: ${volume.toLocaleString()}`;
+                }
+                
+                if (obvDataPoint && originalObvValues[timeIndex] !== null) {
+                  const obvValue = originalObvValues[timeIndex];
+                  if (tooltipText) tooltipText += '\n';
+                  tooltipText += `OBV: ${obvValue.toLocaleString()}`;
+                }
+                
+                if (tooltipText) {
+                  tooltip.style.display = 'block';
+                  tooltip.style.left = `${param.point?.x || 0}px`;
+                  tooltip.style.top = `${param.point?.y || 0}px`;
+                  tooltip.textContent = tooltipText;
+                } else {
+                  tooltip.style.display = 'none';
+                }
+              }
+            } else {
+              tooltip.style.display = 'none';
+            }
+          } else {
+            tooltip.style.display = 'none';
+          }
+        });
+        
+        // Synchronize volume chart time scale with main chart
+        candleChart.timeScale().subscribeVisibleTimeRangeChange(() => {
+          try {
+            const timeRange = candleChart.timeScale().getVisibleRange();
+            if (timeRange && timeRange.from && timeRange.to) {
+              setTimeout(() => {
+                try {
+                  volumeChart.timeScale().setVisibleRange(timeRange);
+                } catch (syncError) {
+                  if (debug) {
+                    console.warn('Volume time scale sync error:', syncError);
+                  }
+                }
+              }, 10);
+            }
+          } catch (error) {
+            if (debug) {
+              console.warn('Volume time range change error:', error);
+            }
+          }
+        });
+        
+
         
         // Enhanced RSI range enforcement after data is set
         const enforceRsiRangeAfterData = () => {
@@ -2714,6 +2837,19 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                       maxValue: 100,
                     },
                   }),
+                },
+                // Maintain disabled panning controls
+                handleScroll: {
+                  mouseWheel: true, // Keep zoom with mouse wheel
+                  pressedMouseMove: false, // Disable dragging up and down
+                  horzTouchDrag: false, // Disable horizontal touch dragging
+                  vertTouchDrag: false, // Disable vertical touch dragging
+                },
+                handleScale: {
+                  axisPressedMouseMove: false,
+                  mouseWheel: true, // Keep zoom with mouse wheel
+                  pinch: true, // Keep pinch zoom
+                  axisDoubleClickReset: true,
                 }
               });
               
@@ -2809,7 +2945,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             crosshairMarkerRadius: 5,
             lastValueVisible: false,
             priceLineVisible: false,
-            title: 'Volume Anomaly',
+            title: '',
             priceScaleId: 'right',
           });
           const anomalyMarkerData = anomalies.map(anom => ({
@@ -3277,292 +3413,9 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
     };
   }, [activeIndicators.macd, macdChartRef, chartInstance, indicators.macd, validatedData, chartDimensions.width, chartHeights.macd, theme]);
 
-  // --- Stochastic Chart Effect ---
-  useEffect(() => {
-    if (!activeIndicators.stochastic) {
-      // Remove Stochastic chart if exists
-      if (stochasticInstance.current) {
-        stochasticInstance.current.remove();
-        stochasticInstance.current = null;
-      }
-      if (stochasticChartRef.current) {
-        stochasticChartRef.current.innerHTML = '';
-      }
-      return;
-    }
-    if (!stochasticChartRef.current || !chartInstance.current || validatedData.length === 0) return;
-    // Create Stochastic chart
-    const isDark = theme === "dark";
-    const stochasticChart = createChart(stochasticChartRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: isDark ? "#0f172a" : "#ffffff" },
-        textColor: isDark ? "#a5b4fc" : "#3730a3",
-        fontSize: 12,
-        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          attributionLogo: false
-      },
-      rightPriceScale: {
-        borderColor: isDark ? "#334155" : "#e2e8f0",
-        scaleMargins: { top: 0.05, bottom: 0.1 },
-        autoScale: false,
-        entireTextOnly: true,
-        ticksVisible: true,
-        borderVisible: true,
-      },
-      width: chartDimensions.width || stochasticChartRef.current.clientWidth,
-      height: chartHeights.stochastic,
-      grid: {
-        vertLines: { color: isDark ? "#1e293b" : "#f1f5f9", visible: true, style: 2 },
-        horzLines: { color: isDark ? "#1e293b" : "#f1f5f9", visible: true, style: 2 },
-      },
-      timeScale: {
-        borderColor: isDark ? "#334155" : "#e2e8f0",
-        timeVisible: false,
-        secondsVisible: false,
-        rightOffset: 8,
-        barSpacing: 6,
-        minBarSpacing: 2,
-        fixLeftEdge: true,
-        fixRightEdge: true,
-        borderVisible: false,
-        visible: false,
-        tickMarkFormatter: (time: number) => {
-          const date = new Date(time * 1000);
-          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        },
-      },
-      crosshair: {
-        vertLine: {
-          color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
-          width: 1,
-          style: 0,
-          visible: true,
-          labelVisible: true,
-          labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
-        },
-        horzLine: {
-          color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
-          width: 1,
-          style: 0,
-          visible: true,
-          labelVisible: true,
-          labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
-        },
-      },
-      localization: {
-        timeFormatter: (time: number) => {
-          return new Date(time * 1000).toLocaleDateString();
-        },
-        priceFormatter: (price: number) => {
-          // Format to exactly 7 characters total for Stochastic alignment (e.g., " 80.00")
-          const formatted = price.toFixed(2);
-          return formatted.padStart(7, ' ');
-        },
-      },
-    });
-    stochasticInstance.current = stochasticChart;
-    // Stochastic %K and %D lines
-    const kLine = stochasticChart.addSeries(LineSeries, {
-      color: isDark ? '#0ea5e9' : '#0369a1',
-      lineWidth: 2,
-      title: '%K',
-      priceLineVisible: false,
-      lastValueVisible: true,
-    });
-    const dLine = stochasticChart.addSeries(LineSeries, {
-      color: isDark ? '#f59e42' : '#ea580c',
-      lineWidth: 2,
-      title: '%D',
-      priceLineVisible: false,
-      lastValueVisible: true,
-    });
-    // Prepare data
-    const kData = validatedData.map((d, idx) => ({
-      time: toTimestamp(d.date),
-      value: indicators.stochastic.k[idx],
-    })).filter(d => d.value !== null);
-    const dData = validatedData.map((d, idx) => ({
-      time: toTimestamp(d.date),
-      value: indicators.stochastic.d[idx],
-    })).filter(d => d.value !== null);
-    kLine.setData(kData);
-    dLine.setData(dData);
-    // Reference lines
-    kLine.createPriceLine({ price: 80, color: '#ef4444', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
-    kLine.createPriceLine({ price: 20, color: '#10b981', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
-    // --- Time scale sync ---
-    let unsub: (() => void) | null = null;
-    try {
-      const sync = () => {
-        // Check if component is still mounted
-        if (!isMountedRef.current) return;
-        
-        try {
-          const timeRange = chartInstance.current?.timeScale().getVisibleRange();
-          if (timeRange && stochasticChart && chartInstance.current) {
-            stochasticChart.timeScale().setVisibleRange(timeRange);
-          }
-        } catch (syncError) {
-          if (debug) console.warn('Stochastic sync error:', syncError);
-        }
-      };
-      chartInstance.current?.timeScale().subscribeVisibleTimeRangeChange(sync);
-      unsub = () => {
-        try {
-          chartInstance.current?.timeScale().unsubscribeVisibleTimeRangeChange(sync);
-        } catch (unsubError) {
-          if (debug) console.warn('Stochastic unsub error:', unsubError);
-        }
-      };
-    } catch (err) { /* No-op: cleanup error is non-fatal, but log for debugging */ if (debug) console.warn('Cleanup error (Stochastic sync):', err); }
-    // Cleanup
-    return () => {
-      if (stochasticInstance.current) {
-        stochasticInstance.current.remove();
-        stochasticInstance.current = null;
-      }
-      if (stochasticChartRef.current) {
-        stochasticChartRef.current.innerHTML = '';
-      }
-      if (unsub) unsub();
-    };
-  }, [activeIndicators.stochastic, stochasticChartRef, chartInstance, indicators.stochastic, validatedData, chartDimensions.width, chartHeights.stochastic, theme]);
 
-  // --- ATR Chart Effect ---
-  useEffect(() => {
-    if (!activeIndicators.atr) {
-      // Remove ATR chart if exists
-      if (atrInstance.current) {
-        atrInstance.current.remove();
-        atrInstance.current = null;
-      }
-      if (atrChartRef.current) {
-        atrChartRef.current.innerHTML = '';
-      }
-      return;
-    }
-    if (!atrChartRef.current || !chartInstance.current || validatedData.length === 0) return;
-    // Create ATR chart
-    const isDark = theme === "dark";
-    const atrChart = createChart(atrChartRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: isDark ? "#0f172a" : "#ffffff" },
-        textColor: isDark ? "#a5b4fc" : "#3730a3",
-        fontSize: 12,
-        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          attributionLogo: false
-      },
-      rightPriceScale: {
-        borderColor: isDark ? "#334155" : "#e2e8f0",
-        scaleMargins: { top: 0.05, bottom: 0.1 },
-        autoScale: false,
-        entireTextOnly: true,
-        ticksVisible: true,
-        borderVisible: true,
-      },
-      width: chartDimensions.width || atrChartRef.current.clientWidth,
-      height: chartHeights.atr,
-      grid: {
-        vertLines: { color: isDark ? "#1e293b" : "#f1f5f9", visible: true, style: 2 },
-        horzLines: { color: isDark ? "#1e293b" : "#f1f5f9", visible: true, style: 2 },
-      },
-      timeScale: {
-        borderColor: isDark ? "#334155" : "#e2e8f0",
-        timeVisible: false,
-        secondsVisible: false,
-        rightOffset: 8,
-        barSpacing: 6,
-        minBarSpacing: 2,
-        fixLeftEdge: true,
-        fixRightEdge: true,
-        borderVisible: false,
-        visible: false,
-        tickMarkFormatter: (time: number) => {
-          const date = new Date(time * 1000);
-          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        },
-      },
-      crosshair: {
-        vertLine: {
-          color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
-          width: 1,
-          style: 0,
-          visible: true,
-          labelVisible: true,
-          labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
-        },
-        horzLine: {
-          color: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
-          width: 1,
-          style: 0,
-          visible: true,
-          labelVisible: true,
-          labelBackgroundColor: isDark ? '#1e293b' : '#f8fafc',
-        },
-      },
-      localization: {
-        timeFormatter: (time: number) => {
-          return new Date(time * 1000).toLocaleDateString();
-        },
-        priceFormatter: (price: number) => {
-          // Format to exactly 8 characters total for ATR alignment (e.g., "  12.34")
-          const formatted = price >= 1 ? price.toFixed(2) : price.toPrecision(4);
-          return formatted.padStart(8, ' ');
-        },
-      },
-    });
-    atrInstance.current = atrChart;
-    // ATR line
-    const atrLine = atrChart.addSeries(LineSeries, {
-      color: isDark ? '#f87171' : '#b91c1c',
-      lineWidth: 2,
-      title: '',
-      priceLineVisible: false,
-      lastValueVisible: true,
-    });
-    // Prepare data
-    const atrData = validatedData.map((d, idx) => ({
-      time: toTimestamp(d.date),
-      value: indicators.atr[idx],
-    })).filter(d => d.value !== null);
-    atrLine.setData(atrData);
-    // --- Time scale sync ---
-    let unsub: (() => void) | null = null;
-    try {
-      const sync = () => {
-        // Check if component is still mounted
-        if (!isMountedRef.current) return;
-        
-        try {
-          const timeRange = chartInstance.current?.timeScale().getVisibleRange();
-          if (timeRange && atrChart && chartInstance.current) {
-            atrChart.timeScale().setVisibleRange(timeRange);
-          }
-        } catch (syncError) {
-          if (debug) console.warn('ATR sync error:', syncError);
-        }
-      };
-      chartInstance.current?.timeScale().subscribeVisibleTimeRangeChange(sync);
-      unsub = () => {
-        try {
-          chartInstance.current?.timeScale().unsubscribeVisibleTimeRangeChange(sync);
-        } catch (unsubError) {
-          if (debug) console.warn('ATR unsub error:', unsubError);
-        }
-      };
-    } catch (err) { /* No-op: cleanup error is non-fatal, but log for debugging */ if (debug) console.warn('Cleanup error (ATR sync):', err); }
-    // Cleanup
-    return () => {
-      if (atrInstance.current) {
-        atrInstance.current.remove();
-        atrInstance.current = null;
-      }
-      if (atrChartRef.current) {
-        atrChartRef.current.innerHTML = '';
-      }
-      if (unsub) unsub();
-    };
-  }, [activeIndicators.atr, atrChartRef, chartInstance, indicators.atr, validatedData, chartDimensions.width, chartHeights.atr, theme]);
+
+
 
   // Debug information
   if (debug && validationResult) {
@@ -3625,15 +3478,45 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           setPriceChartType(priceChartType === 'candlestick' ? 'line' : 'candlestick');
           break;
         case 'r':
-          // Reset view
+          // Reset scale/zoom for ALL charts (keep current scroll position)
           if (chartInstance.current) {
-            chartInstance.current.timeScale().scrollToPosition(0, false);
+            chartInstance.current.timeScale().fitContent();
+          }
+          if (volumeInstance.current) {
+            volumeInstance.current.timeScale().fitContent();
+          }
+          if (rsiInstance.current) {
+            rsiInstance.current.timeScale().fitContent();
+          }
+          if (activeIndicators.macd && macdInstance.current) {
+            macdInstance.current.timeScale().fitContent();
+          }
+          if (activeIndicators.stochastic && stochasticInstance.current) {
+            stochasticInstance.current.timeScale().fitContent();
+          }
+          if (activeIndicators.atr && atrInstance.current) {
+            atrInstance.current.timeScale().fitContent();
           }
           break;
         case 'f':
-          // Fit to screen
+          // Fit to screen for ALL charts
           if (chartInstance.current) {
             chartInstance.current.timeScale().fitContent();
+          }
+          if (volumeInstance.current) {
+            volumeInstance.current.timeScale().fitContent();
+          }
+          if (rsiInstance.current) {
+            rsiInstance.current.timeScale().fitContent();
+          }
+          if (activeIndicators.macd && macdInstance.current) {
+            macdInstance.current.timeScale().fitContent();
+          }
+          if (activeIndicators.stochastic && stochasticInstance.current) {
+            stochasticInstance.current.timeScale().fitContent();
+          }
+          if (activeIndicators.atr && atrInstance.current) {
+            atrInstance.current.timeScale().fitContent();
           }
           break;
         case 'escape':
@@ -4052,6 +3935,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                 Volume
               </div>
               <div ref={volumeChartRef} className="w-full h-full" />
+              <div id="volume-tooltip" className="absolute hidden bg-black text-white px-2 py-1 rounded text-xs pointer-events-none z-20" />
             </div>
 
             {/* RSI Chart - Enhanced with full range indicators */}
