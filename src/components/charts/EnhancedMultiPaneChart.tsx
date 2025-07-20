@@ -3443,8 +3443,12 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
   // Add keyboard shortcuts for professional trading terminal feel
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      // Only handle shortcuts when chart is focused
-      if (!chartReady) return;
+      // Handle shortcuts globally - don't require chart to be focused
+      // This allows F and R keys to work when any chart is zoomed
+      // But ensure at least the main chart is ready for F and R keys
+      if ((event.key.toLowerCase() === 'f' || event.key.toLowerCase() === 'r') && !chartInstance.current) {
+        return; // Don't process F/R if main chart isn't ready
+      }
       
       switch (event.key.toLowerCase()) {
         case '1':
@@ -3479,44 +3483,54 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           break;
         case 'r':
           // Reset scale/zoom for ALL charts (keep current scroll position)
-          if (chartInstance.current) {
-            chartInstance.current.timeScale().fitContent();
-          }
-          if (volumeInstance.current) {
-            volumeInstance.current.timeScale().fitContent();
-          }
-          if (rsiInstance.current) {
-            rsiInstance.current.timeScale().fitContent();
-          }
-          if (activeIndicators.macd && macdInstance.current) {
-            macdInstance.current.timeScale().fitContent();
-          }
-          if (activeIndicators.stochastic && stochasticInstance.current) {
-            stochasticInstance.current.timeScale().fitContent();
-          }
-          if (activeIndicators.atr && atrInstance.current) {
-            atrInstance.current.timeScale().fitContent();
+          try {
+            if (chartInstance.current) {
+              chartInstance.current.timeScale().fitContent();
+            }
+            if (volumeInstance.current) {
+              volumeInstance.current.timeScale().fitContent();
+            }
+            if (rsiInstance.current) {
+              rsiInstance.current.timeScale().fitContent();
+            }
+            if (activeIndicators.macd && macdInstance.current) {
+              macdInstance.current.timeScale().fitContent();
+            }
+            if (activeIndicators.stochastic && stochasticInstance.current) {
+              stochasticInstance.current.timeScale().fitContent();
+            }
+            if (activeIndicators.atr && atrInstance.current) {
+              atrInstance.current.timeScale().fitContent();
+            }
+            if (debug) console.log('R key: Reset zoom for all charts');
+          } catch (error) {
+            if (debug) console.warn('R key error:', error);
           }
           break;
         case 'f':
           // Fit to screen for ALL charts
-          if (chartInstance.current) {
-            chartInstance.current.timeScale().fitContent();
-          }
-          if (volumeInstance.current) {
-            volumeInstance.current.timeScale().fitContent();
-          }
-          if (rsiInstance.current) {
-            rsiInstance.current.timeScale().fitContent();
-          }
-          if (activeIndicators.macd && macdInstance.current) {
-            macdInstance.current.timeScale().fitContent();
-          }
-          if (activeIndicators.stochastic && stochasticInstance.current) {
-            stochasticInstance.current.timeScale().fitContent();
-          }
-          if (activeIndicators.atr && atrInstance.current) {
-            atrInstance.current.timeScale().fitContent();
+          try {
+            if (chartInstance.current) {
+              chartInstance.current.timeScale().fitContent();
+            }
+            if (volumeInstance.current) {
+              volumeInstance.current.timeScale().fitContent();
+            }
+            if (rsiInstance.current) {
+              rsiInstance.current.timeScale().fitContent();
+            }
+            if (activeIndicators.macd && macdInstance.current) {
+              macdInstance.current.timeScale().fitContent();
+            }
+            if (activeIndicators.stochastic && stochasticInstance.current) {
+              stochasticInstance.current.timeScale().fitContent();
+            }
+            if (activeIndicators.atr && atrInstance.current) {
+              atrInstance.current.timeScale().fitContent();
+            }
+            if (debug) console.log('F key: Fit to screen for all charts');
+          } catch (error) {
+            if (debug) console.warn('F key error:', error);
           }
           break;
         case 'escape':
