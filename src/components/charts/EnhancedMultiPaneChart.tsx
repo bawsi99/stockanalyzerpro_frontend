@@ -2093,6 +2093,12 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             ...commonOptions.rightPriceScale,
             scaleMargins: { top: 0.05, bottom: 0.1 },
           },
+          timeScale: {
+            ...commonOptions.timeScale,
+            timeVisible: false,
+            borderVisible: false,
+            visible: false,
+          },
         });
         stochasticInstance.current = stochasticChart;
         // Stochastic %K and %D lines
@@ -2139,6 +2145,12 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           rightPriceScale: {
             ...commonOptions.rightPriceScale,
             scaleMargins: { top: 0.05, bottom: 0.1 },
+          },
+          timeScale: {
+            ...commonOptions.timeScale,
+            timeVisible: false,
+            borderVisible: false,
+            visible: false,
           },
         });
         atrInstance.current = atrChart;
@@ -3300,13 +3312,15 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       },
       timeScale: {
         borderColor: isDark ? "#334155" : "#e2e8f0",
-        timeVisible: true,
+        timeVisible: false,
         secondsVisible: false,
         rightOffset: 8,
         barSpacing: 6,
         minBarSpacing: 2,
         fixLeftEdge: true,
         fixRightEdge: true,
+        borderVisible: false,
+        visible: false,
         tickMarkFormatter: (time: number) => {
           const date = new Date(time * 1000);
           return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -3449,13 +3463,15 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       },
       timeScale: {
         borderColor: isDark ? "#334155" : "#e2e8f0",
-        timeVisible: true,
+        timeVisible: false,
         secondsVisible: false,
         rightOffset: 8,
         barSpacing: 6,
         minBarSpacing: 2,
         fixLeftEdge: true,
         fixRightEdge: true,
+        borderVisible: false,
+        visible: false,
         tickMarkFormatter: (time: number) => {
           const date = new Date(time * 1000);
           return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
