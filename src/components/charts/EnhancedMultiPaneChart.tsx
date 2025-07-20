@@ -2616,37 +2616,10 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         crosshairMarkerRadius: 4,
       });
 
-      // Enhanced RSI reference lines for full range visualization
-      // 100 (Maximum) - Gray dashed line
-      const rsiMaxLine = rsiChart.addSeries(LineSeries, {
-        color: isDark ? '#6b7280' : '#9ca3af',
-        lineWidth: 1,
-        lineStyle: 2, // Dashed line
-        lastValueVisible: false,
-        priceLineVisible: false,
-      });
-
-      // 80 (Strong Overbought) - Orange dashed line
-      const rsiStrongOverboughtLine = rsiChart.addSeries(LineSeries, {
-        color: isDark ? '#f97316' : '#ea580c',
-        lineWidth: 1,
-        lineStyle: 2, // Dashed line
-        lastValueVisible: false,
-        priceLineVisible: false,
-      });
-
+      // RSI reference lines - only essential levels (30 and 70)
       // 70 (Overbought) - Red dashed line
       const overboughtLine = rsiChart.addSeries(LineSeries, {
         color: isDark ? '#ef4444' : '#dc2626',
-        lineWidth: 1,
-        lineStyle: 2, // Dashed line
-        lastValueVisible: false,
-        priceLineVisible: false,
-      });
-
-      // 50 (Neutral) - Gray dashed line
-      const rsiNeutralLine = rsiChart.addSeries(LineSeries, {
-        color: isDark ? '#6b7280' : '#9ca3af',
         lineWidth: 1,
         lineStyle: 2, // Dashed line
         lastValueVisible: false,
@@ -2662,20 +2635,17 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         priceLineVisible: false,
       });
 
-      // 20 (Strong Oversold) - Dark green dashed line
-      const rsiStrongOversoldLine = rsiChart.addSeries(LineSeries, {
-        color: isDark ? '#15803d' : '#166534',
-        lineWidth: 1,
-        lineStyle: 2, // Dashed line
+      // Add invisible reference lines at 0 and 100 to force full range display
+      const rsiMinLine = rsiChart.addSeries(LineSeries, {
+        color: 'transparent', // Invisible
+        lineWidth: 0,
         lastValueVisible: false,
         priceLineVisible: false,
       });
 
-      // 0 (Minimum) - Gray dashed line
-      const rsiMinLine = rsiChart.addSeries(LineSeries, {
-        color: isDark ? '#6b7280' : '#9ca3af',
-        lineWidth: 1,
-        lineStyle: 2, // Dashed line
+      const rsiMaxLine = rsiChart.addSeries(LineSeries, {
+        color: 'transparent', // Invisible
+        lineWidth: 0,
         lastValueVisible: false,
         priceLineVisible: false,
       });
@@ -3135,44 +3105,45 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         setTimeout(enforceRsiRangeAfterData, 200);
         setTimeout(enforceRsiRangeAfterData, 500);
         
-        // Set data for comprehensive RSI reference lines (0, 20, 30, 50, 70, 80, 100)
-        const rsiMaxData = validatedData.map<LineData>(d => ({
-          time: toTimestamp(d.date),
-          value: 100,
-        }));
-        const rsiStrongOverboughtData = validatedData.map<LineData>(d => ({
-          time: toTimestamp(d.date),
-          value: 80,
-        }));
+        // Set data for essential RSI reference lines (30 and 70 only)
         const overboughtData = validatedData.map<LineData>(d => ({
           time: toTimestamp(d.date),
           value: 70,
-        }));
-        const rsiNeutralData = validatedData.map<LineData>(d => ({
-          time: toTimestamp(d.date),
-          value: 50,
         }));
         const oversoldData = validatedData.map<LineData>(d => ({
           time: toTimestamp(d.date),
           value: 30,
         }));
-        const rsiStrongOversoldData = validatedData.map<LineData>(d => ({
-          time: toTimestamp(d.date),
-          value: 20,
-        }));
+        
+        // Set data for invisible range enforcement lines (0 and 100)
         const rsiMinData = validatedData.map<LineData>(d => ({
           time: toTimestamp(d.date),
           value: 0,
         }));
+        const rsiMaxData = validatedData.map<LineData>(d => ({
+          time: toTimestamp(d.date),
+          value: 100,
+        }));
         
-        // Set data for all reference lines
-        rsiMaxLine.setData(rsiMaxData);
-        rsiStrongOverboughtLine.setData(rsiStrongOverboughtData);
+        // Set data for essential reference lines
         overboughtLine.setData(overboughtData);
-        rsiNeutralLine.setData(rsiNeutralData);
         oversoldLine.setData(oversoldData);
-        rsiStrongOversoldLine.setData(rsiStrongOversoldData);
+        
+        // Set data for invisible range enforcement lines
         rsiMinLine.setData(rsiMinData);
+        rsiMaxLine.setData(rsiMaxData);
+        
+        // Additional range enforcement after setting invisible lines
+        setTimeout(() => {
+          if (rsiChart) {
+            rsiChart.priceScale('right').setAutoScale(false);
+            rsiChart.priceScale('right').applyOptions({
+              minValue: 0,
+              maxValue: 100,
+              scaleMargins: { top: 0.05, bottom: 0.05 },
+            });
+          }
+        }, 10);
         
         // Set indicator data
         indicatorSeriesRef.current['sma20'].setData(sma20Data);
