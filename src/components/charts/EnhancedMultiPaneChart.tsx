@@ -2158,7 +2158,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         const atrLine = atrChart.addSeries(LineSeries, {
           color: isDark ? '#f87171' : '#b91c1c',
           lineWidth: 2,
-          title: 'ATR',
+          title: '',
           priceLineVisible: false,
           lastValueVisible: true,
         });
@@ -3511,7 +3511,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
     const atrLine = atrChart.addSeries(LineSeries, {
       color: isDark ? '#f87171' : '#b91c1c',
       lineWidth: 2,
-      title: 'ATR',
+      title: '',
       priceLineVisible: false,
       lastValueVisible: true,
     });
