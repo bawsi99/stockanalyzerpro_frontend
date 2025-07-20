@@ -9,11 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 
 // Analysis Components
-import CombinedSummaryCard from "@/components/analysis/CombinedSummaryCard";
 import ConsensusSummaryCard from "@/components/analysis/ConsensusSummaryCard";
-import CurrentStatusCard from "@/components/analysis/CurrentStatusCard";
-import TradingLevelsCard from "@/components/analysis/TradingLevelsCard";
-import AIAnalysisCard from "@/components/analysis/AIAnalysisCard";
+import AITradingAnalysisOverviewCard from "@/components/analysis/AITradingAnalysisOverviewCard";
 import TechnicalAnalysisCard from "@/components/analysis/TechnicalAnalysisCard";
 import AdvancedPatternAnalysisCard from "@/components/analysis/AdvancedPatternAnalysisCard";
 import MultiTimeframeAnalysisCard from "@/components/analysis/MultiTimeframeAnalysisCard";
@@ -36,25 +33,18 @@ import DataTester from "@/components/charts/DataTester";
 import { 
   TrendingUp, 
   BarChart3, 
-  PieChart, 
   Target, 
   AlertTriangle, 
   ArrowUpRight, 
   ArrowDownRight,
   Minus,
   Clock,
-  Activity,
-  Shield,
-  Zap,
   Eye,
-  Settings,
-  Download,
-  Share,
-  Bookmark
+  Settings
 } from "lucide-react";
 
 // Types and Utils
-import { AnalysisData, ChartData, AnalysisResponse, isAnalysisResponse, AIAnalysis, LegacyAIAnalysis, EnhancedAIAnalysis, EnhancedOverlays } from "@/types/analysis";
+import { AnalysisData, ChartData, AnalysisResponse, isAnalysisResponse, EnhancedOverlays } from "@/types/analysis";
 import { cleanText } from "@/utils/textCleaner";
 import { ChartValidationResult } from "@/utils/chartUtils";
 import { filterDataByTimeframe } from "@/utils/chartUtils";
@@ -135,19 +125,6 @@ const NewOutput: React.FC = () => {
     };
   }, [filteredRawData]);
 
-  // Helper functions for AI analysis format detection
-  const isNewAIAnalysis = (aiAnalysis: any): aiAnalysis is AIAnalysis => {
-    return aiAnalysis && typeof aiAnalysis === 'object' && 'meta' in aiAnalysis && 'market_outlook' in aiAnalysis;
-  };
-
-  const isLegacyAIAnalysis = (aiAnalysis: any): aiAnalysis is LegacyAIAnalysis => {
-    return aiAnalysis && typeof aiAnalysis === 'object' && 'trend' in aiAnalysis && 'confidence_pct' in aiAnalysis;
-  };
-
-  const isEnhancedAIAnalysis = (aiAnalysis: any): aiAnalysis is EnhancedAIAnalysis => {
-    return isNewAIAnalysis(aiAnalysis) && 'sector_context' in aiAnalysis;
-  };
-
   // Load analysis data
   useEffect(() => {
     const storedData = localStorage.getItem("analysisResult");
@@ -203,86 +180,10 @@ const NewOutput: React.FC = () => {
           };
         }
 
-        // Handle AI analysis cleaning
-        if (isNewAIAnalysis(results.ai_analysis)) {
-          cleanedResults.ai_analysis = {
-            ...results.ai_analysis,
-            key_takeaways: results.ai_analysis.key_takeaways?.map(cleanText) || [],
-            indicator_summary_md: cleanText(results.ai_analysis.indicator_summary_md || ''),
-            chart_insights: cleanText(results.ai_analysis.chart_insights || ''),
-            market_outlook: {
-              ...results.ai_analysis.market_outlook,
-              primary_trend: {
-                ...results.ai_analysis.market_outlook.primary_trend,
-                rationale: cleanText(results.ai_analysis.market_outlook.primary_trend.rationale || '')
-              },
-              secondary_trend: {
-                ...results.ai_analysis.market_outlook.secondary_trend,
-                rationale: cleanText(results.ai_analysis.market_outlook.secondary_trend.rationale || '')
-              }
-            },
-            trading_strategy: {
-              ...results.ai_analysis.trading_strategy,
-              short_term: {
-                ...results.ai_analysis.trading_strategy.short_term,
-                rationale: cleanText(results.ai_analysis.trading_strategy.short_term.rationale || '')
-              },
-              medium_term: {
-                ...results.ai_analysis.trading_strategy.medium_term,
-                rationale: cleanText(results.ai_analysis.trading_strategy.medium_term.rationale || '')
-              },
-              long_term: {
-                ...results.ai_analysis.trading_strategy.long_term,
-                rationale: cleanText(results.ai_analysis.trading_strategy.long_term.rationale || '')
-              }
-            }
-          };
-        } else if (isLegacyAIAnalysis(results.ai_analysis)) {
-          cleanedResults.ai_analysis = {
-            ...results.ai_analysis,
-            short_term: {
-              ...results.ai_analysis.short_term,
-              rationale: cleanText(results.ai_analysis.short_term?.rationale || '')
-            },
-            medium_term: {
-              ...results.ai_analysis.medium_term,
-              rationale: cleanText(results.ai_analysis.medium_term?.rationale || '')
-            },
-            long_term: {
-              ...results.ai_analysis.long_term,
-              rationale: cleanText(results.ai_analysis.long_term?.rationale || '')
-            }
-          };
-        }
-
         setAnalysisData(cleanedResults);
-
-        // Ensure overlays has all required properties
-        if (!cleanedResults.overlays) {
-          cleanedResults.overlays = {
-            triangles: [],
-            flags: [],
-            support_resistance: { support: [], resistance: [] },
-            double_tops: [],
-            double_bottoms: [],
-            divergences: [],
-            volume_anomalies: []
-          };
-        }
-
-        // Validate and filter chart data
-        const validatedData = (data || []).filter(d =>
-          d && typeof d === 'object' &&
-          typeof d.date === 'string' &&
-          !isNaN(new Date(d.date).getTime()) &&
-          ['open', 'high', 'low', 'close', 'volume'].every(key => typeof d[key] === 'number' && Number.isFinite(d[key]))
-        );
-        setRawData(validatedData);
-
+        setRawData(data);
       } catch (error) {
-        console.error("Error parsing analysis data from localStorage:", error);
-        setAnalysisData(null);
-        setRawData([]);
+        console.error("Error parsing stored analysis data:", error);
       }
     }
   }, []);
@@ -314,7 +215,7 @@ const NewOutput: React.FC = () => {
     );
   }
 
-  const { consensus, indicators, ai_analysis, indicator_summary_md, chart_insights } = analysisData;
+  const { consensus, indicators, indicator_summary_md, chart_insights } = analysisData;
 
   // Get signal color
   const getSignalColor = (signal: string) => {
@@ -396,7 +297,7 @@ const NewOutput: React.FC = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-3 bg-white/80 backdrop-blur-sm">
             <TabsTrigger value="overview" className="flex items-center space-x-2">
               <Eye className="h-4 w-4" />
               <span>Overview</span>
@@ -404,10 +305,6 @@ const NewOutput: React.FC = () => {
             <TabsTrigger value="technical" className="flex items-center space-x-2">
               <BarChart3 className="h-4 w-4" />
               <span>Technical</span>
-            </TabsTrigger>
-            <TabsTrigger value="ai" className="flex items-center space-x-2">
-              <Zap className="h-4 w-4" />
-              <span>AI Analysis</span>
             </TabsTrigger>
             <TabsTrigger value="advanced" className="flex items-center space-x-2">
               <Settings className="h-4 w-4" />
@@ -418,23 +315,15 @@ const NewOutput: React.FC = () => {
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             {/* Top Row - Summary Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Current Status */}
-              <div className="lg:col-span-1">
-                <CurrentStatusCard 
-                  stockData={analysisData?.stock_data || { current_price: stats?.lastClose || 0 }}
-                  indicators={analysisData?.indicators || {}}
-                />
-              </div>
-
-              {/* Trading Levels */}
-              <div className="lg:col-span-1">
-                <TradingLevelsCard indicators={analysisData?.indicators || {}} />
-              </div>
-
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Consensus Summary */}
               <div className="lg:col-span-1">
                 <ConsensusSummaryCard consensus={consensus} />
+              </div>
+              
+              {/* AI Trading Analysis */}
+              <div className="lg:col-span-1">
+                <AITradingAnalysisOverviewCard aiAnalysis={analysisData.ai_analysis} />
               </div>
             </div>
 
@@ -600,82 +489,6 @@ const NewOutput: React.FC = () => {
                 />
               )}
             </div>
-          </TabsContent>
-
-          {/* AI Analysis Tab */}
-          <TabsContent value="ai" className="space-y-6">
-            {isNewAIAnalysis(ai_analysis) ? (
-              <AIAnalysisCard aiAnalysis={ai_analysis} />
-            ) : (
-              <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-slate-800">
-                    <Target className="h-5 w-5 mr-2 text-green-500" />
-                    AI Trading Analysis
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {isLegacyAIAnalysis(ai_analysis) && (
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="text-center p-4 bg-emerald-50 rounded-lg">
-                          <div className="text-2xl font-bold text-emerald-600">{ai_analysis.confidence_pct}%</div>
-                          <div className="text-sm text-slate-600">Confidence</div>
-                        </div>
-                        <div className="text-center p-4 bg-blue-50 rounded-lg">
-                          <div className="text-2xl font-bold text-blue-600">{ai_analysis.trend}</div>
-                          <div className="text-sm text-slate-600">Trend</div>
-                        </div>
-                        <div className="text-center p-4 bg-purple-50 rounded-lg">
-                          <div className="text-2xl font-bold text-purple-600">{ai_analysis.short_term.targets.length}</div>
-                          <div className="text-sm text-slate-600">Targets</div>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Card className="h-full">
-                          <CardHeader>
-                            <CardTitle className="text-sm">Short Term</CardTitle>
-                          </CardHeader>
-                          <CardContent className="text-sm">
-                            <p><strong>Entry:</strong> {ai_analysis.short_term.entry_range[0]} - {ai_analysis.short_term.entry_range[1]}</p>
-                            <p><strong>Stop Loss:</strong> {ai_analysis.short_term.stop_loss}</p>
-                            <p><strong>Targets:</strong> {ai_analysis.short_term.targets.join(', ')}</p>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card className="h-full">
-                          <CardHeader>
-                            <CardTitle className="text-sm">Medium Term</CardTitle>
-                          </CardHeader>
-                          <CardContent className="text-sm">
-                            <p><strong>Entry:</strong> {ai_analysis.medium_term.entry_range[0]} - {ai_analysis.medium_term.entry_range[1]}</p>
-                            <p><strong>Stop Loss:</strong> {ai_analysis.medium_term.stop_loss}</p>
-                            <p><strong>Targets:</strong> {ai_analysis.medium_term.targets.join(', ')}</p>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card className="h-full">
-                          <CardHeader>
-                            <CardTitle className="text-sm">Long Term</CardTitle>
-                          </CardHeader>
-                          <CardContent className="text-sm">
-                            <p><strong>Rating:</strong> {ai_analysis.long_term.investment_rating}</p>
-                            <p><strong>Fair Value:</strong> {ai_analysis.long_term.fair_value_range[0]} - {ai_analysis.long_term.fair_value_range[1]}</p>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {isEnhancedAIAnalysis(ai_analysis) && ai_analysis.sector_context && (
-              <SectorAnalysisCard 
-                sectorContext={ai_analysis.sector_context} 
-              />
-            )}
           </TabsContent>
 
           {/* Advanced Tab */}
