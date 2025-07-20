@@ -3766,10 +3766,10 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       ) : (
         <div 
           ref={containerRef}
-          className="w-full h-full flex flex-col"
+          className="w-full h-full flex flex-col rounded-lg overflow-hidden"
           style={{ marginBottom: '0', paddingBottom: '0' }}
         >
-          <div className="flex flex-col w-full flex-1">
+          <div className="flex flex-col w-full flex-1 rounded-lg overflow-hidden">
             {/* Chart Controls */}
             <div className="flex flex-wrap gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg mb-0.5">
               {/* All Indicators and Patterns - Combined Layout */}
@@ -4025,12 +4025,12 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
 
             {/* FIXED: Enhanced chart container styling with better space utilization */}
             {/* Main Price Chart - Enhanced prominence */}
-            <div className="relative rounded-lg border-2 border-blue-200 dark:border-blue-700 overflow-hidden bg-white dark:bg-gray-900 flex-1 shadow-lg mb-0.5">
+            <div className="relative border-2 border-blue-200 dark:border-blue-700 overflow-hidden bg-white dark:bg-gray-900 flex-1 shadow-lg mb-0.5">
               <div ref={candleChartRef} className="w-full h-full" />
             </div>
 
             {/* Volume Chart - Compact styling */}
-            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm mb-0.5" style={{ height: `${chartHeights.volume}px` }}>
+            <div className="relative border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm mb-0.5" style={{ height: `${chartHeights.volume}px` }}>
               <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
                 Volume
               </div>
@@ -4038,7 +4038,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             </div>
 
             {/* RSI Chart - Enhanced with full range indicators */}
-            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" style={{ height: `${chartHeights.rsi}px` }}>
+            <div className="relative border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" style={{ height: `${chartHeights.rsi}px` }}>
               <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
                 RSI(14)
               </div>
@@ -4047,7 +4047,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
 
             {/* Stochastic Chart (conditionally rendered) */}
             {activeIndicators.stochastic && (
-              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm mb-0.5" style={{ height: `${chartHeights.stochastic}px` }}>
+              <div className="relative border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm mb-0.5" style={{ height: `${chartHeights.stochastic}px` }}>
                 <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
                   Stochastic
                 </div>
@@ -4057,7 +4057,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
 
             {/* ATR Chart (conditionally rendered) */}
             {activeIndicators.atr && (
-              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm mb-0.5" style={{ height: `${chartHeights.atr}px` }}>
+              <div className="relative border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm mb-0.5" style={{ height: `${chartHeights.atr}px` }}>
                 <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
                   ATR
                 </div>
@@ -4067,7 +4067,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
 
             {/* MACD Chart (conditionally rendered) */}
             {activeIndicators.macd && (
-              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" style={{ height: `${chartHeights.macd}px` }}>
+              <div className="relative border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" style={{ height: `${chartHeights.macd}px` }}>
                 <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
                   MACD
                 </div>

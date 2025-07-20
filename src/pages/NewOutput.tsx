@@ -531,9 +531,9 @@ const NewOutput: React.FC = () => {
                 {/* Trading Terminal Content */}
                 <CardContent className="flex-1 overflow-hidden p-0" style={{ marginBottom: '0', paddingBottom: '0' }}>
                   {rawData.length > 0 ? (
-                    <div className="h-[1000px] w-full flex flex-col" style={{ marginBottom: '0', paddingBottom: '0' }}>
+                    <div className="h-[1000px] w-full flex flex-col rounded-lg overflow-hidden" style={{ marginBottom: '0', paddingBottom: '0' }}>
                       {/* Chart Container with Professional Layout */}
-                      <div className="flex-1 relative" style={{ marginBottom: '0', paddingBottom: '0' }}>
+                      <div className="flex-1 relative rounded-lg overflow-hidden" style={{ marginBottom: '0', paddingBottom: '0' }}>
                         <EnhancedMultiPaneChart 
                           ref={chartRef}
                           data={filteredRawData} 
