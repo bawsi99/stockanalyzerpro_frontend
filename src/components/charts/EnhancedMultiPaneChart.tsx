@@ -4021,7 +4021,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
 
             {/* FIXED: Enhanced chart container styling with better space utilization */}
             {/* Main Price Chart - Enhanced prominence */}
-            <div className="relative rounded-lg border-2 border-blue-200 dark:border-blue-700 overflow-hidden bg-white dark:bg-gray-900 flex-1 shadow-lg mb-0.5">
+            <div className="relative rounded-xl border-2 border-blue-200 dark:border-blue-700 overflow-hidden bg-white dark:bg-gray-900 flex-1 shadow-lg mb-0.5">
               <div ref={candleChartRef} className="w-full h-full" />
             </div>
 
