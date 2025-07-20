@@ -529,15 +529,15 @@ const NewOutput: React.FC = () => {
                 </CardHeader>
                 
                 {/* Trading Terminal Content */}
-                <CardContent className="flex-1 overflow-hidden p-0" style={{ marginBottom: '0', paddingBottom: '0' }}>
+                <CardContent className="flex-1 overflow-hidden p-0">
                   {rawData.length > 0 ? (
-                    <div className="h-[1000px] w-full flex flex-col rounded-lg overflow-hidden" style={{ marginBottom: '0', paddingBottom: '0' }}>
+                    <div className="h-[1000px] w-full flex flex-col">
                       {/* Chart Container with Professional Layout */}
-                      <div className="flex-1 relative rounded-lg overflow-hidden" style={{ marginBottom: '0', paddingBottom: '0' }}>
+                      <div className="flex-1 relative">
                         <EnhancedMultiPaneChart 
                           ref={chartRef}
                           data={filteredRawData} 
-                          height={990} // Further increased height to eliminate remaining white space
+                          height={1000} // Match container height to eliminate white space
                           chartType={chartType}
                           onChartTypeChange={setChartType}
                           onClearAll={clearAllIndicators}
