@@ -1813,7 +1813,12 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         },
         leftPriceScale: {
           visible: false,
-          borderVisible: false,
+          borderColor: isDark ? "#334155" : "#e2e8f0",
+          scaleMargins: { top: 0.1, bottom: 0.1 },
+          autoScale: true,
+          ticksVisible: false,
+          position: 'left',
+          entireTextOnly: false,
         },
         timeScale: {
           visible: false,
@@ -1918,7 +1923,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                 maxValue: 100,
                 autoScale: false,
                 entireTextOnly: false,
-                ticksVisible: true,
+                ticksVisible: false,
                 size: 80,
                 scaleMargins: { top: 0.1, bottom: 0.1 },
                 tickMarkFormatter: (value: number) => {
@@ -2288,7 +2293,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         priceLineStyle: 2,
       });
       
-      // Add OBV series to volume chart
+      // Add OBV series to volume chart with separate price scale
       const obvSeries = volumeChart.addSeries(LineSeries, {
         color: isDark ? '#a855f7' : '#7c3aed',
         lineWidth: 2,
@@ -2805,7 +2810,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             lastValueVisible: false,
             priceLineVisible: false,
             title: 'Volume Anomaly',
-            priceScaleId: 'left',
+            priceScaleId: 'right',
           });
           const anomalyMarkerData = anomalies.map(anom => ({
             time: toTimestamp(validatedData[anom.index].date),
