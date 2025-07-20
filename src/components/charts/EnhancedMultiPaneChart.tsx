@@ -505,6 +505,24 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
   // Add chartReady state for overlay synchronization
   const [chartReady, setChartReady] = useState(false);
   const isMountedRef = useRef(true);
+  
+  // Refs to store latest state values for keyboard shortcuts (avoid stale closures)
+  const activeIndicatorsRef = useRef(activeIndicators);
+  const priceChartTypeRef = useRef(priceChartType);
+  const debugRef = useRef(debug);
+  
+  // Update refs when state changes
+  useEffect(() => {
+    activeIndicatorsRef.current = activeIndicators;
+  }, [activeIndicators]);
+  
+  useEffect(() => {
+    priceChartTypeRef.current = priceChartType;
+  }, [priceChartType]);
+  
+  useEffect(() => {
+    debugRef.current = debug;
+  }, [debug]);
 
   const indicatorSeriesRef = useRef<{ [key: string]: ISeriesApi<LineData | CandlestickData | HistogramData | AreaSeries> }>({});
   const patternSeriesRef = useRef<{ [key: string]: ISeriesApi<LineData | CandlestickData | HistogramData | AreaSeries> }>({});
@@ -3479,7 +3497,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           toggleIndicator('obv');
           break;
         case 'c':
-          setPriceChartType(priceChartType === 'candlestick' ? 'line' : 'candlestick');
+          setPriceChartType(priceChartTypeRef.current === 'candlestick' ? 'line' : 'candlestick');
           break;
         case 'r':
           // Reset scale/zoom for ALL charts (keep current scroll position)
@@ -3493,18 +3511,18 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             if (rsiInstance.current) {
               rsiInstance.current.timeScale().fitContent();
             }
-            if (activeIndicators.macd && macdInstance.current) {
+            if (activeIndicatorsRef.current.macd && macdInstance.current) {
               macdInstance.current.timeScale().fitContent();
             }
-            if (activeIndicators.stochastic && stochasticInstance.current) {
+            if (activeIndicatorsRef.current.stochastic && stochasticInstance.current) {
               stochasticInstance.current.timeScale().fitContent();
             }
-            if (activeIndicators.atr && atrInstance.current) {
+            if (activeIndicatorsRef.current.atr && atrInstance.current) {
               atrInstance.current.timeScale().fitContent();
             }
-            if (debug) console.log('R key: Reset zoom for all charts');
+            if (debugRef.current) console.log('R key: Reset zoom for all charts');
           } catch (error) {
-            if (debug) console.warn('R key error:', error);
+            if (debugRef.current) console.warn('R key error:', error);
           }
           break;
         case 'f':
@@ -3519,18 +3537,18 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             if (rsiInstance.current) {
               rsiInstance.current.timeScale().fitContent();
             }
-            if (activeIndicators.macd && macdInstance.current) {
+            if (activeIndicatorsRef.current.macd && macdInstance.current) {
               macdInstance.current.timeScale().fitContent();
             }
-            if (activeIndicators.stochastic && stochasticInstance.current) {
+            if (activeIndicatorsRef.current.stochastic && stochasticInstance.current) {
               stochasticInstance.current.timeScale().fitContent();
             }
-            if (activeIndicators.atr && atrInstance.current) {
+            if (activeIndicatorsRef.current.atr && atrInstance.current) {
               atrInstance.current.timeScale().fitContent();
             }
-            if (debug) console.log('F key: Fit to screen for all charts');
+            if (debugRef.current) console.log('F key: Fit to screen for all charts');
           } catch (error) {
-            if (debug) console.warn('F key error:', error);
+            if (debugRef.current) console.warn('F key error:', error);
           }
           break;
         case 'escape':
@@ -3554,9 +3572,14 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       }
     };
 
+    if (debugRef.current) console.log('Adding keyboard event listener');
     window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [chartReady, toggleIndicator]);
+    
+    return () => {
+      if (debugRef.current) console.log('Removing keyboard event listener');
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, []); // Empty dependency array - only run once on mount
 
   // Add chart interaction hints
   const [internalShowShortcuts, setInternalShowShortcuts] = useState(false);
