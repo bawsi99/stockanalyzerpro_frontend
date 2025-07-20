@@ -1497,17 +1497,34 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         }
         case 'center':
           // Reset to show all data but maintain manual scrolling
-          chartInstance.current.priceScale('right').applyOptions({
-            autoScale: false,
-          });
-          chartInstance.current.timeScale().fitContent();
+          try {
+            const priceScale = chartInstance.current.priceScale('right');
+            if (priceScale) {
+              priceScale.applyOptions({
+                autoScale: false,
+              });
+            }
+            const timeScale = chartInstance.current.timeScale();
+            if (timeScale) {
+              timeScale.fitContent();
+            }
+          } catch (error) {
+            console.warn('Center pan operation error:', error);
+          }
           break;
           
         default:
           // Fallback: if anything goes wrong, reset to auto-scale
-          chartInstance.current.priceScale('right').applyOptions({
-            autoScale: true,
-          });
+          try {
+            const priceScale = chartInstance.current.priceScale('right');
+            if (priceScale) {
+              priceScale.applyOptions({
+                autoScale: true,
+              });
+            }
+          } catch (error) {
+            console.warn('Default pan operation error:', error);
+          }
           break;
       }
     } catch (error) {
@@ -1955,10 +1972,20 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       });
       rsiInstance.current = rsiChart;
       
+      // Chart readiness check function
+      const isChartReady = (chart: IChartApi | null) => {
+        return chart && 
+               chart.priceScale && 
+               chart.timeScale && 
+               typeof chart.priceScale === 'function' && 
+               typeof chart.timeScale === 'function';
+      };
+      
       // Enhanced RSI chart range enforcement
       const enforceRsiRange = () => {
         try {
-          if (rsiChart) {
+          if (isChartReady(rsiChart)) {
+            // First apply options to the chart itself
             rsiChart.applyOptions({
               rightPriceScale: {
                 minValue: 0,
@@ -1999,48 +2026,72 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             // Force the chart to recalculate and display the full range
             rsiChart.resize(rsiChartRef.current?.clientWidth || 800, chartHeights.rsi);
             
-            // Additional enforcement by setting visible range
-            rsiChart.priceScale('right').setAutoScale(false);
-            rsiChart.priceScale('right').applyOptions({
-              minValue: 0,
-              maxValue: 100,
-              scaleMargins: { top: 0.05, bottom: 0.05 },
-            });
+            // Additional enforcement by setting visible range - with proper error handling
+            try {
+              const priceScale = rsiChart.priceScale('right');
+              if (priceScale) {
+                priceScale.setAutoScale(false);
+                priceScale.applyOptions({
+                  minValue: 0,
+                  maxValue: 100,
+                  scaleMargins: { top: 0.05, bottom: 0.05 },
+                });
+              }
+            } catch (priceScaleError) {
+              console.warn('RSI price scale enforcement error:', priceScaleError);
+            }
             
             // Ensure time scale is properly configured
-            rsiChart.timeScale().applyOptions({
-              timeVisible: false,
-              secondsVisible: false,
-              borderVisible: false,
-              visible: false, // Explicitly hide the entire time scale
-            });
+            try {
+              const timeScale = rsiChart.timeScale();
+              if (timeScale) {
+                timeScale.applyOptions({
+                  timeVisible: false,
+                  secondsVisible: false,
+                  borderVisible: false,
+                  visible: false, // Explicitly hide the entire time scale
+                });
+              }
+            } catch (timeScaleError) {
+              console.warn('RSI time scale enforcement error:', timeScaleError);
+            }
           }
         } catch (error) {
           console.warn('RSI range enforcement error:', error);
         }
       };
       
+      // Initial enforcement with proper chart readiness check
+      const safeEnforceRsiRange = () => {
+        if (isChartReady(rsiChart)) {
+          enforceRsiRange();
+        }
+      };
+      
       // Initial enforcement
-      enforceRsiRange();
+      safeEnforceRsiRange();
       
       // Ensure RSI range is set after data is loaded with multiple attempts
-      setTimeout(enforceRsiRange, 100);
-      setTimeout(enforceRsiRange, 500);
-      setTimeout(enforceRsiRange, 1000);
+      setTimeout(safeEnforceRsiRange, 100);
+      setTimeout(safeEnforceRsiRange, 500);
+      setTimeout(safeEnforceRsiRange, 1000);
       
       // Additional enforcement after a longer delay to ensure it sticks
-      setTimeout(enforceRsiRange, 2000);
+      setTimeout(safeEnforceRsiRange, 2000);
       
       // Robust RSI time scale enforcement to prevent interference from other charts
       const enforceRsiTimeScaleVisibility = () => {
         try {
-          if (rsiChart && rsiInstance.current) {
-            rsiChart.timeScale().applyOptions({
-              timeVisible: false,
-              secondsVisible: false,
-              borderVisible: false,
-              visible: false, // Explicitly hide the entire time scale
-            });
+          if (isChartReady(rsiChart) && rsiInstance.current) {
+            const timeScale = rsiChart.timeScale();
+            if (timeScale) {
+              timeScale.applyOptions({
+                timeVisible: false,
+                secondsVisible: false,
+                borderVisible: false,
+                visible: false, // Explicitly hide the entire time scale
+              });
+            }
           }
         } catch (error) {
           console.warn('RSI time scale visibility enforcement error:', error);
@@ -2048,9 +2099,15 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       };
       
       // Apply enforcement after any potential chart interference
-      setTimeout(enforceRsiTimeScaleVisibility, 100);
-      setTimeout(enforceRsiTimeScaleVisibility, 500);
-      setTimeout(enforceRsiTimeScaleVisibility, 1000);
+      const safeEnforceRsiTimeScaleVisibility = () => {
+        if (isChartReady(rsiChart)) {
+          enforceRsiTimeScaleVisibility();
+        }
+      };
+      
+      setTimeout(safeEnforceRsiTimeScaleVisibility, 100);
+      setTimeout(safeEnforceRsiTimeScaleVisibility, 500);
+      setTimeout(safeEnforceRsiTimeScaleVisibility, 1000);
       
       // --- MACD Chart ---
       if (activeIndicators.macd && macdChartRef.current) {
@@ -2087,15 +2144,22 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         
         // Apply priceFormatter directly to the price scale after chart creation
         setTimeout(() => {
-          if (macdChart && macdChart.priceScale) {
-            macdChart.priceScale('right').applyOptions({
-              localization: {
-                priceFormatter: (price: number) => {
-                  const formatted = price.toFixed(3);
-                  return formatted.padStart(7, ' ');
-                },
-              },
-            });
+          try {
+            if (macdChart && macdChart.priceScale) {
+              const priceScale = macdChart.priceScale('right');
+              if (priceScale) {
+                priceScale.applyOptions({
+                  localization: {
+                    priceFormatter: (price: number) => {
+                      const formatted = price.toFixed(3);
+                      return formatted.padStart(7, ' ');
+                    },
+                  },
+                });
+              }
+            }
+          } catch (error) {
+            console.warn('MACD price scale application error:', error);
           }
         }, 100);
         macdInstance.current = macdChart;
@@ -2252,17 +2316,24 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         
         // Debug: Check if chart was created and apply priceFormatter
         console.log('Stochastic chart created:', !!stochasticChart);
-        if (stochasticChart && stochasticChart.priceScale) {
-          console.log('Applying priceFormatter to Stochastic chart');
-          stochasticChart.priceScale('right').applyOptions({
-            localization: {
-              priceFormatter: (price: number) => {
-                console.log('Stochastic priceFormatter called with:', price);
-                const formatted = price.toFixed(2);
-                return formatted.padStart(8, ' ');
-              },
-            },
-          });
+        try {
+          if (stochasticChart && stochasticChart.priceScale) {
+            console.log('Applying priceFormatter to Stochastic chart');
+            const priceScale = stochasticChart.priceScale('right');
+            if (priceScale) {
+              priceScale.applyOptions({
+                localization: {
+                  priceFormatter: (price: number) => {
+                    console.log('Stochastic priceFormatter called with:', price);
+                    const formatted = price.toFixed(2);
+                    return formatted.padStart(8, ' ');
+                  },
+                },
+              });
+            }
+          }
+        } catch (error) {
+          console.warn('Stochastic price scale application error:', error);
         }
         // Stochastic %K and %D lines
         const kLine = stochasticChart.addSeries(LineSeries, {
@@ -2306,17 +2377,24 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         
         // Apply priceFormatter after data is set
         setTimeout(() => {
-          if (stochasticChart && stochasticChart.priceScale) {
-            console.log('Applying priceFormatter to Stochastic chart after data');
-            stochasticChart.priceScale('right').applyOptions({
-              localization: {
-                priceFormatter: (price: number) => {
-                  console.log('Stochastic priceFormatter called with:', price);
-                  const formatted = price.toFixed(2);
-                  return formatted.padStart(8, ' ');
-                },
-              },
-            });
+          try {
+            if (stochasticChart && stochasticChart.priceScale) {
+              console.log('Applying priceFormatter to Stochastic chart after data');
+              const priceScale = stochasticChart.priceScale('right');
+              if (priceScale) {
+                priceScale.applyOptions({
+                  localization: {
+                    priceFormatter: (price: number) => {
+                      console.log('Stochastic priceFormatter called with:', price);
+                      const formatted = price.toFixed(2);
+                      return formatted.padStart(8, ' ');
+                    },
+                  },
+                });
+              }
+            }
+          } catch (error) {
+            console.warn('Stochastic price scale application error after data:', error);
           }
         }, 200);
       }
@@ -2414,17 +2492,24 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         
         // Debug: Check if chart was created and apply priceFormatter
         console.log('ATR chart created:', !!atrChart);
-        if (atrChart && atrChart.priceScale) {
-          console.log('Applying priceFormatter to ATR chart');
-          atrChart.priceScale('right').applyOptions({
-            localization: {
-              priceFormatter: (price: number) => {
-                console.log('ATR priceFormatter called with:', price);
-                const formatted = price.toFixed(2);
-                return formatted.padStart(9, ' ');
-              },
-            },
-          });
+        try {
+          if (atrChart && atrChart.priceScale) {
+            console.log('Applying priceFormatter to ATR chart');
+            const priceScale = atrChart.priceScale('right');
+            if (priceScale) {
+              priceScale.applyOptions({
+                localization: {
+                  priceFormatter: (price: number) => {
+                    console.log('ATR priceFormatter called with:', price);
+                    const formatted = price.toFixed(2);
+                    return formatted.padStart(9, ' ');
+                  },
+                },
+              });
+            }
+          }
+        } catch (error) {
+          console.warn('ATR price scale application error:', error);
         }
         // ATR line
         const atrLine = atrChart.addSeries(LineSeries, {
@@ -2448,17 +2533,24 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         
         // Apply priceFormatter after data is set
         setTimeout(() => {
-          if (atrChart && atrChart.priceScale) {
-            console.log('Applying priceFormatter to ATR chart after data');
-            atrChart.priceScale('right').applyOptions({
-              localization: {
-                priceFormatter: (price: number) => {
-                  console.log('ATR priceFormatter called with:', price);
-                  const formatted = price.toFixed(2);
-                  return formatted.padStart(9, ' ');
-                },
-              },
-            });
+          try {
+            if (atrChart && atrChart.priceScale) {
+              console.log('Applying priceFormatter to ATR chart after data');
+              const priceScale = atrChart.priceScale('right');
+              if (priceScale) {
+                priceScale.applyOptions({
+                  localization: {
+                    priceFormatter: (price: number) => {
+                      console.log('ATR priceFormatter called with:', price);
+                      const formatted = price.toFixed(2);
+                      return formatted.padStart(9, ' ');
+                    },
+                  },
+                });
+              }
+            }
+          } catch (error) {
+            console.warn('ATR price scale application error after data:', error);
           }
         }, 200);
       }
@@ -3036,7 +3128,8 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         // Enhanced RSI range enforcement after data is set
         const enforceRsiRangeAfterData = () => {
           try {
-            if (rsiChart) {
+            if (isChartReady(rsiChart)) {
+              // First apply options to the chart itself
               rsiChart.applyOptions({
                 rightPriceScale: {
                   minValue: 0,
@@ -3077,20 +3170,34 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
               // Force the chart to recalculate and display the full range
               rsiChart.resize(rsiChartRef.current?.clientWidth || 800, chartHeights.rsi);
               
-              // Additional enforcement by setting visible range
-              rsiChart.priceScale('right').setAutoScale(false);
-              rsiChart.priceScale('right').applyOptions({
-                minValue: 0,
-                maxValue: 100,
-                scaleMargins: { top: 0.05, bottom: 0.05 },
-              });
+              // Additional enforcement by setting visible range - with proper error handling
+              try {
+                const priceScale = rsiChart.priceScale('right');
+                if (priceScale) {
+                  priceScale.setAutoScale(false);
+                  priceScale.applyOptions({
+                    minValue: 0,
+                    maxValue: 100,
+                    scaleMargins: { top: 0.05, bottom: 0.05 },
+                  });
+                }
+              } catch (priceScaleError) {
+                console.warn('RSI price scale enforcement error:', priceScaleError);
+              }
               
               // Ensure time scale is properly configured
-              rsiChart.timeScale().applyOptions({
-                timeVisible: false,
-                secondsVisible: false,
-                borderVisible: false,
-              });
+              try {
+                const timeScale = rsiChart.timeScale();
+                if (timeScale) {
+                  timeScale.applyOptions({
+                    timeVisible: false,
+                    secondsVisible: false,
+                    borderVisible: false,
+                  });
+                }
+              } catch (timeScaleError) {
+                console.warn('RSI time scale enforcement error:', timeScaleError);
+              }
             }
           } catch (error) {
             console.warn('RSI data-set range enforcement error:', error);
@@ -3098,12 +3205,18 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         };
         
         // Enforce range immediately after data is set
-        enforceRsiRangeAfterData();
+        const safeEnforceRsiRangeAfterData = () => {
+          if (isChartReady(rsiChart)) {
+            enforceRsiRangeAfterData();
+          }
+        };
+        
+        safeEnforceRsiRangeAfterData();
         
         // Additional enforcement with delays to ensure it sticks
-        setTimeout(enforceRsiRangeAfterData, 50);
-        setTimeout(enforceRsiRangeAfterData, 200);
-        setTimeout(enforceRsiRangeAfterData, 500);
+        setTimeout(safeEnforceRsiRangeAfterData, 50);
+        setTimeout(safeEnforceRsiRangeAfterData, 200);
+        setTimeout(safeEnforceRsiRangeAfterData, 500);
         
         // Set data for essential RSI reference lines (30 and 70 only)
         const overboughtData = validatedData.map<LineData>(d => ({
@@ -3135,13 +3248,20 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         
         // Additional range enforcement after setting invisible lines
         setTimeout(() => {
-          if (rsiChart) {
-            rsiChart.priceScale('right').setAutoScale(false);
-            rsiChart.priceScale('right').applyOptions({
-              minValue: 0,
-              maxValue: 100,
-              scaleMargins: { top: 0.05, bottom: 0.05 },
-            });
+          try {
+            if (isChartReady(rsiChart)) {
+              const priceScale = rsiChart.priceScale('right');
+              if (priceScale) {
+                priceScale.setAutoScale(false);
+                priceScale.applyOptions({
+                  minValue: 0,
+                  maxValue: 100,
+                  scaleMargins: { top: 0.05, bottom: 0.05 },
+                });
+              }
+            }
+          } catch (error) {
+            console.warn('RSI additional range enforcement error:', error);
           }
         }, 10);
         
@@ -4016,7 +4136,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
 
             {/* FIXED: Enhanced chart container styling with better space utilization */}
             {/* Main Price Chart - Enhanced prominence */}
-            <div className="relative rounded-lg border-2 border-blue-200 dark:border-blue-700 overflow-hidden bg-white dark:bg-gray-900 flex-1 shadow-lg mb-0.5">
+            <div className="relative rounded-lg overflow-hidden bg-white dark:bg-gray-900 flex-1 shadow-lg mb-0.5">
               <div ref={candleChartRef} className="w-full h-full" />
             </div>
 

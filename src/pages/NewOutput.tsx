@@ -48,7 +48,6 @@ import {
   Zap,
   Eye,
   Settings,
-  Maximize2,
   Download,
   Share,
   Bookmark
@@ -449,10 +448,6 @@ const NewOutput: React.FC = () => {
                         <BarChart3 className="h-5 w-5 mr-2 text-blue-500" />
                         Trading Terminal - {stockSymbol}
                       </CardTitle>
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded">Live</span>
-                        <span>Last: {stats?.lastClose?.toFixed(2) || 'N/A'}</span>
-                      </div>
                     </div>
                     <div className="flex items-center space-x-4">
                       {/* Timeframe Controls */}
@@ -495,10 +490,6 @@ const NewOutput: React.FC = () => {
 
                       {/* Quick Actions */}
                       <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm" className="text-xs h-7">
-                          <Maximize2 className="h-3 w-3 mr-1" />
-                          Fullscreen
-                        </Button>
                         <Button 
                           variant="outline" 
                           size="sm" 
