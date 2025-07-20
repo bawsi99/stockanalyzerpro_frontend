@@ -512,45 +512,79 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
   // Ref to track the current main price series (candlestick or line)
   const mainPriceSeriesRef = useRef<ISeriesApi<LineData | CandlestickData> | null>(null);
 
-  // FIXED: Improved height calculations with better distribution - ensure RSI visibility
+  // ENHANCED: Optimized height calculations for better visibility and space utilization
   const chartHeights = useMemo(() => {
-    const totalHeight = height;
+    // Use the actual height prop for calculations to utilize full available space
+    const totalHeight = height || (isMobile ? 600 : 800);
     const headerHeight = 44;
+    const chartControlsHeight = 40; // Reduced height of chart controls
+    const spacingHeight = 8; // Reduced spacing between charts to eliminate white space
     
-    // Responsive height adjustments - ensure minimum visibility for all charts
-    const volumeHeight = isMobile 
-      ? Math.max(80, totalHeight * 0.12)   // Increased minimum for better visibility
-      : Math.max(100, totalHeight * 0.15); // Increased minimum for better visibility
+    // Count active indicators for dynamic sizing
+    const activeIndicatorCount = [
+      activeIndicators.stochastic,
+      activeIndicators.atr,
+      activeIndicators.macd
+    ].filter(Boolean).length;
     
-    const rsiHeight = isMobile
-      ? Math.max(120, totalHeight * 0.18)  // Significantly increased for RSI visibility
-      : Math.max(150, totalHeight * 0.20); // Significantly increased for RSI visibility
+    // Calculate available height for charts (total minus controls and spacing)
+    const availableHeight = totalHeight - headerHeight - chartControlsHeight - spacingHeight;
     
-    const stochasticHeight = isMobile
-      ? Math.max(80, totalHeight * 0.10)   // Increased minimum
-      : Math.max(100, totalHeight * 0.12); // Increased minimum
+    // Fixed heights for consistent indicator charts - optimized for space utilization
+    const volumeHeight = isMobile ? 80 : 100;
+    const rsiHeight = isMobile ? 120 : 140;
+    const macdHeight = isMobile ? 100 : 120;
+    const stochasticHeight = isMobile ? 80 : 100;
+    const atrHeight = isMobile ? 60 : 80;
     
-    const atrHeight = isMobile
-      ? Math.max(60, totalHeight * 0.08)   // Increased minimum
-      : Math.max(80, totalHeight * 0.10);  // Increased minimum
+    // Calculate total height needed for all active indicators
+    let totalIndicatorHeight = volumeHeight + rsiHeight;
+    if (activeIndicators.stochastic) totalIndicatorHeight += stochasticHeight;
+    if (activeIndicators.atr) totalIndicatorHeight += atrHeight;
+    if (activeIndicators.macd) totalIndicatorHeight += macdHeight;
     
-    const macdHeight = isMobile
-      ? Math.max(100, totalHeight * 0.12)  // Increased minimum
-      : Math.max(120, totalHeight * 0.15); // Increased minimum
+    // Calculate remaining height for main chart
+    let mainChartHeight = availableHeight - totalIndicatorHeight;
     
-    // Calculate remaining height for main chart - ensure it still gets good space
-    let remainingHeight = totalHeight - headerHeight - volumeHeight - rsiHeight;
-    if (activeIndicators.stochastic) remainingHeight -= stochasticHeight;
-    if (activeIndicators.atr) remainingHeight -= atrHeight;
-    if (activeIndicators.macd) remainingHeight -= macdHeight;
+    // Ensure main chart has a reasonable minimum height
+    const minMainChartHeight = Math.max(300, availableHeight * 0.4); // At least 40% of available height
+    
+    // If main chart would be too small, reduce indicator heights proportionally
+    if (mainChartHeight < minMainChartHeight) {
+      const excessHeight = minMainChartHeight - mainChartHeight;
+      const totalIndicatorHeightToReduce = totalIndicatorHeight - volumeHeight - rsiHeight; // Don't reduce volume and RSI
+      
+      if (totalIndicatorHeightToReduce > 0) {
+        const reductionRatio = Math.max(0.7, 1 - (excessHeight / totalIndicatorHeightToReduce)); // Don't reduce more than 30%
+        
+        // Apply reduction to optional indicators
+        const adjustedMacdHeight = activeIndicators.macd ? Math.floor(macdHeight * reductionRatio) : 0;
+        const adjustedStochasticHeight = activeIndicators.stochastic ? Math.floor(stochasticHeight * reductionRatio) : 0;
+        const adjustedAtrHeight = activeIndicators.atr ? Math.floor(atrHeight * reductionRatio) : 0;
+        
+        // Recalculate main chart height
+        mainChartHeight = availableHeight - volumeHeight - rsiHeight - adjustedMacdHeight - adjustedStochasticHeight - adjustedAtrHeight;
+        
+        return {
+          candle: Math.max(minMainChartHeight, mainChartHeight),
+          volume: volumeHeight,
+          rsi: rsiHeight,
+          stochastic: adjustedStochasticHeight,
+          atr: adjustedAtrHeight,
+          macd: adjustedMacdHeight,
+          totalHeight: totalHeight,
+        };
+      }
+    }
     
     return {
-      candle: Math.max(350, remainingHeight), // Slightly reduced minimum to accommodate other charts
+      candle: Math.max(minMainChartHeight, mainChartHeight),
       volume: volumeHeight,
       rsi: rsiHeight,
       stochastic: stochasticHeight,
       atr: atrHeight,
       macd: macdHeight,
+      totalHeight: totalHeight,
     };
   }, [height, activeIndicators.stochastic, activeIndicators.atr, activeIndicators.macd, isMobile]);
 
@@ -1645,7 +1679,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         },
         priceScale: {
           borderColor: isDark ? "#334155" : "#e2e8f0",
-          scaleMargins: { top: 0.03, bottom: 0.08 }, // Reduced margins for more chart space
+          scaleMargins: { top: 0.02, bottom: 0.05 }, // Further reduced margins for more chart space
           autoScale: true,
           entireTextOnly: false, // Changed to false to ensure labels display
           ticksVisible: true,
@@ -1660,8 +1694,8 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           minBarSpacing: isMobile ? 1 : 2,
           fixLeftEdge: true,
           fixRightEdge: true,
-          // Reduced margins for more chart space
-          scaleMargins: { left: 0.0, right: 0.02 },
+          // Further reduced margins for more chart space
+          scaleMargins: { left: 0.0, right: 0.01 },
           tickMarkFormatter: (time: number) => {
             const date = new Date(time * 1000);
             return isMobile 
@@ -1829,7 +1863,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         },
         rightPriceScale: {
           ...commonOptions.rightPriceScale,
-          scaleMargins: { top: 0.1, bottom: 0.1 }, // Proper margins for full visibility
+          scaleMargins: { top: 0.05, bottom: 0.05 }, // Reduced margins for better space utilization
           autoScale: false, // Disable autoScale to use fixed range
           minValue: 0, // Set minimum RSI value
           maxValue: 100, // Set maximum RSI value
@@ -1862,6 +1896,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           timeVisible: false, // Hide time labels on RSI chart
           secondsVisible: false,
           borderVisible: false,
+          visible: false, // Explicitly hide the entire time scale
         },
         localization: {
           priceFormatter: (price: number) => {
@@ -1909,7 +1944,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
             rsiChart.priceScale('right').applyOptions({
               minValue: 0,
               maxValue: 100,
-              scaleMargins: { top: 0.1, bottom: 0.1 },
+              scaleMargins: { top: 0.05, bottom: 0.05 },
             });
             
             // Ensure time scale is properly configured
@@ -1917,6 +1952,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
               timeVisible: false,
               secondsVisible: false,
               borderVisible: false,
+              visible: false, // Explicitly hide the entire time scale
             });
           }
         } catch (error) {
@@ -1934,6 +1970,27 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       
       // Additional enforcement after a longer delay to ensure it sticks
       setTimeout(enforceRsiRange, 2000);
+      
+      // Robust RSI time scale enforcement to prevent interference from other charts
+      const enforceRsiTimeScaleVisibility = () => {
+        try {
+          if (rsiChart && rsiInstance.current) {
+            rsiChart.timeScale().applyOptions({
+              timeVisible: false,
+              secondsVisible: false,
+              borderVisible: false,
+              visible: false, // Explicitly hide the entire time scale
+            });
+          }
+        } catch (error) {
+          console.warn('RSI time scale visibility enforcement error:', error);
+        }
+      };
+      
+      // Apply enforcement after any potential chart interference
+      setTimeout(enforceRsiTimeScaleVisibility, 100);
+      setTimeout(enforceRsiTimeScaleVisibility, 500);
+      setTimeout(enforceRsiTimeScaleVisibility, 1000);
       
       // --- MACD Chart ---
       if (activeIndicators.macd && macdChartRef.current) {
@@ -2627,7 +2684,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
                   entireTextOnly: false,
                   ticksVisible: true,
                   size: 80,
-                  scaleMargins: { top: 0.1, bottom: 0.1 },
+                  scaleMargins: { top: 0.05, bottom: 0.05 },
                   tickMarkFormatter: (value: number) => {
                     if (value % 10 === 0) {
                       return value.toString();
@@ -2651,7 +2708,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
               rsiChart.priceScale('right').applyOptions({
                 minValue: 0,
                 maxValue: 100,
-                scaleMargins: { top: 0.1, bottom: 0.1 },
+                scaleMargins: { top: 0.05, bottom: 0.05 },
               });
               
               // Ensure time scale is properly configured
@@ -3626,7 +3683,8 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
   }));
 
   return (
-    <div className="w-full h-full flex flex-col gap-2" style={{
+    <div className="w-full flex flex-col" style={{
+      height: `${height}px`,
       // Hide TradingView branding
       '--tv-lightweight-charts-after': 'none',
     } as React.CSSProperties}>
@@ -3705,11 +3763,11 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
       ) : (
         <div 
           ref={containerRef}
-          className="flex-1 flex flex-col min-h-0"
+          className="w-full h-full flex flex-col"
         >
-          <div className="flex flex-col space-y-2 w-full h-full">
+          <div className="flex flex-col w-full flex-1">
             {/* Chart Controls */}
-            <div className="flex flex-wrap gap-3 px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="flex flex-wrap gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg mb-1">
               {/* All Indicators and Patterns - Combined Layout */}
               <div className="flex-1 min-w-0">
                 <div className="grid grid-cols-6 gap-1">
@@ -3963,53 +4021,53 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
 
             {/* FIXED: Enhanced chart container styling with better space utilization */}
             {/* Main Price Chart - Enhanced prominence */}
-            <div className="relative rounded-lg border-2 border-blue-200 dark:border-blue-700 overflow-hidden bg-white dark:bg-gray-900 flex-1 shadow-lg">
-              <div ref={candleChartRef} className="w-full" style={{ height: `${chartHeights.candle}px` }} />
+            <div className="relative rounded-lg border-2 border-blue-200 dark:border-blue-700 overflow-hidden bg-white dark:bg-gray-900 flex-1 shadow-lg mb-0.5">
+              <div ref={candleChartRef} className="w-full h-full" />
             </div>
 
             {/* Volume Chart - Compact styling */}
-            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm mb-0.5" style={{ height: `${chartHeights.volume}px` }}>
               <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
                 Volume
               </div>
-              <div ref={volumeChartRef} className="w-full" style={{ height: `${chartHeights.volume}px` }} />
+              <div ref={volumeChartRef} className="w-full h-full" />
             </div>
 
             {/* RSI Chart - Enhanced with full range indicators */}
-            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm mb-0.5" style={{ height: `${chartHeights.rsi}px` }}>
               <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
                 RSI(14)
               </div>
-              <div ref={rsiChartRef} className="w-full" style={{ height: `${chartHeights.rsi}px` }} />
+              <div ref={rsiChartRef} className="w-full h-full" />
             </div>
 
             {/* Stochastic Chart (conditionally rendered) */}
             {activeIndicators.stochastic && (
-              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm mb-0.5" style={{ height: `${chartHeights.stochastic}px` }}>
                 <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
                   Stochastic
                 </div>
-                <div ref={stochasticChartRef} className="w-full" style={{ height: `${chartHeights.stochastic}px` }} />
+                <div ref={stochasticChartRef} className="w-full h-full" />
               </div>
             )}
 
             {/* ATR Chart (conditionally rendered) */}
             {activeIndicators.atr && (
-              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm mb-0.5" style={{ height: `${chartHeights.atr}px` }}>
                 <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
                   ATR
                 </div>
-                <div ref={atrChartRef} className="w-full" style={{ height: `${chartHeights.atr}px` }} />
+                <div ref={atrChartRef} className="w-full h-full" />
               </div>
             )}
 
             {/* MACD Chart (conditionally rendered) */}
             {activeIndicators.macd && (
-              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+              <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" style={{ height: `${chartHeights.macd}px` }}>
                 <div className="absolute top-1 left-1 z-10 bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
                   MACD
                 </div>
-                <div ref={macdChartRef} className="w-full" style={{ height: `${chartHeights.macd}px` }} />
+                <div ref={macdChartRef} className="w-full h-full" />
               </div>
             )}
           </div>

@@ -537,7 +537,7 @@ const NewOutput: React.FC = () => {
                         <EnhancedMultiPaneChart 
                           ref={chartRef}
                           data={filteredRawData} 
-                          height={950} // Explicit height to utilize full space
+                          height={980} // Increased height to utilize full space and eliminate white space
                           chartType={chartType}
                           onChartTypeChange={setChartType}
                           onClearAll={clearAllIndicators}
@@ -550,8 +550,6 @@ const NewOutput: React.FC = () => {
                           }}
                         />
                       </div>
-                      
-
                     </div>
                   ) : (
                     <div className="text-center py-16 text-slate-500">
