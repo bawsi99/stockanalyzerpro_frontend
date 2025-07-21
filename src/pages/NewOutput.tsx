@@ -297,13 +297,17 @@ const NewOutput: React.FC = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-white/80 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm">
             <TabsTrigger value="overview" className="flex items-center space-x-2">
               <Eye className="h-4 w-4" />
               <span>Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="technical" className="flex items-center space-x-2">
+            <TabsTrigger value="charts" className="flex items-center space-x-2">
               <BarChart3 className="h-4 w-4" />
+              <span>Charts</span>
+            </TabsTrigger>
+            <TabsTrigger value="technical" className="flex items-center space-x-2">
+              <TrendingUp className="h-4 w-4" />
               <span>Technical</span>
             </TabsTrigger>
             <TabsTrigger value="advanced" className="flex items-center space-x-2">
@@ -326,6 +330,60 @@ const NewOutput: React.FC = () => {
                 <AITradingAnalysisOverviewCard aiAnalysis={analysisData.ai_analysis} />
               </div>
             </div>
+
+
+
+            {/* Bottom Row - Price Statistics and Sector Analysis */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {summaryStats && (
+                <PriceStatisticsCard 
+                  summaryStats={summaryStats}
+                  latestPrice={stats?.lastClose || null}
+                  timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
+                />
+              )}
+              
+              {analysisData.sector_benchmarking && (
+                <SectorBenchmarkingCard 
+                  sectorBenchmarking={analysisData.sector_benchmarking} 
+                />
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Charts Tab */}
+          <TabsContent value="charts" className="space-y-6">
+            {/* Chart Statistics Bar */}
+            {summaryStats && (
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-slate-200">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-slate-800">
+                      ₹{summaryStats.current?.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-slate-600">Current Price</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-slate-800">
+                      ₹{summaryStats.max?.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-slate-600">High</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-slate-800">
+                      ₹{summaryStats.min?.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-slate-600">Low</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-slate-800">
+                      ₹{summaryStats.mean?.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-slate-600">Average</div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Trading Terminal - Full Width Professional Layout */}
             <div className="w-full">
@@ -441,22 +499,7 @@ const NewOutput: React.FC = () => {
               </Card>
             </div>
 
-            {/* Bottom Row - Price Statistics and Sector Analysis */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {summaryStats && (
-                <PriceStatisticsCard 
-                  summaryStats={summaryStats}
-                  latestPrice={stats?.lastClose || null}
-                  timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
-                />
-              )}
-              
-              {analysisData.sector_benchmarking && (
-                <SectorBenchmarkingCard 
-                  sectorBenchmarking={analysisData.sector_benchmarking} 
-                />
-              )}
-            </div>
+
           </TabsContent>
 
           {/* Technical Tab */}
