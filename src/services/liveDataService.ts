@@ -398,6 +398,39 @@ class LiveDataService {
       throw error;
     }
   }
+
+  // Clear interval cache for specific symbol and interval (Data Service - Port 8000)
+  async clearIntervalCache(symbol: string, interval: string): Promise<void> {
+    try {
+      const token = await authService.ensureAuthenticated();
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+
+      const backendInterval = INTERVAL_MAPPING[interval as keyof typeof INTERVAL_MAPPING] || '1day';
+      
+      const params = new URLSearchParams({
+        symbol,
+        interval: backendInterval
+      });
+      
+      const response = await fetch(`${ENDPOINTS.DATA.MARKET_OPTIMIZATION}/clear-interval-cache?${params}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Failed to clear interval cache for ${symbol}`);
+      }
+    } catch (error) {
+      console.error('Error clearing interval cache:', error);
+      throw error;
+    }
+  }
 }
 
 export const liveDataService = new LiveDataService();
