@@ -1,7 +1,19 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+// Supabase removed. We'll use a simple local JWT-based auth for now.
+
+export interface User {
+  id: string;
+  email: string;
+}
+
+export interface Session {
+  token: string;
+}
+
+export interface AuthError {
+  message: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -29,63 +41,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    // On mount, check for JWT token in localStorage
+    const token = localStorage.getItem('jwt_token');
+    const email = localStorage.getItem('user_email');
+    const id = localStorage.getItem('user_id');
+    if (token && email && id) {
+      setUser({ id, email });
+      setSession({ token });
+    }
+    setLoading(false);
   }, []);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName
-        }
-      }
-    });
-    return { error };
+    // TODO: Connect to backend /auth/signup endpoint
+    // For now, just fake a user
+    setUser({ id: email, email });
+    setSession({ token: 'dummy' });
+    localStorage.setItem('user_email', email);
+    localStorage.setItem('user_id', email);
+    localStorage.setItem('jwt_token', 'dummy');
+    return { error: null };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    // TODO: Connect to backend /auth/signin endpoint
+    // For now, just fake a user
+    setUser({ id: email, email });
+    setSession({ token: 'dummy' });
+    localStorage.setItem('user_email', email);
+    localStorage.setItem('user_id', email);
+    localStorage.setItem('jwt_token', 'dummy');
+    return { error: null };
   };
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/`
-      }
-    });
-    return { error };
+    // TODO: Implement Google OAuth with backend
+    return { error: { message: 'Not implemented' } };
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    setUser(null);
+    setSession(null);
+    localStorage.removeItem('user_email');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('jwt_token');
+    return { error: null };
   };
 
   const value = {

@@ -198,6 +198,7 @@ const NewStockAnalysis = () => {
 
       if (user) {
         try {
+          // The saveAnalysis function now handles the normalized data extraction
           await saveAnalysis(data.stock_symbol, data);
         } catch (saveError) {
           console.error("Error saving analysis to Supabase:", saveError);
@@ -205,6 +206,22 @@ const NewStockAnalysis = () => {
       }
 
       localStorage.setItem('analysisResult', JSON.stringify(data));
+
+      // Request JWT token for WebSocket authentication and store in localStorage
+      try {
+        const userId = formData.stock || 'user';
+        const resp = await fetch(`/auth/token?user_id=${encodeURIComponent(userId)}`, {
+          method: 'POST'
+        });
+        if (resp.ok) {
+          const tokenData = await resp.json();
+          if (tokenData.token) {
+            localStorage.setItem('jwt_token', tokenData.token);
+          }
+        }
+      } catch (err) {
+        // Ignore token errors for now
+      }
 
       toast({
         title: "Analysis Complete",

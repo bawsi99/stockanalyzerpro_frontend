@@ -78,16 +78,6 @@ const ConsensusSummaryCard = ({ consensus }: ConsensusSummaryCardProps) => {
             </Badge>
           </div>
 
-          {/* Confidence */}
-          <div className="text-center">
-            <div className="inline-block p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-              <div className={`font-bold text-lg ${getConfidenceColor(confidence)}`}>
-                {confidence}%
-              </div>
-              <div className="text-slate-600 font-medium">Confidence</div>
-            </div>
-          </div>
-
           {/* Signal Breakdown */}
           <div className="grid grid-cols-3 gap-4 text-base">
             <div className="text-center p-4 bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg border border-emerald-100">

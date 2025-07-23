@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Analysis Components
 import ConsensusSummaryCard from "@/components/analysis/ConsensusSummaryCard";
@@ -25,9 +26,7 @@ import ActionButtonsSection from "@/components/analysis/ActionButtonsSection";
 import DisclaimerCard from "@/components/analysis/DisclaimerCard";
 
 // Chart Components
-import EnhancedMultiPaneChart from "@/components/charts/EnhancedMultiPaneChart";
-import ChartDebugger from "@/components/charts/ChartDebugger";
-import DataTester from "@/components/charts/DataTester";
+import LiveChartSection from "@/components/charts/LiveChartSection";
 
 // Icons
 import { 
@@ -40,24 +39,15 @@ import {
   Minus,
   Clock,
   Eye,
-  Settings
+  Settings,
+  Loader2
 } from "lucide-react";
 
 // Types and Utils
-import { AnalysisData, ChartData, AnalysisResponse, isAnalysisResponse, EnhancedOverlays } from "@/types/analysis";
-import { cleanText } from "@/utils/textCleaner";
+import { AnalysisData, EnhancedOverlays } from "@/types/analysis";
+import { apiService } from "@/services/api";
 import { ChartValidationResult } from "@/utils/chartUtils";
 import { filterDataByTimeframe } from "@/utils/chartUtils";
-
-// Timeframe options
-const timeframeOptions = [
-  { value: '7d', label: '7D' },
-  { value: '30d', label: '30D' },
-  { value: '90d', label: '3M' },
-  { value: '180d', label: '6M' },
-  { value: '1y', label: '1Y' },
-  { value: 'all', label: 'All' },
-];
 
 // Chart statistics interface
 interface ChartStats {
@@ -69,153 +59,109 @@ interface ChartStats {
 
 const NewOutput: React.FC = () => {
   // State
-  const [rawData, setRawData] = useState<ChartData[]>([]);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [stockSymbol, setStockSymbol] = useState<string>("");
-  const [selectedTimeframe, setSelectedTimeframe] = useState('all');
+  const [selectedTimeframe, setSelectedTimeframe] = useState('1day');
   const [chartType, setChartType] = useState<'candlestick' | 'line'>('candlestick');
-  const [validationResult, setValidationResult] = useState<ChartValidationResult | null>(null);
-  const [chartStats, setChartStats] = useState<ChartStats | null>(null);
-  const [showDebug, setShowDebug] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(true); // Separate loading for analysis
+  const [chartDataLoaded, setChartDataLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Chart ref
   const chartRef = useRef<any>(null);
 
-  // Filtered data
-  const filteredRawData = useMemo(() => 
-    filterDataByTimeframe(rawData, selectedTimeframe), 
-    [rawData, selectedTimeframe]
-  );
-
-  // Price statistics
-  const stats = useMemo(() => {
-    if (rawData.length < 2) return null;
-    const prev = rawData[rawData.length - 2];
-    const last = rawData[rawData.length - 1];
-    const delta = last.close - prev.close;
-    const deltaPct = prev.close ? (delta / prev.close) * 100 : 0;
-    return {
-      lastClose: last.close,
-      lastVolume: last.volume,
-      lastDate: last.date,
-      delta,
-      deltaPct,
-    };
-  }, [rawData]);
-
-  // Summary statistics
-  const summaryStats = useMemo(() => {
-    if (!filteredRawData || filteredRawData.length === 0) return null;
-    const closes = filteredRawData.map(d => d.close);
-    const mean = closes.reduce((sum, v) => sum + v, 0) / closes.length;
-    const max = Math.max(...closes);
-    const min = Math.min(...closes);
-    const current = closes[closes.length - 1];
-    return {
-      mean,
-      max,
-      min,
-      current,
-      distFromMean: current - mean,
-      distFromMax: current - max,
-      distFromMin: current - min,
-      distFromMeanPct: mean !== 0 ? ((current - mean) / mean) * 100 : 0,
-      distFromMaxPct: max !== 0 ? ((current - max) / max) * 100 : 0,
-      distFromMinPct: min !== 0 ? ((current - min) / min) * 100 : 0,
-    };
-  }, [filteredRawData]);
-
-  // Load analysis data
+  // Load analysis data and stock symbol from localStorage or route params
   useEffect(() => {
-    const storedData = localStorage.getItem("analysisResult");
-    if (storedData) {
-      try {
-        const parsedData = JSON.parse(storedData);
-        let results: AnalysisData;
-        let data: ChartData[];
-
-        if (isAnalysisResponse(parsedData)) {
-          setStockSymbol(parsedData.stock_symbol);
-          results = parsedData.results;
-          data = parsedData.data || [];
-        } else {
-          results = parsedData.results;
-          data = parsedData.data || [];
-          setStockSymbol("STOCK");
-        }
-
-        // Clean text fields
-        const cleanedResults: AnalysisData = {
-          ...results,
-          indicator_summary_md: cleanText(results.indicator_summary_md || ''),
-          chart_insights: cleanText(results.chart_insights || ''),
-          consensus: {
-            ...results.consensus,
-            signal_details: results.consensus?.signal_details?.map((detail) => ({
-              ...detail,
-              description: cleanText(detail.description || '')
-            })) || []
-          }
-        };
-
-        // Ensure consensus has all required properties
-        if (!cleanedResults.consensus) {
-          cleanedResults.consensus = {
-            overall_signal: 'Neutral',
-            signal_strength: 'Weak',
-            bullish_percentage: 0,
-            bearish_percentage: 0,
-            neutral_percentage: 0,
-            bullish_score: 0,
-            bearish_score: 0,
-            neutral_score: 0,
-            total_weight: 0,
-            confidence: 0,
-            signal_details: [],
-            data_quality_flags: [],
-            warnings: [],
-            bullish_count: 0,
-            bearish_count: 0,
-            neutral_count: 0
-          };
-        }
-
-        setAnalysisData(cleanedResults);
-        setRawData(data);
-      } catch (error) {
-        console.error("Error parsing stored analysis data:", error);
+    try {
+      // Try to get analysis data from localStorage (from previous analysis)
+      const storedAnalysis = localStorage.getItem('analysisResult');
+      if (storedAnalysis) {
+        const parsed = JSON.parse(storedAnalysis);
+        setAnalysisData(parsed);
+        setStockSymbol(parsed.stock_symbol || "RELIANCE");
+        setAnalysisLoading(false);
+      } else {
+        // If no stored analysis, try to get from realtime analysis
+        const token = stockSymbol || "RELIANCE";
+        const timeframe = selectedTimeframe;
+        if (!token) return;
+        
+        setAnalysisLoading(true);
+        apiService.getRealtimeAnalysis(token, timeframe)
+          .then((data) => {
+            if (data && data.analysis) {
+              setAnalysisData(data.analysis);
+              setStockSymbol(data.analysis.symbol || token);
+            } else {
+              setError("No analysis data available.");
+            }
+          })
+          .catch((err) => {
+            setError(err.message || "Failed to fetch analysis data.");
+          })
+          .finally(() => setAnalysisLoading(false));
       }
+    } catch (err) {
+      console.error('Error loading analysis data:', err);
+      setError("Failed to load analysis data.");
+      setAnalysisLoading(false);
     }
-  }, []);
+  }, [stockSymbol, selectedTimeframe]);
 
-  // No data state
-  if (!analysisData) {
+  // Handle chart data loaded
+  const handleChartDataLoaded = (data: any[]) => {
+    setChartDataLoaded(true);
+    console.log('Chart data loaded:', data.length, 'candles');
+  };
+
+  // Handle chart error
+  const handleChartError = (error: string) => {
+    console.error('Chart error:', error);
+    setError(error);
+  };
+
+  // Show charts immediately when stock symbol is available, regardless of analysis loading
+  const canShowCharts = stockSymbol && !error;
+
+  // Loading and error states - only show full page loading if no stock symbol
+  if (loading && !stockSymbol) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <Header />
-        <div className="container mx-auto px-4 py-16">
-          <div className="text-center max-w-md mx-auto">
-            <div className="mb-8">
-              <div className="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BarChart3 className="h-12 w-12 text-slate-400" />
-              </div>
-              <h1 className="text-3xl font-bold text-slate-800 mb-4">No Analysis Data</h1>
-              <p className="text-slate-600 mb-8">
-                Please run an analysis first to view the results.
-              </p>
-            </div>
-            <Link to="/analysis">
-              <Button className="bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white px-8 py-3">
-                Start New Analysis
-              </Button>
-            </Link>
+        <div className="container mx-auto px-4 py-16 text-center">
+          <div className="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Loader2 className="h-12 w-12 text-slate-400 animate-spin" />
           </div>
+          <h1 className="text-3xl font-bold text-slate-800 mb-4">Loading...</h1>
         </div>
       </div>
     );
   }
 
-  const { consensus, indicators, indicator_summary_md, chart_insights } = analysisData;
+  if (error && !canShowCharts) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <Header />
+        <div className="container mx-auto px-4 py-16 text-center">
+          <div className="w-24 h-24 bg-red-200 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="h-12 w-12 text-red-400" />
+          </div>
+          <h1 className="text-3xl font-bold text-red-800 mb-4">{error}</h1>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const consensus = analysisData?.consensus;
+  const indicators = analysisData?.indicators;
+  const indicator_summary_md = analysisData?.indicator_summary_md;
+  const chart_insights = analysisData?.chart_insights;
 
   // Get signal color
   const getSignalColor = (signal: string) => {
@@ -235,18 +181,40 @@ const NewOutput: React.FC = () => {
     }
   };
 
-  // Action button functions
-  const clearAllIndicators = () => {
-    if (chartRef.current && chartRef.current.clearAllIndicators) {
-      chartRef.current.clearAllIndicators();
-    }
-  };
-
-  const showAllIndicators = () => {
-    if (chartRef.current && chartRef.current.showAllIndicators) {
-      chartRef.current.showAllIndicators();
-    }
-  };
+  // Loading skeleton for analysis cards
+  const AnalysisCardSkeleton = ({ title, description }: { title: string; description: string }) => (
+    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+      <CardHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center space-x-4">
+          <CardTitle className="flex items-center text-slate-800">
+            <Loader2 className="h-5 w-5 mr-2 text-blue-500 animate-spin" />
+            {title}
+          </CardTitle>
+        </div>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+          <div className="flex space-x-2">
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-20" />
+          </div>
+        </div>
+        {analysisLoading && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+              <span className="text-sm text-blue-700">Waiting for analysis data...</span>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -257,42 +225,50 @@ const NewOutput: React.FC = () => {
         <div className="mb-8">
           <div className="text-center mb-6">
             <h1 className="text-4xl font-bold text-slate-800 mb-2">
-              {stockSymbol} Analysis
+              {stockSymbol || "Loading..."} Analysis
             </h1>
             <p className="text-slate-600">Comprehensive technical analysis and insights</p>
           </div>
 
           {/* Quick Stats Bar */}
-          {stats && (
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-slate-200">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-slate-800">
-                    ₹{stats.lastClose?.toFixed(2)}
-                  </div>
-                  <div className="text-sm text-slate-600">Current Price</div>
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-slate-200">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-slate-800">
+                  {chartDataLoaded ? "₹0.00" : <Skeleton className="h-8 w-20 mx-auto" />}
                 </div>
-                <div className="text-center">
-                  <div className={`text-2xl font-bold flex items-center justify-center ${stats.delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {stats.delta >= 0 ? '+' : ''}₹{stats.delta?.toFixed(2)}
-                  </div>
-                  <div className="text-sm text-slate-600">Change</div>
+                <div className="text-sm text-slate-600">Current Price</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold flex items-center justify-center text-red-600`}>
+                  {chartDataLoaded ? "₹0.00" : <Skeleton className="h-8 w-20 mx-auto" />}
                 </div>
-                <div className="text-center">
-                  <div className={`text-2xl font-bold ${stats.deltaPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {stats.deltaPct >= 0 ? '+' : ''}{stats.deltaPct?.toFixed(2)}%
-                  </div>
-                  <div className="text-sm text-slate-600">Change %</div>
+                <div className="text-sm text-slate-600">Change</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold text-red-600`}>
+                  {chartDataLoaded ? "0.00%" : <Skeleton className="h-8 w-20 mx-auto" />}
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-slate-800">
-                    {consensus?.overall_signal || 'Neutral'}
-                  </div>
-                  <div className="text-sm text-slate-600">Signal</div>
+                <div className="text-sm text-slate-600">Change %</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-slate-800">
+                  {consensus?.overall_signal || (analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : 'Neutral')}
                 </div>
+                <div className="text-sm text-slate-600">Signal</div>
               </div>
             </div>
-          )}
+            
+            {/* Analysis Loading Indicator */}
+            {analysisLoading && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                  <span className="text-sm text-blue-700">Analysis in progress... Charts are ready for viewing</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Main Content Tabs */}
@@ -305,6 +281,9 @@ const NewOutput: React.FC = () => {
             <TabsTrigger value="charts" className="flex items-center space-x-2">
               <BarChart3 className="h-4 w-4" />
               <span>Charts</span>
+              {chartDataLoaded && (
+                <div className="w-2 h-2 bg-green-500 rounded-full ml-1"></div>
+              )}
             </TabsTrigger>
             <TabsTrigger value="technical" className="flex items-center space-x-2">
               <TrendingUp className="h-4 w-4" />
@@ -322,238 +301,190 @@ const NewOutput: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Consensus Summary */}
               <div className="lg:col-span-1">
-                <ConsensusSummaryCard consensus={consensus} />
+                {analysisLoading ? (
+                  <AnalysisCardSkeleton 
+                    title="Consensus Summary" 
+                    description="Loading consensus analysis..." 
+                  />
+                ) : (
+                  <ConsensusSummaryCard consensus={consensus} />
+                )}
               </div>
               
               {/* AI Trading Analysis */}
               <div className="lg:col-span-1">
-                <AITradingAnalysisOverviewCard aiAnalysis={analysisData.ai_analysis} />
+                {analysisLoading ? (
+                  <AnalysisCardSkeleton 
+                    title="AI Trading Analysis" 
+                    description="Loading AI analysis..." 
+                  />
+                ) : (
+                  <AITradingAnalysisOverviewCard aiAnalysis={analysisData?.ai_analysis} />
+                )}
               </div>
             </div>
 
-
-
             {/* Bottom Row - Price Statistics and Sector Analysis */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {summaryStats && (
-                <PriceStatisticsCard 
-                  summaryStats={summaryStats}
-                  latestPrice={stats?.lastClose || null}
-                  timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
-                />
-              )}
+              {/* Price Statistics Card */}
+              <div className="lg:col-span-1">
+                {analysisLoading ? (
+                  <AnalysisCardSkeleton 
+                    title="Price Statistics" 
+                    description="Loading price statistics..." 
+                  />
+                ) : (
+                  <PriceStatisticsCard 
+                    summaryStats={null}
+                    latestPrice={null}
+                    timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
+                  />
+                )}
+              </div>
               
-              {analysisData.sector_benchmarking && (
-                <SectorBenchmarkingCard 
-                  sectorBenchmarking={analysisData.sector_benchmarking} 
-                />
-              )}
+              <div className="lg:col-span-1">
+                {analysisLoading ? (
+                  <AnalysisCardSkeleton 
+                    title="Sector Benchmarking" 
+                    description="Loading sector analysis..." 
+                  />
+                ) : (
+                  analysisData?.sector_benchmarking && (
+                    <SectorBenchmarkingCard 
+                      sectorBenchmarking={analysisData.sector_benchmarking} 
+                    />
+                  )
+                )}
+              </div>
             </div>
           </TabsContent>
 
           {/* Charts Tab */}
           <TabsContent value="charts" className="space-y-6">
-            {/* Chart Statistics Bar */}
-            {summaryStats && (
-              <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-slate-200">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-slate-800">
-                      ₹{summaryStats.current?.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-slate-600">Current Price</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-slate-800">
-                      ₹{summaryStats.max?.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-slate-600">High</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-slate-800">
-                      ₹{summaryStats.min?.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-slate-600">Low</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-slate-800">
-                      ₹{summaryStats.mean?.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-slate-600">Average</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Trading Terminal - Full Width Professional Layout */}
+            {/* Live Chart Section */}
             <div className="w-full">
-              <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
-                <CardHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <CardTitle className="flex items-center text-slate-800">
-                        <BarChart3 className="h-5 w-5 mr-2 text-blue-500" />
-                        Trading Terminal - {stockSymbol}
-                      </CardTitle>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      {/* Timeframe Controls */}
-                      <div className="flex space-x-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-                        {timeframeOptions.map((option) => (
-                          <Button
-                            key={option.value}
-                            variant={selectedTimeframe === option.value ? "default" : "ghost"}
-                            size="sm"
-                            onClick={() => setSelectedTimeframe(option.value)}
-                            className="text-xs h-7 px-2"
-                          >
-                            {option.label}
-                          </Button>
-                        ))}
-                      </div>
-                      
-                      {/* Chart Type Toggle */}
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-600">Chart:</span>
-                        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-                          <Button 
-                            variant={chartType === 'candlestick' ? 'default' : 'ghost'} 
-                            size="sm" 
-                            className="text-xs h-7 px-2"
-                            onClick={() => setChartType('candlestick')}
-                          >
-                            Candle
-                          </Button>
-                          <Button 
-                            variant={chartType === 'line' ? 'default' : 'ghost'} 
-                            size="sm" 
-                            className="text-xs h-7 px-2"
-                            onClick={() => setChartType('line')}
-                          >
-                            Line
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Quick Actions */}
-                      <div className="flex items-center space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-xs h-7 bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
-                          onClick={clearAllIndicators}
-                        >
-                          Clear
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-xs h-7 bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
-                          onClick={showAllIndicators}
-                        >
-                          All
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-xs h-7 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                          onClick={() => setShowShortcuts(!showShortcuts)}
-                        >
-                          {showShortcuts ? 'Hide' : 'Keys'}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                
-                {/* Trading Terminal Content */}
-                <CardContent className="flex-1 overflow-hidden p-0">
-                  {rawData.length > 0 ? (
-                    <div className="h-[1000px] w-full flex flex-col">
-                      {/* Chart Container with Professional Layout */}
-                      <div className="flex-1 relative">
-                        <EnhancedMultiPaneChart 
-                          ref={chartRef}
-                          data={filteredRawData} 
-                          height={1000} // Match container height to eliminate white space
-                          chartType={chartType}
-                          onChartTypeChange={setChartType}
-                          onClearAll={clearAllIndicators}
-                          onShowAll={showAllIndicators}
-                          onToggleShortcuts={() => setShowShortcuts(!showShortcuts)}
-                          showShortcuts={showShortcuts}
-                          overlays={{
-                            showRsiDivergence: true,
-                            ...(analysisData.overlays || {})
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-16 text-slate-500">
-                      <BarChart3 className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-                      No chart data available
-                    </div>
+              {canShowCharts ? (
+                <LiveChartSection
+                  ref={chartRef}
+                  symbol={stockSymbol}
+                  theme="light"
+                  height={800}
+                  debug={false}
+                  onDataLoaded={handleChartDataLoaded}
+                  onError={handleChartError}
+                />
+              ) : (
+                <div className="text-center py-16 text-slate-500">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                  <p>{stockSymbol ? 'Initializing chart...' : 'Loading stock data...'}</p>
+                  {stockSymbol && (
+                    <p className="text-sm text-slate-400 mt-2">Chart will be available shortly</p>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              )}
             </div>
-
-
           </TabsContent>
 
           {/* Technical Tab */}
           <TabsContent value="technical" className="space-y-6">
-            {indicator_summary_md && (
-              <TechnicalAnalysisCard 
-                indicatorSummary={indicator_summary_md || ''} 
+            {analysisLoading ? (
+              <AnalysisCardSkeleton 
+                title="Technical Analysis" 
+                description="Loading technical indicators..." 
               />
+            ) : (
+              indicator_summary_md && (
+                <TechnicalAnalysisCard 
+                  indicatorSummary={indicator_summary_md || ''} 
+                />
+              )
             )}
 
-            {analysisData.overlays && (
-              <EnhancedPatternRecognitionCard 
-                overlays={analysisData.overlays as EnhancedOverlays}
-                symbol={stockSymbol}
+            {analysisLoading ? (
+              <AnalysisCardSkeleton 
+                title="Pattern Recognition" 
+                description="Loading pattern analysis..." 
               />
+            ) : (
+              analysisData?.overlays && (
+                <EnhancedPatternRecognitionCard 
+                  overlays={analysisData.overlays as EnhancedOverlays}
+                  symbol={stockSymbol}
+                />
+              )
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {(indicators as any)?.advanced_patterns && (
-                <AdvancedPatternAnalysisCard 
-                  patterns={(indicators as any).advanced_patterns} 
-                  symbol={stockSymbol}
-                />
-              )}
+              {analysisLoading ? (
+                <>
+                  <AnalysisCardSkeleton 
+                    title="Advanced Patterns" 
+                    description="Loading pattern analysis..." 
+                  />
+                  <AnalysisCardSkeleton 
+                    title="Multi-timeframe Analysis" 
+                    description="Loading timeframe analysis..." 
+                  />
+                </>
+              ) : (
+                <>
+                  {(indicators as any)?.advanced_patterns && (
+                    <AdvancedPatternAnalysisCard 
+                      patterns={(indicators as any).advanced_patterns} 
+                      symbol={stockSymbol}
+                    />
+                  )}
 
-              {(indicators as any)?.multi_timeframe && !(indicators as any).multi_timeframe.error && (
-                <MultiTimeframeAnalysisCard 
-                  analysis={(indicators as any).multi_timeframe} 
-                  symbol={stockSymbol}
-                />
+                  {(indicators as any)?.multi_timeframe && !(indicators as any).multi_timeframe.error && (
+                    <MultiTimeframeAnalysisCard 
+                      analysis={(indicators as any).multi_timeframe} 
+                      symbol={stockSymbol}
+                    />
+                  )}
+                </>
               )}
             </div>
           </TabsContent>
 
           {/* Advanced Tab */}
           <TabsContent value="advanced" className="space-y-6">
-            {(indicators as any)?.advanced_risk && !(indicators as any).advanced_risk.error && (
-              <AdvancedRiskAssessmentCard 
-                riskMetrics={(indicators as any).advanced_risk}
-                symbol={stockSymbol}
-              />
-            )}
+            {analysisLoading ? (
+              <>
+                <AnalysisCardSkeleton 
+                  title="Risk Assessment" 
+                  description="Loading risk analysis..." 
+                />
+                <AnalysisCardSkeleton 
+                  title="Complex Patterns" 
+                  description="Loading complex patterns..." 
+                />
+                <AnalysisCardSkeleton 
+                  title="Risk Metrics" 
+                  description="Loading risk metrics..." 
+                />
+              </>
+            ) : (
+              <>
+                {(indicators as any)?.advanced_risk && !(indicators as any).advanced_risk.error && (
+                  <AdvancedRiskAssessmentCard 
+                    riskMetrics={(indicators as any).advanced_risk}
+                    symbol={stockSymbol}
+                  />
+                )}
 
-            {(indicators as any)?.advanced_patterns && (
-              <ComplexPatternAnalysisCard 
-                patterns={(indicators as any).advanced_patterns}
-              />
-            )}
+                {(indicators as any)?.advanced_patterns && (
+                  <ComplexPatternAnalysisCard 
+                    patterns={(indicators as any).advanced_patterns}
+                  />
+                )}
 
-            {((indicators as any)?.stress_testing || (indicators as any)?.scenario_analysis) && (
-              <AdvancedRiskMetricsCard 
-                stress_testing={(indicators as any).stress_testing}
-                scenario_analysis={(indicators as any).scenario_analysis}
-              />
+                {((indicators as any)?.stress_testing || (indicators as any)?.scenario_analysis) && (
+                  <AdvancedRiskMetricsCard 
+                    stress_testing={(indicators as any)?.stress_testing}
+                    scenario_analysis={(indicators as any)?.scenario_analysis}
+                  />
+                )}
+              </>
             )}
           </TabsContent>
         </Tabs>
@@ -564,20 +495,38 @@ const NewOutput: React.FC = () => {
           <DisclaimerCard />
         </div>
 
-        {/* Debug Section */}
-        {showDebug && (
+        {/* Analysis Loading Progress */}
+        {analysisLoading && (
           <div className="mt-8">
-            <ChartDebugger 
-              data={rawData} 
-              validationResult={validationResult}
-              stats={chartStats || {
-                dateRange: { start: '', end: '', days: 0 },
-                price: { min: 0, max: 0, current: 0 },
-                volume: { avg: 0, total: 0 },
-                returns: { avg: 0, volatility: 0 }
-              }}
-            />
-            <DataTester data={rawData} />
+            <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+              <CardHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center space-x-4">
+                  <CardTitle className="flex items-center text-slate-800">
+                    <Loader2 className="h-5 w-5 mr-2 text-blue-500 animate-spin" />
+                    Analysis in Progress
+                  </CardTitle>
+                </div>
+                <CardDescription>
+                  AI analysis is being performed. Chart data is already available for viewing.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <span className="text-sm text-gray-600">Processing technical indicators...</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <span className="text-sm text-gray-600">Analyzing patterns...</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <span className="text-sm text-gray-600">Generating AI insights...</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

@@ -20,11 +20,18 @@ const Index = () => {
             </div>
             <div className="flex items-center space-x-4">
               {user ? (
-                <Link to="/analysis">
-                  <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
-                    Go to Dashboard
-                  </Button>
-                </Link>
+                <>
+                  <Link to="/dashboard">
+                    <Button variant="outline" className="text-white border-white hover:bg-white hover:text-slate-900">
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Link to="/analysis">
+                    <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                      New Analysis
+                    </Button>
+                  </Link>
+                </>
               ) : (
                 <Link to="/auth">
                   <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
@@ -51,12 +58,20 @@ const Index = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {user ? (
-              <Link to="/analysis">
-                <Button size="lg" className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white text-lg px-8 py-4">
-                  Start Analysis
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+              <>
+                <Link to="/dashboard">
+                  <Button size="lg" className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white text-lg px-8 py-4">
+                    View Dashboard
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Link to="/analysis">
+                  <Button size="lg" className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white text-lg px-8 py-4">
+                    Start Analysis
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+              </>
             ) : (
               <Link to="/auth">
                 <Button size="lg" className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white text-lg px-8 py-4">

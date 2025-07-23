@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
-  createChart,
   IChartApi,
   ISeriesApi,
   UTCTimestamp,
@@ -13,11 +12,18 @@ import {
   LineSeries,
 } from "lightweight-charts";
 import { ChartData } from "@/types/analysis";
+import { 
+  initializeChartWithRetry, 
+  safeChartCleanup, 
+  isChartContainerReady,
+  type ChartContainer 
+} from '@/utils/chartUtils';
 
 interface MultiPaneChartProps {
   data: ChartData[];
   theme?: "light" | "dark";
   height?: number;
+  timeframe?: string;
 }
 
 // ---- Utility helpers ---- //
@@ -127,7 +133,8 @@ function calcRSI(values: number[], period = 14): (number | null)[] {
 const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ 
   data, 
   theme = "light",
-  height = 600 
+  height = 600,
+  timeframe = "1d"
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const candleChartRef = useRef<HTMLDivElement>(null);
@@ -208,20 +215,28 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
   // Cleanup charts
   const cleanupCharts = useCallback(() => {
     try {
-      chartInstance.current?.remove();
-      volumeInstance.current?.remove();
-      rsiInstance.current?.remove();
-      chartInstance.current = null;
-      volumeInstance.current = null;
-      rsiInstance.current = null;
+      safeChartCleanup(chartInstance);
+      safeChartCleanup(volumeInstance);
+      safeChartCleanup(rsiInstance);
     } catch (error) {
       console.error('Error cleaning up charts:', error);
     }
   }, []);
 
   // Initialize charts
-  const initializeCharts = useCallback(() => {
-    if (!candleChartRef.current || !volumeChartRef.current || !rsiChartRef.current || validatedData.length === 0) {
+  const initializeCharts = useCallback(async () => {
+    // Check if all containers are ready
+    const containersReady = [
+      isChartContainerReady(candleChartRef as ChartContainer),
+      isChartContainerReady(volumeChartRef as ChartContainer),
+      isChartContainerReady(rsiChartRef as ChartContainer)
+    ].every(Boolean);
+
+    if (!containersReady || validatedData.length === 0) {
+      console.log('Chart initialization conditions not met:', {
+        containersReady,
+        dataLength: validatedData.length
+      });
       return;
     }
 
@@ -231,11 +246,6 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
 
       // Clear previous charts
       cleanupCharts();
-      
-      // Clear container content
-      candleChartRef.current.innerHTML = '';
-      volumeChartRef.current.innerHTML = '';
-      rsiChartRef.current.innerHTML = '';
 
       const isDark = theme === "dark";
       
@@ -270,7 +280,23 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
           fixRightEdge: true,
           tickMarkFormatter: (time: number) => {
             const date = new Date(time * 1000);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            
+            // For 1-day interval, show only date
+            if (timeframe === '1d') {
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric' 
+              });
+            } else {
+              // For other intervals, show time
+              return date.toLocaleTimeString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
           },
         },
         grid: {
@@ -317,7 +343,26 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
         },
         localization: {
           timeFormatter: (time: number) => {
-            return new Date(time * 1000).toLocaleDateString();
+            // Convert UTC time to IST for display
+            const utcDate = new Date(time * 1000);
+            
+            // For 1-day interval, show only date
+            if (timeframe === '1d') {
+              return utcDate.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+            } else {
+              // For other intervals, show time
+              return utcDate.toLocaleTimeString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
           },
           priceFormatter: (price: number) => {
             // Format to exactly 7 characters total for consistent alignment (e.g., " 123.45")
@@ -328,23 +373,42 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
       };
 
       // Create main candlestick chart
-      const candleChart = createChart(candleChartRef.current, {
-        ...commonOptions,
-        width: chartDimensions.width || candleChartRef.current.clientWidth,
-        height: chartHeights.candle,
-        layout: {
-          ...commonOptions.layout,
-          textColor: isDark ? "#e2e8f0" : "#1e293b",
+      const candleChart = await initializeChartWithRetry(
+        candleChartRef as ChartContainer,
+        { 
+          width: chartDimensions.width || candleChartRef.current!.clientWidth,
+          height: chartHeights.candle,
+          theme,
+          timeframe,
+          debug: true
         },
-        grid: {
-          ...commonOptions.grid,
-          vertLines: { ...commonOptions.grid.vertLines, visible: false },
-        },
-      });
+        {
+          ...commonOptions,
+          width: chartDimensions.width || candleChartRef.current!.clientWidth,
+          height: chartHeights.candle,
+          layout: {
+            ...commonOptions.layout,
+            textColor: isDark ? "#e2e8f0" : "#1e293b",
+          },
+          grid: {
+            ...commonOptions.grid,
+            vertLines: { ...commonOptions.grid.vertLines, visible: false },
+          },
+        }
+      );
       chartInstance.current = candleChart;
 
       // Create volume chart
-      const volumeChart = createChart(volumeChartRef.current, {
+      const volumeChart = await initializeChartWithRetry(
+        volumeChartRef as ChartContainer,
+        { 
+          width: chartDimensions.width || volumeChartRef.current!.clientWidth,
+          height: chartHeights.volume,
+          theme,
+          timeframe,
+          debug: true
+        },
+        {
         layout: {
           background: { color: 'transparent' },
           textColor: isDark ? '#d1d5db' : '#4b5563',
@@ -399,11 +463,20 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
             }
           },
         },
-      });
+      );
       volumeInstance.current = volumeChart;
 
       // Create RSI chart
-      const rsiChart = createChart(rsiChartRef.current, {
+      const rsiChart = await initializeChartWithRetry(
+        rsiChartRef as ChartContainer,
+        { 
+          width: chartDimensions.width || rsiChartRef.current!.clientWidth,
+          height: chartHeights.rsi,
+          theme,
+          timeframe,
+          debug: true
+        },
+        {
         ...commonOptions,
         width: chartDimensions.width || rsiChartRef.current.clientWidth,
         height: chartHeights.rsi,
@@ -422,7 +495,7 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
             return formatted.padStart(7, ' ');
           },
         },
-      });
+      );
       rsiInstance.current = rsiChart;
 
       // Synchronize time scales

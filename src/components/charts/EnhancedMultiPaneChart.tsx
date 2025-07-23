@@ -48,6 +48,7 @@ interface EnhancedMultiPaneChartProps {
   onToggleShortcuts?: () => void;
   showShortcuts?: boolean;
   onActiveIndicatorsChange?: (indicators: any) => void;
+  timeframe?: string;
 }
 
 // Add responsive hook at the top of the component
@@ -419,7 +420,8 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
   onShowAll,
   onToggleShortcuts,
   showShortcuts: externalShowShortcuts,
-  onActiveIndicatorsChange
+  onActiveIndicatorsChange,
+  timeframe
 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const candleChartRef = useRef<HTMLDivElement>(null);
@@ -1733,9 +1735,23 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           scaleMargins: { left: 0.0, right: 0.01 },
           tickMarkFormatter: (time: number) => {
             const date = new Date(time * 1000);
-            return isMobile 
-              ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-              : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            
+            // For 1-day interval, show only date
+            if (timeframe === '1d') {
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric' 
+              });
+            } else {
+              // For other intervals, show time
+              return date.toLocaleTimeString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
           },
         },
         crosshair: {
@@ -1770,7 +1786,26 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         },
         localization: {
           timeFormatter: (time: number) => {
-            return new Date(time * 1000).toLocaleDateString();
+            // Convert UTC time to IST for display
+            const utcDate = new Date(time * 1000);
+            
+            // For 1-day interval, show only date
+            if (timeframe === '1d') {
+              return utcDate.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+            } else {
+              // For other intervals, show time
+              return utcDate.toLocaleTimeString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
           },
           priceFormatter: (price: number) => {
             // Format to exactly 7 characters total for consistent alignment (e.g., " 123.45")
@@ -2132,7 +2167,26 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           },
           localization: {
             timeFormatter: (time: number) => {
-              return new Date(time * 1000).toLocaleDateString();
+              // Convert UTC time to IST for display
+              const utcDate = new Date(time * 1000);
+              
+              // For 1-day interval, show only date
+              if (timeframe === '1d') {
+                return utcDate.toLocaleDateString('en-IN', { 
+                  timeZone: 'Asia/Kolkata',
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                });
+              } else {
+                // For other intervals, show time
+                return utcDate.toLocaleTimeString('en-IN', { 
+                  timeZone: 'Asia/Kolkata',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false
+                });
+              }
             },
             priceFormatter: (price: number) => {
               // Format to exactly 7 characters total for consistent alignment (e.g., " -0.123")
@@ -2303,7 +2357,26 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           },
           localization: {
             timeFormatter: (time: number) => {
-              return new Date(time * 1000).toLocaleDateString();
+              // Convert UTC time to IST for display
+              const utcDate = new Date(time * 1000);
+              
+              // For 1-day interval, show only date
+              if (timeframe === '1d') {
+                return utcDate.toLocaleDateString('en-IN', { 
+                  timeZone: 'Asia/Kolkata',
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                });
+              } else {
+                // For other intervals, show time
+                return utcDate.toLocaleTimeString('en-IN', { 
+                  timeZone: 'Asia/Kolkata',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false
+                });
+              }
             },
             priceFormatter: (price: number) => {
               // Format to exactly 8 characters total for consistent alignment (e.g., "  80.00")
@@ -2479,7 +2552,26 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
           },
           localization: {
             timeFormatter: (time: number) => {
-              return new Date(time * 1000).toLocaleDateString();
+              // Convert UTC time to IST for display
+              const utcDate = new Date(time * 1000);
+              
+              // For 1-day interval, show only date
+              if (timeframe === '1d') {
+                return utcDate.toLocaleDateString('en-IN', { 
+                  timeZone: 'Asia/Kolkata',
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                });
+              } else {
+                // For other intervals, show time
+                return utcDate.toLocaleTimeString('en-IN', { 
+                  timeZone: 'Asia/Kolkata',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false
+                });
+              }
             },
             priceFormatter: (price: number) => {
               // Format to exactly 9 characters total for consistent alignment (e.g., "   12.34")

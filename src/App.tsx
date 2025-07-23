@@ -13,6 +13,9 @@ import StockAnalysis from "./pages/StockAnalysis";
 import Output from "./pages/Output";
 import NewStockAnalysis from "./pages/NewStockAnalysis";
 import NewOutput from "./pages/NewOutput";
+import Dashboard from "./pages/Dashboard";
+import LiveChartTest from "./pages/LiveChartTest";
+import Charts from "./pages/Charts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +32,14 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/auth" element={<Auth />} />
             <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/analysis" 
               element={
                 <ProtectedRoute>
@@ -41,6 +52,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <NewOutput />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/test" 
+              element={
+                <ProtectedRoute>
+                  <LiveChartTest />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/charts" 
+              element={
+                <ProtectedRoute>
+                  <Charts />
                 </ProtectedRoute>
               } 
             />

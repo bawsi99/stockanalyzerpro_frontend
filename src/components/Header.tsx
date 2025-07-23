@@ -48,6 +48,14 @@ const Header = () => {
               Analysis
             </Link>
             <Link 
+              to="/charts" 
+              className={`text-sm font-medium transition-colors hover:text-emerald-400 ${
+                isActive("/charts") ? "text-emerald-400" : "text-slate-300"
+              }`}
+            >
+              Charts
+            </Link>
+            <Link 
               to="/output" 
               className={`text-sm font-medium transition-colors hover:text-emerald-400 ${
                 isActive("/output") ? "text-emerald-400" : "text-slate-300"

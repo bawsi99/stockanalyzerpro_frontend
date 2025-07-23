@@ -1,4 +1,5 @@
 import { ChartData } from "@/types/analysis";
+import { createChart, IChartApi } from 'lightweight-charts';
 
 export interface ValidatedChartData {
   date: string;
@@ -664,4 +665,282 @@ export function detectFlags(
   }
   
   return patterns;
+} 
+
+export interface ChartContainer {
+  current: HTMLDivElement | null;
+}
+
+export interface ChartInitOptions {
+  width?: number;
+  height?: number;
+  theme?: 'light' | 'dark';
+  timeframe?: string;
+  debug?: boolean;
+}
+
+/**
+ * Robust chart initialization with retry mechanism and proper error handling
+ */
+export const initializeChartWithRetry = async (
+  containerRef: ChartContainer,
+  options: ChartInitOptions,
+  chartConfig: any,
+  maxRetries: number = 5
+): Promise<IChartApi | null> => {
+  const { debug = false } = options;
+  
+  const attemptInitialization = async (retryCount: number = 0): Promise<IChartApi | null> => {
+    try {
+      // Check if container exists and has proper dimensions
+      const container = containerRef.current;
+      if (!container) {
+        if (debug) console.log('Container ref is null');
+        return null;
+      }
+
+      if (!container.clientWidth || !container.clientHeight) {
+        if (debug) {
+          console.log('Container not properly sized, retrying...', {
+            retryCount,
+            width: container.clientWidth,
+            height: container.clientHeight
+          });
+        }
+        
+        // Retry after a short delay
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          return attemptInitialization(retryCount + 1);
+        } else {
+          throw new Error('Failed to initialize chart: container not properly sized after maximum retries');
+        }
+      }
+
+      // Clear container content
+      container.innerHTML = '';
+
+      // Import the library dynamically
+      const { createChart } = await import('lightweight-charts');
+      
+      if (debug) console.log('Library imported successfully');
+
+      // Create chart
+      const chart = createChart(container, chartConfig);
+      
+      if (debug) console.log('Chart created successfully:', chart);
+      
+      return chart;
+
+    } catch (error) {
+      if (debug) console.error('Error in chart initialization attempt:', error);
+      
+      if (retryCount < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        return attemptInitialization(retryCount + 1);
+      } else {
+        throw error;
+      }
+    }
+  };
+
+  return attemptInitialization();
+};
+
+/**
+ * Create common chart theme configuration
+ */
+export const createChartTheme = (isDark: boolean, options: ChartInitOptions = {}) => {
+  const { timeframe = '1d' } = options;
+  
+  return {
+    layout: {
+      background: { color: isDark ? '#1a1a1a' : '#ffffff' },
+      textColor: isDark ? '#ffffff' : '#000000',
+    },
+    grid: {
+      vertLines: { color: isDark ? '#2a2a2a' : '#e1e1e1' },
+      horzLines: { color: isDark ? '#2a2a2a' : '#e1e1e1' },
+    },
+    timeScale: {
+      timeVisible: true,
+      secondsVisible: false,
+      borderColor: isDark ? '#2a2a2a' : '#e1e1e1',
+      tickMarkFormatter: (time: number) => {
+        // Convert UTC time to IST for display
+        const utcDate = new Date(time * 1000);
+        
+        // For 1-day interval, show only date
+        if (timeframe === '1d') {
+          return utcDate.toLocaleDateString('en-IN', { 
+            timeZone: 'Asia/Kolkata',
+            month: 'short', 
+            day: 'numeric' 
+          });
+        } else {
+          // For other intervals, show time
+          return utcDate.toLocaleTimeString('en-IN', { 
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+        }
+      },
+    },
+    rightPriceScale: {
+      borderColor: isDark ? '#2a2a2a' : '#e1e1e1',
+    },
+    localization: {
+      timeFormatter: (time: number) => {
+        // Convert UTC time to IST for display
+        const utcDate = new Date(time * 1000);
+        
+        // For 1-day interval, show only date
+        if (timeframe === '1d') {
+          return utcDate.toLocaleDateString('en-IN', { 
+            timeZone: 'Asia/Kolkata',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          });
+        } else {
+          // For other intervals, show time
+          return utcDate.toLocaleTimeString('en-IN', { 
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+        }
+      },
+      priceFormatter: (price: number) => {
+        return price >= 1 ? price.toFixed(2) : price.toPrecision(4);
+      },
+    },
+  };
+};
+
+/**
+ * Safe chart cleanup function
+ */
+export const safeChartCleanup = (chartRef: React.MutableRefObject<IChartApi | null>) => {
+  try {
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+    }
+  } catch (error) {
+    console.warn('Error during chart cleanup:', error);
+  }
+};
+
+/**
+ * Check if chart container is ready
+ */
+export const isChartContainerReady = (containerRef: ChartContainer): boolean => {
+  const container = containerRef.current;
+  
+  // Basic container existence check
+  if (!container) {
+    return false;
+  }
+  
+  // Check if container is in DOM
+  if (!document.contains(container)) {
+    return false;
+  }
+  
+  // Check dimensions - but be more lenient
+  const hasDimensions = container.clientWidth > 0 && container.clientHeight > 0;
+  
+  // If container exists and is in DOM, consider it ready even without dimensions
+  // The chart library can handle dimension updates
+  return true;
+}; 
+
+// ===== TIMESTAMP UTILITIES =====
+
+/**
+ * Convert any timestamp to UTC timestamp for consistent chart placement
+ * All chart data should use UTC timestamps to ensure correct candle placement
+ * regardless of user's local timezone
+ */
+export function toUTCTimestamp(input: string | number | Date): number {
+  let timestamp: number;
+  
+  try {
+    if (typeof input === 'number') {
+      // If it's already a Unix timestamp (seconds), convert to milliseconds
+      timestamp = input * 1000;
+    } else if (typeof input === 'string') {
+      // Parse ISO string or other date formats
+      timestamp = Date.parse(input);
+      
+      // If parsing fails, try without timezone offset
+      if (isNaN(timestamp)) {
+        const dateWithoutTz = input.replace(/[+-]\d{2}:\d{2}$/, '');
+        timestamp = Date.parse(dateWithoutTz);
+      }
+    } else if (input instanceof Date) {
+      timestamp = input.getTime();
+    } else {
+      throw new Error(`Invalid timestamp input: ${input}`);
+    }
+    
+    if (isNaN(timestamp)) {
+      console.warn(`Invalid timestamp format: ${input}`);
+      return 0;
+    }
+    
+    // Return UTC timestamp in seconds (chart library format)
+    return Math.floor(timestamp / 1000);
+  } catch (error) {
+    console.warn(`Error parsing timestamp: ${input}`, error);
+    return 0;
+  }
+}
+
+/**
+ * Convert UTC timestamp to ISO string for storage/transmission
+ * Always returns UTC ISO string regardless of local timezone
+ */
+export function fromUTCTimestamp(utcTimestamp: number): string {
+  try {
+    const date = new Date(utcTimestamp * 1000);
+    return date.toISOString();
+  } catch (error) {
+    console.warn(`Error converting UTC timestamp: ${utcTimestamp}`, error);
+    return new Date().toISOString();
+  }
+}
+
+/**
+ * Format timestamp for display in user's local timezone
+ * This is for UI display only, not for chart data
+ */
+export function formatTimestampForDisplay(utcTimestamp: number, timeframe: string = '1d'): string {
+  try {
+    const date = new Date(utcTimestamp * 1000);
+    
+    // For daily intervals, show date only
+    if (timeframe === '1d' || timeframe === '1day') {
+      return date.toLocaleDateString('en-IN', { 
+        timeZone: 'Asia/Kolkata',
+        month: 'short', 
+        day: 'numeric' 
+      });
+    } else {
+      // For other intervals, show time
+      return date.toLocaleTimeString('en-IN', { 
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    }
+  } catch (error) {
+    console.warn(`Error formatting timestamp: ${utcTimestamp}`, error);
+    return 'Invalid';
+  }
 } 

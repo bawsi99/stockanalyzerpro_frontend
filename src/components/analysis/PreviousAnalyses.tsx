@@ -5,12 +5,34 @@ import { History, TrendingUp, Calendar, Eye } from "lucide-react";
 import { useStockAnalyses, StoredAnalysis } from "@/hooks/useStockAnalyses";
 import { format } from "date-fns";
 
+import React, { useEffect, useState } from 'react';
+
 interface PreviousAnalysesProps {
   onSelectAnalysis: (analysis: StoredAnalysis) => void;
 }
 
 const PreviousAnalyses = ({ onSelectAnalysis }: PreviousAnalysesProps) => {
-  const { analyses, loading, error } = useStockAnalyses();
+  const { fetchAnalyses } = useStockAnalyses();
+  const [analyses, setAnalyses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // TODO: Replace with actual selected stock and timeframe from context or props
+  const stockSymbol = "RELIANCE";
+  const timeframe = "day";
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    fetchAnalyses(stockSymbol, timeframe)
+      .then((history) => {
+        setAnalyses(history);
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to fetch analysis history.");
+      })
+      .finally(() => setLoading(false));
+  }, [stockSymbol, timeframe, fetchAnalyses]);
 
   if (loading) {
     return (

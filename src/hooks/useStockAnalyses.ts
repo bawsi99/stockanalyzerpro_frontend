@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiService } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { ApiResponse } from '@/types/analysis';
 
@@ -9,76 +9,153 @@ export interface StoredAnalysis {
   stock_symbol: string;
   analysis_data: ApiResponse;
   created_at: string;
+  // New normalized fields
+  overall_signal: string | null;
+  confidence_score: number | null;
+  risk_level: string | null;
+  current_price: number | null;
+  price_change_percentage: number | null;
+  sector: string | null;
+  analysis_type: string | null;
+  exchange: string | null;
+  period_days: number | null;
+  interval: string | null;
+  analysis_quality: string | null;
+  mathematical_validation: boolean | null;
+  chart_paths: any | null;
+  metadata: any | null;
 }
+
+export interface AnalysisSummary {
+  id: string | null;
+  stock_symbol: string | null;
+  user_id: string | null;
+  overall_signal: string | null;
+  confidence_score: number | null;
+  risk_level: string | null;
+  current_price: number | null;
+  price_change_percentage: number | null;
+  sector: string | null;
+  analysis_type: string | null;
+  created_at: string | null;
+  user_name: string | null;
+  user_email: string | null;
+}
+
+export interface SectorPerformance {
+  sector: string | null;
+  analysis_count: number | null;
+  avg_confidence: number | null;
+  avg_price_change: number | null;
+  bullish_count: number | null;
+  bearish_count: number | null;
+  neutral_count: number | null;
+  last_analysis: string | null;
+}
+
+// All Supabase logic below should be replaced with new backend API calls.
+
+// TODO: Implement analysis storage/retrieval using new backend endpoints
+// For now, stub out the main functions and leave TODOs for advanced queries
 
 export const useStockAnalyses = () => {
   const [analyses, setAnalyses] = useState<StoredAnalysis[]>([]);
+  const [analysisSummary, setAnalysisSummary] = useState<AnalysisSummary[]>([]);
+  const [sectorPerformance, setSectorPerformance] = useState<SectorPerformance[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  const fetchAnalyses = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    setError(null);
-    
+  // Fetch analysis history for a stock and timeframe
+  const fetchAnalyses = async (stockSymbol: string, timeframe: string = 'day') => {
     try {
-      const { data, error } = await supabase
-        .from('stock_analyses')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      
-      // Transform the data to match our StoredAnalysis interface
-      const transformedData: StoredAnalysis[] = (data || []).map(item => ({
-        id: item.id,
-        stock_symbol: item.stock_symbol,
-        analysis_data: item.analysis_data as ApiResponse,
-        created_at: item.created_at
-      }));
-      
-      setAnalyses(transformedData);
+      const result = await apiService.getAnalysisHistory(stockSymbol, timeframe);
+      if (result && result.history) {
+        return result.history;
+      }
+      return [];
     } catch (err) {
-      console.error('Error fetching analyses:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch analyses');
-    } finally {
-      setLoading(false);
+      console.error('Error fetching analysis history:', err);
+      return [];
     }
   };
 
-  const saveAnalysis = async (stockSymbol: string, analysisData: ApiResponse) => {
-    if (!user) throw new Error('User not authenticated');
-
+  const fetchSectorPerformance = async () => {
     try {
-      const { error } = await supabase
-        .from('stock_analyses')
-        .insert({
-          user_id: user.id,
-          stock_symbol: stockSymbol,
-          analysis_data: analysisData as ApiResponse
-        });
-
-      if (error) throw error;
-      
-      // Refresh the analyses list
-      await fetchAnalyses();
+      // TODO: Implement sector performance fetching using new backend endpoint
+      // Example: const { data, error } = await apiService.getSectorPerformance()
+      setSectorPerformance([]); // Stubbed for now
     } catch (err) {
-      console.error('Error saving analysis:', err);
-      throw err;
+      console.error('Error fetching sector performance:', err);
+    }
+  };
+
+  // Example: Save a new analysis (replace with new API call)
+  const saveAnalysis = async (stockSymbol: string, analysisData: any) => {
+    // TODO: Use new backend endpoint to save analysis
+    // Example: await apiService.saveAnalysis(stockSymbol, analysisData)
+    return true; // Stubbed for now
+  };
+
+  const getAnalysisById = async (analysisId: string): Promise<StoredAnalysis | null> => {
+    try {
+      // TODO: Implement getAnalysisById using new backend endpoint
+      return null; // Stubbed for now
+    } catch (err) {
+      console.error('Error fetching analysis by ID:', err);
+      return null;
+    }
+  };
+
+  const getAnalysesBySignal = async (signal: string): Promise<StoredAnalysis[]> => {
+    try {
+      // TODO: Implement getAnalysesBySignal using new backend endpoint
+      return []; // Stubbed for now
+    } catch (err) {
+      console.error('Error fetching analyses by signal:', err);
+      return [];
+    }
+  };
+
+  const getAnalysesBySector = async (sector: string): Promise<StoredAnalysis[]> => {
+    try {
+      // TODO: Implement getAnalysesBySector using new backend endpoint
+      return []; // Stubbed for now
+    } catch (err) {
+      console.error('Error fetching analyses by sector:', err);
+      return [];
+    }
+  };
+
+  const getHighConfidenceAnalyses = async (minConfidence: number = 80): Promise<StoredAnalysis[]> => {
+    try {
+      // TODO: Implement getHighConfidenceAnalyses using new backend endpoint
+      return []; // Stubbed for now
+    } catch (err) {
+      console.error('Error fetching high confidence analyses:', err);
+      return [];
     }
   };
 
   useEffect(() => {
-    fetchAnalyses();
+    // TODO: Fetch analyses and sector performance using new backend endpoints
+    // For now, stubbing to avoid errors
+    // fetchAnalyses();
+    // fetchSectorPerformance();
   }, [user]);
 
   return {
     analyses,
+    analysisSummary,
+    sectorPerformance,
     loading,
     error,
     saveAnalysis,
-    refetch: fetchAnalyses
+    refetch: () => {}, // Stubbed for now
+    getAnalysisById,
+    getAnalysesBySignal,
+    getAnalysesBySector,
+    getHighConfidenceAnalyses,
+    fetchAnalyses // <-- Add this line
   };
 };
