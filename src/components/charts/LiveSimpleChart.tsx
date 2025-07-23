@@ -5,6 +5,8 @@ import {
   safeChartCleanup, 
   isChartContainerReady,
   toUTCTimestamp,
+  sortChartDataByTime,
+  validateChartDataForTradingView,
   type ChartContainer 
 } from '@/utils/chartUtils';
 import { useLiveChart, LiveChartData } from '@/hooks/useLiveChart';
@@ -12,8 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  Wifi, 
-  WifiOff, 
   RefreshCw, 
   Activity,
   Clock,
@@ -128,18 +128,50 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     // Check after a longer delay
     const timer2 = setTimeout(checkContainer, 500);
     
-    // Force container ready if container exists but not detected as ready
-    const forceReadyTimer = setTimeout(() => {
-      if (chartContainerRef.current && !isContainerReady) {
-        console.log('Forcing container ready state - container exists but not detected as ready');
-        setIsContainerReady(true);
-      }
-    }, 1000);
+    // Check after an even longer delay for slow-rendering containers
+    const timer3 = setTimeout(checkContainer, 1000);
+    
+    // Check after a very long delay for edge cases
+    const timer4 = setTimeout(checkContainer, 2000);
+    
+    // Use ResizeObserver to detect when container gets dimensions
+    let resizeObserver: ResizeObserver | null = null;
+    if (chartContainerRef.current) {
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0) {
+            console.log('Container resized with dimensions:', { width, height });
+            setIsContainerReady(true);
+          }
+        }
+      });
+      resizeObserver.observe(chartContainerRef.current);
+    }
+    
+    // Also use MutationObserver to detect when container is added to DOM
+    let mutationObserver: MutationObserver | null = null;
+    if (chartContainerRef.current) {
+      mutationObserver = new MutationObserver(() => {
+        if (chartContainerRef.current && document.contains(chartContainerRef.current)) {
+          console.log('Container added to DOM, checking readiness...');
+          checkContainer();
+        }
+      });
+      mutationObserver.observe(document.body, { childList: true, subtree: true });
+    }
     
     return () => {
       clearTimeout(timer);
       clearTimeout(timer2);
-      clearTimeout(forceReadyTimer);
+      clearTimeout(timer3);
+      clearTimeout(timer4);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      if (mutationObserver) {
+        mutationObserver.disconnect();
+      }
     };
   }, []); // Remove isContainerReady dependency to prevent infinite loop
 
@@ -224,11 +256,11 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
               close: d.close,
             }));
 
-            // Set data
-            candlestickSeriesRef.current.setData(candlestickData);
+                          // Set data
+              candlestickSeriesRef.current.setData(candlestickData);
 
-            // Fit content
-            chart.timeScale().fitContent();
+              // Fit content
+              chart.timeScale().fitContent();
 
             console.log(`Initial data set with ${candlestickData.length} points`);
           } catch (error) {
@@ -250,16 +282,27 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       safeChartCleanup(chartRef);
       setIsChartReady(false);
     };
-  }, [theme, width, height, timeframe]); // Keep original dependencies for theme/config changes
+  }, [theme, width, height]); // Remove timeframe from dependencies to prevent chart recreation
 
   // Trigger chart initialization when data becomes available
   useEffect(() => {
     if (data.length > 0 && chartContainerRef.current && !chartRef.current) {
       console.log('Data available, triggering chart initialization...');
-      // Force a re-render to trigger chart initialization
-      setIsChartReady(false);
+      
+      // If container is not ready but we have data, try to force initialization after a delay
+      if (!isContainerReady) {
+        console.log('Container not ready but data available, will retry initialization...');
+        const retryTimer = setTimeout(() => {
+          if (chartContainerRef.current && !chartRef.current) {
+            console.log('Retrying chart initialization after delay...');
+            setIsChartReady(false);
+          }
+        }, 2000); // Wait 2 seconds for container to be ready
+        
+        return () => clearTimeout(retryTimer);
+      }
     }
-  }, [data.length]);
+  }, [data.length, isContainerReady]);
 
   // Combined effect to handle initialization when both container and data are ready
   useEffect(() => {
@@ -267,14 +310,17 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       chartContainerRef.current && 
       data.length > 0 && 
       !chartRef.current && 
-      !isChartReady;
+      !isChartReady &&
+      isContainerReady; // Add container ready check
 
     console.log('Combined initialization check:', {
       hasContainer: !!chartContainerRef.current,
       hasData: data.length > 0,
       hasChart: !!chartRef.current,
       isChartReady,
-      shouldInitialize
+      isContainerReady,
+      shouldInitialize,
+      dataLength: data.length
     });
 
     if (shouldInitialize) {
@@ -282,13 +328,30 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       
       const initializeChart = async () => {
         try {
+          // Double-check container dimensions before initialization
+          const container = chartContainerRef.current;
+          if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
+            console.log('Container dimensions not ready, retrying...', {
+              width: container?.clientWidth,
+              height: container?.clientHeight
+            });
+            return;
+          }
+
+          // Prevent multiple chart creations
+          if (chartRef.current) {
+            console.log('Chart already exists, skipping initialization');
+            return;
+          }
+
           const chartConfig = {
-            width,
-            height,
+            width: container.clientWidth || width,
+            height: container.clientHeight || height,
             ...createChartTheme(theme === 'dark', { timeframe })
           };
 
           console.log('Chart config:', chartConfig);
+          console.log('Timeframe for chart theme:', timeframe);
 
           const chart = await initializeChartWithRetry(
             chartContainerRef as ChartContainer,
@@ -320,8 +383,11 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
                 wickDownColor: isDark ? '#ef5350' : '#ef5350',
               });
 
+              // Validate and sort data
+              const validatedData = validateChartDataForTradingView(data);
+              
               // Convert data to candlestick format
-              const candlestickData = data.map(d => ({
+              const candlestickData = validatedData.map(d => ({
                 time: toUTCTimestamp(d.date),
                 open: d.open,
                 high: d.high,
@@ -351,7 +417,122 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
       initializeChart();
     }
-  }, [data.length, isChartReady, theme, width, height, timeframe]);
+  }, [data.length, isChartReady, isContainerReady, theme, width, height]); // Remove timeframe from dependencies
+
+  // Add tooltip subscription when chart is ready
+  useEffect(() => {
+    if (!chartRef.current || !isChartReady) return;
+
+    console.log('Setting up tooltip subscription for live chart');
+
+    // Enhanced candlestick tooltip for live simple chart
+    const unsubscribe = chartRef.current.subscribeCrosshairMove((param) => {
+      const tooltip = document.getElementById('candlestick-tooltip');
+      if (!tooltip) return;
+      
+      if (param.time && param.seriesData) {
+        const candleDataPoint = param.seriesData.get(candlestickSeriesRef.current);
+        
+        if (candleDataPoint) {
+          const timeIndex = data.findIndex(d => toUTCTimestamp(d.date) === param.time);
+          if (timeIndex !== -1) {
+            const dataPoint = data[timeIndex];
+            const date = new Date(dataPoint.date);
+            
+            // Format date based on timeframe
+            let dateStr = '';
+            if (timeframe === '1d') {
+              dateStr = date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+            } else {
+              dateStr = date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              }) + ' ' + date.toLocaleTimeString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
+            
+            // Format volume
+            const volumeStr = dataPoint.volume >= 1000 ? 
+              `${(dataPoint.volume / 1000).toFixed(1)} k` : 
+              dataPoint.volume.toString();
+            
+            // Create tooltip content
+            tooltip.innerHTML = `
+              <div class="tooltip-header">${dateStr}</div>
+              <div class="tooltip-price">${dataPoint.close}</div>
+              <div class="tooltip-details">
+                <div class="tooltip-row">
+                  <span class="tooltip-label">VOLUME:</span>
+                  <span class="tooltip-value">${volumeStr}</span>
+                </div>
+                <div class="tooltip-row">
+                  <span class="tooltip-label">OPEN:</span>
+                  <span class="tooltip-value">${dataPoint.open}</span>
+                </div>
+                <div class="tooltip-row">
+                  <span class="tooltip-label">HIGH:</span>
+                  <span class="tooltip-value">${dataPoint.high}</span>
+                </div>
+                <div class="tooltip-row">
+                  <span class="tooltip-label">LOW:</span>
+                  <span class="tooltip-value">${dataPoint.low}</span>
+                </div>
+                <div class="tooltip-row">
+                  <span class="tooltip-label">CLOSE:</span>
+                  <span class="tooltip-value">${dataPoint.close}</span>
+                </div>
+              </div>
+            `;
+            
+            // Position tooltip
+            const chartRect = chartContainerRef.current?.getBoundingClientRect();
+            if (chartRect && param.point) {
+              const tooltipWidth = 150;
+              const tooltipHeight = 120;
+              let left = param.point.x + 10;
+              let top = param.point.y - tooltipHeight - 10;
+              
+              // Adjust position if tooltip goes outside chart bounds
+              if (left + tooltipWidth > chartRect.width) {
+                left = param.point.x - tooltipWidth - 10;
+              }
+              if (top < 0) {
+                top = param.point.y + 10;
+              }
+              
+              tooltip.style.left = `${left}px`;
+              tooltip.style.top = `${top}px`;
+              tooltip.style.display = 'block';
+            }
+          } else {
+            tooltip.style.display = 'none';
+          }
+        } else {
+          tooltip.style.display = 'none';
+        }
+      } else {
+        tooltip.style.display = 'none';
+      }
+    });
+
+    // Cleanup subscription on unmount or when chart changes
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [isChartReady, data]); // Remove timeframe from dependencies
 
   // Add candlestick series and update data
   useEffect(() => {
@@ -387,8 +568,11 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     console.log('Updating existing candlestick series with new data...');
 
     try {
+      // Validate and sort data
+      const validatedData = validateChartDataForTradingView(data);
+      
       // Convert data to candlestick format
-      const candlestickData = data.map(d => ({
+      const candlestickData = validatedData.map(d => ({
         time: toUTCTimestamp(d.date),
         open: d.open,
         high: d.high,
@@ -418,6 +602,15 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
   }, [data, theme, isChartReady]); // Add isChartReady as dependency
 
+  // Handle timeframe changes without recreating chart
+  useEffect(() => {
+    if (chartRef.current && candlestickSeriesRef.current) {
+      console.log('Timeframe changed to:', timeframe);
+      // The chart will automatically update when new data comes in
+      // No need to recreate the chart for timeframe changes
+    }
+  }, [timeframe]);
+
 
 
   // Handle resize
@@ -436,6 +629,18 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Cleanup on unmount or when key dependencies change
+  useEffect(() => {
+    return () => {
+      if (chartRef.current) {
+        console.log('Cleaning up chart on unmount or dependency change');
+        safeChartCleanup(chartRef);
+        setIsChartReady(false);
+        setChartError(null);
+      }
+    };
+  }, [symbol, theme]); // Remove timeframe from dependencies
+
   // Connection status component
   const ConnectionStatus = () => {
     if (!showConnectionStatus) return null;
@@ -452,14 +657,14 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         case 'error':
           return <AlertCircle className="w-4 h-4 text-red-500" title="Connection Error" />;
         default:
-          return <WifiOff className="w-4 h-4 text-gray-500" title="Disconnected" />;
+          return <RefreshCw className="w-4 h-4 text-gray-500" title="Disconnected" />;
       }
     };
 
     const getStatusText = () => {
       switch (connectionStatus) {
         case 'connected':
-          return isLive ? 'Live' : 'Connected';
+          return isLive ? 'Live Data' : 'Connected';
         case 'connecting':
           return 'Connecting...';
         case 'error':
@@ -516,15 +721,6 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
   const ControlButtons = () => {
     return (
       <div className="absolute bottom-2 right-2 z-10 flex gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => isConnected ? disconnect() : connect()}
-          disabled={isLoading}
-          className="h-8 px-2"
-        >
-          {isConnected ? <WifiOff className="w-3 h-3" /> : <Wifi className="w-3 h-3" />}
-        </Button>
         <Button
           size="sm"
           variant="outline"
@@ -591,7 +787,15 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     return (
       <div className="relative w-full h-full">
         <div className="w-full h-full">
-          <div ref={chartContainerRef} className="w-full h-full" />
+          <div 
+            ref={chartContainerRef} 
+            className="w-full h-full" 
+            style={{ 
+              minHeight: `${height}px`,
+              minWidth: `${width}px`,
+              position: 'relative'
+            }}
+          />
         </div>
         <ConnectionStatus />
         <LiveIndicator />
@@ -607,14 +811,92 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
   }
 
   return (
-    <div className="relative w-full h-full">
-      <div className="w-full h-full">
-        <div ref={chartContainerRef} className="w-full h-full" />
+    <>
+      <style>
+        {`
+          /* Candlestick Tooltip Styles */
+          #candlestick-tooltip {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+          }
+          
+          #candlestick-tooltip .tooltip-header {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+            font-size: 11px;
+          }
+          
+          #candlestick-tooltip .tooltip-price {
+            font-weight: 700;
+            font-size: 14px;
+            color: #111827;
+            margin-bottom: 8px;
+          }
+          
+          #candlestick-tooltip .tooltip-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+          
+          #candlestick-tooltip .tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          
+          #candlestick-tooltip .tooltip-label {
+            color: #6b7280;
+            font-weight: 500;
+            font-size: 10px;
+            min-width: 50px;
+          }
+          
+          #candlestick-tooltip .tooltip-value {
+            color: #111827;
+            font-weight: 600;
+            font-size: 11px;
+            text-align: right;
+          }
+          
+          /* Dark theme styles */
+          .dark #candlestick-tooltip .tooltip-header {
+            color: #d1d5db;
+          }
+          
+          .dark #candlestick-tooltip .tooltip-price {
+            color: #f9fafb;
+          }
+          
+          .dark #candlestick-tooltip .tooltip-label {
+            color: #9ca3af;
+          }
+          
+          .dark #candlestick-tooltip .tooltip-value {
+            color: #f9fafb;
+          }
+        `}
+      </style>
+      <div className="relative w-full h-full">
+        <div className="w-full h-full">
+          <div 
+            ref={chartContainerRef} 
+            className="w-full h-full" 
+            style={{ 
+              minHeight: `${height}px`,
+              minWidth: `${width}px`,
+              position: 'relative'
+            }}
+          />
+          <div id="candlestick-tooltip" className="absolute hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 pointer-events-none z-30 min-w-[160px]" />
+        </div>
+        <ConnectionStatus />
+        <LiveIndicator />
+        <ControlButtons />
       </div>
-      <ConnectionStatus />
-      <LiveIndicator />
-      <ControlButtons />
-    </div>
+    </>
   );
 };
 
