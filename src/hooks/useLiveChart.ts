@@ -243,7 +243,7 @@ export function useLiveChart({
               console.error('Error processing candle data:', error, wsData);
             }
           } else if (wsData.type === 'tick') {
-            // On tick, update the last candle’s close price in real-time
+            // On tick, update the last candle's close price in real-time
             setState(prev => {
               if (!prev.data.length) return prev;
               const updatedData = [...prev.data];
@@ -365,10 +365,10 @@ export function useLiveChart({
   useEffect(() => {
     loadHistoricalData();
     
-    // Temporarily disable WebSocket to focus on chart rendering
-    // if (autoConnect) {
-    //   connect();
-    // }
+    // Enable WebSocket connection when autoConnect is true
+    if (autoConnect) {
+      connect();
+    }
 
     return () => {
       disconnect();
