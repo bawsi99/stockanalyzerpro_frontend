@@ -7,14 +7,25 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import {
+  Command,
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from '@/components/ui/command';
 import LiveSimpleChart from '@/components/charts/LiveSimpleChart';
-import SimpleChart from '@/components/charts/SimpleChart';
 import EnhancedSimpleChart from '@/components/charts/EnhancedSimpleChart';
 // EnhancedLiveChart removed - using enhanced LiveSimpleChart instead
 import ChartTest from '@/components/charts/ChartTest';
 import { authService } from '@/services/authService';
-import { liveDataService, StockInfo } from '@/services/liveDataService';
+import { liveDataService } from '@/services/liveDataService';
+import type { StockInfo } from '@/services/liveDataService';
 import { ChartData } from '@/types/analysis';
+import { useLiveChart } from '@/hooks/useLiveChart';
+import stockList from '@/utils/stockList.json';
 
 // Type for candlestick data
 interface CandlestickData {
@@ -48,6 +59,10 @@ export default function Charts() {
   const [availableStocks, setAvailableStocks] = useState<StockInfo[]>([]);
   const [currentStockInfo, setCurrentStockInfo] = useState<StockInfo | null>(null);
   
+  // Stock dropdown state
+  const [stockDialogOpen, setStockDialogOpen] = useState(false);
+  const [stockSearch, setStockSearch] = useState('');
+  
   // Chart type and features
   // Enhanced charts are now the default - no toggle needed
   const [showIndicators, setShowIndicators] = useState(true);
@@ -55,14 +70,86 @@ export default function Charts() {
   const [debugMode, setDebugMode] = useState(false);
   
   // Live chart state
-  const [useLiveChart, setUseLiveChart] = useState(true); // Enabled by default
+  const [enableLiveChart, setEnableLiveChart] = useState(true); // Enabled by default
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [liveDataError, setLiveDataError] = useState<string | null>(null);
-  const [lastDataUpdate, setLastDataUpdate] = useState<number>(0);
+  // Remove the lastDataUpdate state since we'll use lastUpdate from the hook
   
   // Chart statistics and validation
   const [chartStats, setChartStats] = useState<any>(null);
   const [validationResult, setValidationResult] = useState<any>(null);
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Live chart hook for real-time data
+  const {
+    data: liveData,
+    isConnected: isLiveConnectedFromHook,
+    isLive,
+    isLoading: isLiveLoading,
+    error: liveError,
+    lastUpdate,
+    connectionStatus,
+    connect,
+    disconnect,
+    refetch,
+    updateSymbol,
+    updateTimeframe
+  } = useLiveChart({
+    symbol: stockInput,
+    timeframe: selectedTimeframe,
+    exchange: 'NSE',
+    maxDataPoints: 1000,
+    autoConnect: true
+  });
+
+  // Update local state from hook
+  useEffect(() => {
+    setIsLiveConnected(isLiveConnectedFromHook);
+  }, [isLiveConnectedFromHook]);
+
+  useEffect(() => {
+    if (liveError) {
+      setLiveDataError(liveError);
+    } else {
+      setLiveDataError(null);
+    }
+  }, [liveError]);
+
+  // Update symbol when stockInput changes
+  useEffect(() => {
+    if (stockInput && enableLiveChart) {
+      console.log('🔄 Updating symbol in useLiveChart hook:', stockInput);
+      updateSymbol(stockInput);
+    }
+  }, [stockInput, enableLiveChart, updateSymbol]);
+
+  // Update timeframe when selectedTimeframe changes
+  useEffect(() => {
+    if (selectedTimeframe && enableLiveChart) {
+      console.log('🔄 Updating timeframe in useLiveChart hook:', selectedTimeframe);
+      updateTimeframe(selectedTimeframe);
+    }
+  }, [selectedTimeframe, enableLiveChart, updateTimeframe]);
+
+  // Debug live data updates
+  useEffect(() => {
+    if (liveData && liveData.length > 0) {
+      console.log('📈 Live data updated in Charts page:', {
+        dataLength: liveData.length,
+        lastCandle: liveData[liveData.length - 1],
+        lastUpdate: new Date(lastUpdate).toLocaleTimeString()
+      });
+    }
+  }, [liveData, lastUpdate]);
 
   // Load available stocks
   useEffect(() => {
@@ -96,7 +183,7 @@ export default function Charts() {
 
   // Load real data when stock or timeframe changes (only for static chart)
   useEffect(() => {
-    if (authStatus !== 'authenticated' || !stockInput || useLiveChart) return;
+    if (authStatus !== 'authenticated' || !stockInput || enableLiveChart) return;
 
     const loadRealData = async () => {
       try {
@@ -151,7 +238,7 @@ export default function Charts() {
     };
 
     loadRealData();
-  }, [authStatus, stockInput, selectedTimeframe, useLiveChart]);
+  }, [authStatus, stockInput, selectedTimeframe, enableLiveChart]);
 
   // Get token for the entered stock
   const getToken = (stockName: string) => {
@@ -231,18 +318,29 @@ export default function Charts() {
             <CardTitle>Chart Controls</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Stock Input */}
+            {/* Stock Selection */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Stock Symbol
               </label>
               <div className="flex gap-2">
-                <Input
-                  value={stockInput}
-                  onChange={(e) => setStockInput(e.target.value)}
-                  placeholder="Enter stock symbol (e.g., RELIANCE, TCS, INFY)"
-                  className="flex-1"
-                />
+                <button
+                  type="button"
+                  className="flex-1 flex items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-3 text-left shadow-sm hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  onClick={() => setStockDialogOpen(true)}
+                >
+                  {stockInput ? (
+                    (() => {
+                      const selected = stockList.find(s => s.symbol === stockInput);
+                      return selected
+                        ? `${selected.symbol} – ${selected.name}`
+                        : stockInput;
+                    })()
+                  ) : (
+                    "Select a stock"
+                  )}
+                  <span className="text-gray-400">▼</span>
+                </button>
                 <Button
                   variant="outline"
                   onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
@@ -250,19 +348,46 @@ export default function Charts() {
                   {theme === 'light' ? '🌙' : '☀️'} Theme
                 </Button>
               </div>
-              <div className="flex flex-wrap gap-1 mt-2">
-                <span className="text-xs text-gray-500">Available stocks:</span>
-                {availableStocks.slice(0, 10).map(stock => (
-                  <Badge
-                    key={stock.symbol}
-                    variant="outline"
-                    className="text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-                    onClick={() => setStockInput(stock.symbol)}
-                  >
-                    {stock.symbol}
-                  </Badge>
-                ))}
-              </div>
+              
+              <CommandDialog open={stockDialogOpen} onOpenChange={setStockDialogOpen}>
+                <CommandInput
+                  placeholder="Search stock by symbol or name..."
+                  value={stockSearch}
+                  onValueChange={setStockSearch}
+                  autoFocus
+                />
+                <CommandList>
+                  <CommandEmpty>No stocks found.</CommandEmpty>
+                  <CommandGroup>
+                    {stockList
+                      .filter((s) =>
+                        (s.symbol + " " + s.name + " " + s.exchange)
+                          .toLowerCase()
+                          .includes(stockSearch.toLowerCase())
+                      )
+                      .slice(0, 50)
+                      .map((s) => (
+                        <CommandItem
+                          key={`${s.symbol}_${s.exchange}`}
+                          value={s.symbol}
+                          onSelect={() => {
+                            setStockInput(s.symbol);
+                            setStockDialogOpen(false);
+                            setStockSearch("");
+                          }}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <div>
+                              <span className="font-semibold">{s.symbol}</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">{s.name}</span>
+                            </div>
+                            <span className="text-xs text-gray-400">{s.exchange}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                  </CommandGroup>
+                </CommandList>
+              </CommandDialog>
             </div>
 
             {/* Timeframe Buttons */}
@@ -367,20 +492,20 @@ export default function Charts() {
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="live-chart"
-                    checked={useLiveChart}
-                    onCheckedChange={setUseLiveChart}
+                    checked={enableLiveChart}
+                    onCheckedChange={setEnableLiveChart}
                   />
                   <Label htmlFor="live-chart" className="text-sm font-medium">
                     Enable Live Updates
                   </Label>
-                  {useLiveChart && isLiveConnected && (
+                  {enableLiveChart && isLiveConnected && (
                     <Badge variant="default" className="ml-2">
                       🔴 LIVE
                     </Badge>
                   )}
                 </div>
                 
-                {useLiveChart && (
+                {enableLiveChart && (
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     <div className="flex items-center gap-1">
                       <span>Status:</span>
@@ -388,10 +513,14 @@ export default function Charts() {
                         {isLiveConnected ? 'Connected' : 'Disconnected'}
                       </Badge>
                     </div>
-                    {lastDataUpdate > 0 && (
+                    <div className="flex items-center gap-1">
+                      <span>Current Time:</span>
+                      <span className="font-mono">{currentTime.toLocaleTimeString()}</span>
+                    </div>
+                    {lastUpdate > 0 && (
                       <div className="flex items-center gap-1">
                         <span>Last Update:</span>
-                        <span>{new Date(lastDataUpdate).toLocaleTimeString()}</span>
+                        <span className="font-mono">{new Date(lastUpdate).toLocaleTimeString()}</span>
                       </div>
                     )}
                   </div>
@@ -401,7 +530,7 @@ export default function Charts() {
 
             {/* Data Controls */}
             <div className="flex gap-2">
-              {!useLiveChart && (
+              {!enableLiveChart && (
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -432,7 +561,7 @@ export default function Charts() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>
-                {stockInput.toUpperCase()} - {useLiveChart ? 'Live' : 'Real'} Data Chart
+                {stockInput.toUpperCase()} - {enableLiveChart ? 'Live' : 'Real'} Data Chart
                 {currentStockInfo && (
                   <span className="text-sm font-normal text-gray-500 ml-2">
                     ({currentStockInfo.name})
@@ -440,7 +569,7 @@ export default function Charts() {
                 )}
               </span>
               <div className="flex items-center gap-2">
-                {useLiveChart && isLiveConnected && (
+                {enableLiveChart && isLiveConnected && (
                   <Badge variant="destructive" className="animate-pulse">
                     🔴 LIVE
                   </Badge>
@@ -474,7 +603,7 @@ export default function Charts() {
                   </Button>
                 </div>
               </div>
-            ) : useLiveChart ? (
+            ) : enableLiveChart ? (
               <div className="h-[600px] w-full">
                 <LiveSimpleChart
                   key={`${stockInput}-${selectedTimeframe}-${theme}-enhanced`}
@@ -490,13 +619,16 @@ export default function Charts() {
                   showLiveIndicator={true}
                   showIndicators={showIndicators}
                   showPatterns={showPatterns}
-                  showVolume={true}
+                  showVolume={false}
                   debug={debugMode}
-                  onDataUpdate={(data) => {
-                    setChartData(data);
-                    setEnhancedChartData(data);
-                    setLastDataUpdate(Date.now());
-                  }}
+                  data={liveData}
+                  isConnected={isLiveConnectedFromHook}
+                  isLive={isLive}
+                  isLoading={isLiveLoading}
+                  error={liveError}
+                  lastUpdate={lastUpdate}
+                  connectionStatus={connectionStatus}
+                  refetch={refetch}
                   onConnectionChange={(isConnected) => {
                     setIsLiveConnected(isConnected);
                   }}
@@ -545,6 +677,7 @@ export default function Charts() {
                   timeframe={selectedTimeframe}
                   showIndicators={showIndicators}
                   showPatterns={showPatterns}
+                  showVolume={false}
                   debug={debugMode}
                   onValidationResult={(result) => {
                     setValidationResult(result);
@@ -636,7 +769,7 @@ export default function Charts() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <p>• Enter a stock symbol in the input field above</p>
+              <p>• Click the stock selection dropdown to search and select stocks by symbol or name</p>
               <p>• Click on any available stock badge for quick selection</p>
               <p>• Use the interval buttons to switch between different timeframes</p>
               <p>• Toggle between light and dark themes</p>

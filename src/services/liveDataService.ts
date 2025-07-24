@@ -214,81 +214,162 @@ class LiveDataService {
 
   // Connect to WebSocket for real-time data (Data Service - Port 8000)
   async connectWebSocket(
-    tokens: string[],
+    symbols: string[], // Changed from tokens to symbols
     onData: (data: any) => void,
     onError?: (error: any) => void,
     onClose?: () => void,
     timeframes: string[] = ['1d'] // Default to daily timeframe
   ): Promise<WebSocket> {
+    // Close existing connection if any
     if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+      console.log('Closing existing WebSocket connection');
       this.wsConnection.close();
+      this.wsConnection = null;
     }
 
-    const token = await authService.ensureAuthenticated();
-    if (!token) {
-      throw new Error('Authentication token not available for WebSocket connection');
+    // Get authentication token
+    let token: string;
+    try {
+      token = await authService.ensureAuthenticated();
+      if (!token) {
+        throw new Error('Authentication token not available for WebSocket connection');
+      }
+    } catch (error) {
+      console.error('Failed to get authentication token:', error);
+      throw new Error('Authentication failed for WebSocket connection');
     }
     
     const wsUrl = `${ENDPOINTS.DATA.WEBSOCKET}?token=${token}`;
+    console.log('Connecting to WebSocket:', wsUrl);
     
-    this.wsConnection = new WebSocket(wsUrl);
+    try {
+      this.wsConnection = new WebSocket(wsUrl);
 
-    this.wsConnection.onopen = () => {
-      console.log('WebSocket connected to Data Service');
-      this.reconnectAttempts = 0;
-      
-      // Subscribe to tokens with specific timeframes
-      if (tokens.length > 0 && this.wsConnection?.readyState === WebSocket.OPEN) {
-        try {
-          this.wsConnection.send(JSON.stringify({
-            action: 'subscribe',
-            tokens: tokens,
-            timeframes: timeframes
-          }));
-        } catch (error) {
-          console.error('Error sending subscription message:', error);
+      // Set up connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (this.wsConnection && this.wsConnection.readyState === WebSocket.CONNECTING) {
+          console.error('WebSocket connection timeout');
+          this.wsConnection.close();
+          onError?.(new Error('Connection timeout'));
         }
-      }
-    };
+      }, 10000); // 10 second timeout
 
-    this.wsConnection.onmessage = (event) => {
-      console.log('Raw WebSocket message:', event.data);
-      try {
-        const data = JSON.parse(event.data);
-        onData(data);
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
-
-    this.wsConnection.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      onError?.(error);
-    };
-
-    this.wsConnection.onclose = (event) => {
-      console.log('WebSocket closed:', event.code, event.reason);
-      onClose?.();
-      
-      // Attempt to reconnect
-      if (this.reconnectAttempts < this.maxReconnectAttempts) {
-        this.reconnectAttempts++;
-        console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+      this.wsConnection.onopen = () => {
+        console.log('WebSocket connected to Data Service');
+        clearTimeout(connectionTimeout);
+        this.reconnectAttempts = 0;
         
-        setTimeout(() => {
-          this.connectWebSocket(tokens, onData, onError, onClose, timeframes);
-        }, this.reconnectDelay * this.reconnectAttempts);
-      }
-    };
+        // Subscribe to symbols with specific timeframes
+        if (symbols.length > 0 && this.wsConnection?.readyState === WebSocket.OPEN) {
+          try {
+            const subscriptionMessage = {
+              action: 'subscribe',
+              symbols: symbols, // Send symbols instead of tokens
+              timeframes: timeframes
+            };
+            console.log('Sending subscription message:', subscriptionMessage);
+            this.wsConnection.send(JSON.stringify(subscriptionMessage));
+          } catch (error) {
+            console.error('Error sending subscription message:', error);
+            onError?.(error);
+          }
+        }
+      };
 
-    return this.wsConnection;
+      this.wsConnection.onmessage = (event) => {
+        try {
+          // Validate message data
+          if (!event.data) {
+            console.warn('Received empty WebSocket message');
+            return;
+          }
+
+          const data = JSON.parse(event.data);
+          
+          // Validate message structure
+          if (!data || typeof data !== 'object') {
+            console.warn('Invalid message format received:', event.data);
+            return;
+          }
+
+          console.log('WebSocket message received:', {
+            type: data.type,
+            timestamp: new Date().toISOString(),
+            dataLength: JSON.stringify(data).length,
+            fullData: data // Log the full data to see structure
+          });
+
+          // Process the message
+          onData(data);
+          
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error, 'Raw data:', event.data);
+          onError?.(error);
+        }
+      };
+
+      this.wsConnection.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        clearTimeout(connectionTimeout);
+        onError?.(error);
+      };
+
+      this.wsConnection.onclose = (event) => {
+        console.log('WebSocket closed:', {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean,
+          timestamp: new Date().toISOString()
+        });
+        
+        clearTimeout(connectionTimeout);
+        onClose?.();
+        
+        // Attempt to reconnect with exponential backoff
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.reconnectAttempts++;
+          const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+          console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms...`);
+          
+          setTimeout(() => {
+            this.connectWebSocket(symbols, onData, onError, onClose, timeframes)
+              .catch(error => {
+                console.error('Reconnection failed:', error);
+                onError?.(error);
+              });
+          }, delay);
+        } else {
+          console.log('Max reconnection attempts reached');
+          onError?.(new Error('Max reconnection attempts reached'));
+        }
+      };
+
+      return this.wsConnection;
+      
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error);
+      throw error;
+    }
   }
 
-  // Disconnect WebSocket
+  // Enhanced disconnect with better cleanup
   disconnectWebSocket(): void {
     if (this.wsConnection) {
-      this.wsConnection.close();
+      console.log('Disconnecting WebSocket...');
+      
+      // Remove event listeners to prevent memory leaks
+      this.wsConnection.onopen = null;
+      this.wsConnection.onmessage = null;
+      this.wsConnection.onerror = null;
+      this.wsConnection.onclose = null;
+      
+      // Close the connection
+      if (this.wsConnection.readyState === WebSocket.OPEN) {
+        this.wsConnection.close(1000, 'Client disconnect');
+      }
+      
       this.wsConnection = null;
+      this.reconnectAttempts = 0;
     }
   }
 

@@ -1,3 +1,9 @@
+/*
+ * ChartTest
+ * ---------
+ * Component for testing the chart library integration (lightweight-charts).
+ * Not used in production. For development/debugging only.
+ */
 import React, { useEffect, useRef, useState } from 'react';
 
 const ChartTest: React.FC = () => {

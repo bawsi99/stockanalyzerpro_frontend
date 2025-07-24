@@ -162,17 +162,6 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
     }
 
     try {
-      // Get the token for the symbol
-      let symbolToken = symbol;
-      try {
-        const tokenData = await apiService.getSymbolToToken(symbol, 'NSE');
-        if (tokenData && tokenData.token) {
-          symbolToken = tokenData.token.toString();
-        }
-      } catch (error) {
-        console.warn('Failed to get symbol token, using symbol as token:', error);
-      }
-
       const token = localStorage.getItem('jwt_token');
       const wsUrl = token 
         ? `ws://localhost:8000/ws/stream?token=${token}`
@@ -186,10 +175,10 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
         setIsConnected(true);
         setIsLive(true);
         
-        // Subscribe to symbol data
+        // Subscribe to symbol data - send symbol name instead of token
         ws.send(JSON.stringify({
           action: 'subscribe',
-          tokens: [symbolToken],
+          symbols: [symbol], // Send symbol name, backend will convert to token
           timeframes: [selectedTimeframe]
         }));
       };
@@ -228,20 +217,9 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       console.log('Updating WebSocket subscription for timeframe:', selectedTimeframe);
       
-      // Get the token for the symbol
-      let symbolToken = symbol;
-      try {
-        const tokenData = await apiService.getSymbolToToken(symbol, 'NSE');
-        if (tokenData && tokenData.token) {
-          symbolToken = tokenData.token.toString();
-        }
-      } catch (error) {
-        console.warn('Failed to get symbol token, using symbol as token:', error);
-      }
-      
       wsRef.current.send(JSON.stringify({
         action: 'subscribe',
-        tokens: [symbolToken],
+        symbols: [symbol], // Send symbol name, backend will convert to token
         timeframes: [selectedTimeframe]
       }));
     }

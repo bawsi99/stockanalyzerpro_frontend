@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { ApiResponse } from '@/types/analysis';
+import type { ApiResponse } from '@/types/analysis';
 
 export interface StoredAnalysis {
   id: string;
@@ -69,9 +69,39 @@ export const useStockAnalyses = () => {
   // Fetch analysis history for a stock and timeframe
   const fetchAnalyses = async (stockSymbol: string, timeframe: string = '1day') => {
     try {
-      const result = await apiService.getAnalysisHistory(stockSymbol, timeframe);
-      if (result && result.history) {
-        return result.history;
+      // Use getHistoricalData instead of deprecated getAnalysisHistory
+      const result = await apiService.getHistoricalData(stockSymbol, timeframe);
+      if (result && result.candles) {
+        // Transform historical data to match expected analysis format
+        return result.candles.map((candle: any, index: number) => ({
+          id: `analysis_${index}`,
+          stock_symbol: stockSymbol,
+          analysis_data: {
+            results: {
+              ai_analysis: {
+                trend: 'neutral' // Default trend since this is historical data
+              },
+              consensus: {
+                overall_signal: 'neutral'
+              }
+            }
+          },
+          created_at: new Date(candle.time * 1000).toISOString(),
+          overall_signal: null,
+          confidence_score: null,
+          risk_level: null,
+          current_price: candle.close,
+          price_change_percentage: null,
+          sector: null,
+          analysis_type: 'historical',
+          exchange: 'NSE',
+          period_days: null,
+          interval: timeframe,
+          analysis_quality: null,
+          mathematical_validation: null,
+          chart_paths: null,
+          metadata: null
+        }));
       }
       return [];
     } catch (err) {

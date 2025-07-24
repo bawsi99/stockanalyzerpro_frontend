@@ -21,6 +21,8 @@ export interface LiveChartState {
   lastUpdate: number;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
   reconnectAttempts: number;
+  lastTickPrice?: number;
+  lastTickTime?: number;
 }
 
 export interface UseLiveChartOptions {
@@ -56,7 +58,11 @@ interface WebSocketCandleMessage {
 
 interface WebSocketTickMessage {
   type: 'tick';
-  data: any;
+  data: {
+    price: number;
+    volume_traded?: number;
+    timestamp?: number;
+  };
 }
 
 interface WebSocketSubscribedMessage {
@@ -90,7 +96,9 @@ export function useLiveChart({
     error: null,
     lastUpdate: 0,
     connectionStatus: 'disconnected',
-    reconnectAttempts: 0
+    reconnectAttempts: 0,
+    lastTickPrice: undefined,
+    lastTickTime: undefined
   });
 
   // Refs
@@ -99,6 +107,8 @@ export function useLiveChart({
   const dataRef = useRef<LiveChartData[]>([]);
   const symbolRef = useRef(symbol);
   const timeframeRef = useRef(timeframe);
+  const isConnectingRef = useRef(false);
+  const lastTickRef = useRef<{ price: number; time: number } | null>(null);
 
   // Update refs when props change
   useEffect(() => {
@@ -106,26 +116,30 @@ export function useLiveChart({
     timeframeRef.current = timeframe;
   }, [symbol, timeframe]);
 
-  // Get token for symbol
+  // Get token for symbol with better error handling
   const getToken = useCallback(async (stockSymbol: string): Promise<string> => {
     try {
       const stocks = await liveDataService.getAvailableStocks();
       const stock = stocks.find(s => s.symbol.toUpperCase() === stockSymbol.toUpperCase());
-      return stock?.token || '256265'; // Default to RELIANCE
+      if (!stock) {
+        console.warn(`Stock ${stockSymbol} not found in available stocks, using default`);
+        return '256265'; // Default to RELIANCE
+      }
+      return stock.token;
     } catch (error) {
       console.error('Error getting token for symbol:', error);
       return '256265'; // Default fallback
     }
   }, []);
 
-  // Load historical data
-  const loadHistoricalData = useCallback(async () => {
+  // Enhanced historical data loading with retry logic
+  const loadHistoricalData = useCallback(async (retryCount = 0) => {
     if (!symbol) return;
 
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      console.log(`Loading historical data for ${symbol} with timeframe ${timeframe}`);
+      console.log(`Loading historical data for ${symbol} with timeframe ${timeframe} (attempt ${retryCount + 1})`);
 
       const response = await liveDataService.getHistoricalData(
         symbol,
@@ -134,16 +148,26 @@ export function useLiveChart({
         maxDataPoints
       );
 
+      if (!response.success || !response.candles || response.candles.length === 0) {
+        throw new Error('No data received from server');
+      }
+
       const convertedData = liveDataService.convertToChartData(response.candles);
+      
+      // Validate data before setting
+      if (convertedData.length === 0) {
+        throw new Error('No valid data points received');
+      }
       
       // Limit data points for performance
       const limitedData = convertedData.slice(-maxDataPoints);
       
-      console.log('Historical data sample:', limitedData.slice(0, 3));
-      console.log('Data format check:', {
-        hasData: limitedData.length > 0,
-        firstItem: limitedData[0],
-        lastItem: limitedData[limitedData.length - 1]
+      console.log('Historical data loaded:', {
+        symbol,
+        timeframe,
+        dataPoints: limitedData.length,
+        firstCandle: limitedData[0],
+        lastCandle: limitedData[limitedData.length - 1]
       });
       
       dataRef.current = limitedData;
@@ -152,12 +176,21 @@ export function useLiveChart({
         data: limitedData,
         isLoading: false,
         lastUpdate: Date.now(),
-        error: null
+        error: null,
+        lastTickPrice: limitedData[limitedData.length - 1]?.close
       }));
 
-      console.log(`Loaded ${limitedData.length} historical data points for ${symbol}`);
     } catch (error) {
       console.error('Error loading historical data:', error);
+      
+      // Retry logic for transient errors
+      if (retryCount < 2 && error instanceof Error && 
+          (error.message.includes('network') || error.message.includes('timeout'))) {
+        console.log(`Retrying historical data load (${retryCount + 1}/2)...`);
+        setTimeout(() => loadHistoricalData(retryCount + 1), 2000);
+        return;
+      }
+      
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -166,18 +199,30 @@ export function useLiveChart({
     }
   }, [symbol, timeframe, exchange, maxDataPoints]);
 
-  // Connect to WebSocket
+  // Enhanced WebSocket connection with better error handling
   const connect = useCallback(async () => {
+    if (isConnectingRef.current || wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log('🔌 WebSocket already connected or connecting, skipping...');
+      return;
+    }
+
+    console.log('🔌 Starting WebSocket connection for:', symbol, timeframe);
+    isConnectingRef.current = true;
+
+    // Unsubscribe from previous symbols/timeframes before subscribing to new ones
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      // Unsubscribe from previous tokens/timeframes before subscribing to new ones
-      wsRef.current.send(JSON.stringify({
-        action: 'unsubscribe',
-        tokens: [await getToken(symbolRef.current)],
-        timeframes: [timeframeRef.current]
-      }));
-      console.log('Unsubscribed from previous tokens/timeframes');
-      // Wait a moment to ensure unsubscribe is processed
-      await new Promise(res => setTimeout(res, 100));
+      try {
+        wsRef.current.send(JSON.stringify({
+          action: 'unsubscribe',
+          symbols: [symbolRef.current], // Send symbol name instead of token
+          timeframes: [timeframeRef.current]
+        }));
+        console.log('Unsubscribed from previous symbols/timeframes');
+        // Wait a moment to ensure unsubscribe is processed
+        await new Promise(res => setTimeout(res, 100));
+      } catch (error) {
+        console.warn('Error unsubscribing from previous symbols:', error);
+      }
     }
 
     setState(prev => ({ 
@@ -187,94 +232,138 @@ export function useLiveChart({
     }));
 
     try {
-      const token = await getToken(symbol);
-      console.log(`Connecting to WebSocket for ${symbol} (token: ${token})`);
+      console.log(`🔌 Connecting to WebSocket for ${symbol}`);
 
       wsRef.current = await liveDataService.connectWebSocket(
-        [token], // Use the actual token as identifier
+        [symbol], // Send symbol instead of token
         (wsData: WebSocketMessage) => {
-          // Handle incoming WebSocket data
+          console.log('📨 useLiveChart received WebSocket message:', wsData.type);
+          console.log('📨 Full wsData structure:', wsData);
+          console.log('📨 wsData.data exists:', !!wsData.data);
+          console.log('📨 wsData.data type:', typeof wsData.data);
+          
+          // Enhanced message handling with better validation
           if (wsData.type === 'candle' && wsData.data) {
+            console.log('🕯️ Processing candle data:', wsData.data);
             try {
-              // Validate and convert data
-              const candleData = wsData.data;
-              if (!candleData.open || !candleData.high || !candleData.low || !candleData.close) {
-                console.warn('Incomplete candle data received:', candleData);
+              const candleData = wsData.data as CandleData;
+              if (candleData && typeof candleData.open === 'number') {
+                setState(prev => {
+                  const newData = [...prev.data];
+                  const existingIndex = newData.findIndex(d => d.date === candleData.date);
+                  
+                  if (existingIndex >= 0) {
+                    newData[existingIndex] = candleData;
+                    console.log('🔄 Updated existing candle:', candleData);
+                  } else {
+                    newData.push(candleData);
+                    console.log('➕ Added new candle:', candleData);
+                  }
+                  
+                  return {
+                    ...prev,
+                    data: newData,
+                    lastUpdate: Date.now(),
+                    isLive: true
+                  };
+                });
+              }
+            } catch (error) {
+              console.error('Error processing candle data:', error);
+            }
+          } else if (wsData.type === 'tick') {
+            console.log('🔍 Processing tick data:', wsData);
+            try {
+              // The tick data is directly in the message, not under a data field
+              const tickData = wsData as any;
+              console.log('🔍 Tick data type:', typeof tickData);
+              console.log('🔍 Tick data keys:', Object.keys(tickData));
+              
+              // Extract price from various possible field names
+              let price: number | null = null;
+              if (typeof tickData.price === 'number') {
+                price = tickData.price;
+              } else if (typeof tickData.close === 'number') {
+                price = tickData.close;
+              } else if (typeof tickData.last_price === 'number') {
+                price = tickData.last_price;
+              } else if (typeof tickData.price === 'string') {
+                price = parseFloat(tickData.price);
+              } else if (typeof tickData.close === 'string') {
+                price = parseFloat(tickData.close);
+              } else if (typeof tickData.last_price === 'string') {
+                price = parseFloat(tickData.last_price);
+              }
+              
+              if (price === null || isNaN(price)) {
+                console.warn('⚠️ No valid price found in tick data:', tickData);
                 return;
               }
-
-              const newCandle: LiveChartData = {
-                // Convert Unix timestamp to ISO string for chart library
-                date: new Date(candleData.start * 1000).toISOString(),
-                open: parseFloat(candleData.open.toString()),
-                high: parseFloat(candleData.high.toString()),
-                low: parseFloat(candleData.low.toString()),
-                close: parseFloat(candleData.close.toString()),
-                volume: parseInt(candleData.volume.toString()) || 0
-              };
-
-              console.log('Received live candle:', newCandle);
-
+              
+              // Extract timestamp
+              const tickTime = tickData.timestamp || tickData.time || new Date().toISOString();
+              
+              console.log('🔄 TICK RECEIVED:', {
+                price,
+                tickTime,
+                originalData: tickData
+              });
+              
               setState(prev => {
-                const updatedData = [...prev.data];
-                const lastIndex = updatedData.length - 1;
-                
-                // Replace the last candle if it's the same timestamp, otherwise add new
-                if (lastIndex >= 0 && updatedData[lastIndex].date === newCandle.date) {
-                  updatedData[lastIndex] = newCandle;
-                  console.log('Updated existing candle');
-                } else {
-                  updatedData.push(newCandle);
-                  console.log('Added new candle');
+                if (prev.data.length === 0) {
+                  console.log('No existing data to update with tick');
+                  return prev;
                 }
-
-                // Keep only the last maxDataPoints
-                const limitedData = updatedData.slice(-maxDataPoints);
-                dataRef.current = limitedData;
-                console.log('Live chart state after update:', dataRef.current);
+                
+                const newData = [...prev.data];
+                const lastCandle = newData[newData.length - 1];
+                
+                // Update the last candle with the new tick data
+                const updatedCandle = {
+                  ...lastCandle,
+                  close: price,
+                  high: Math.max(lastCandle.high, price),
+                  low: Math.min(lastCandle.low, price),
+                  volume: tickData.volume_traded || tickData.volume || lastCandle.volume
+                };
+                
+                newData[newData.length - 1] = updatedCandle;
+                
+                console.log('📊 Candle updated with tick:', {
+                  oldClose: lastCandle.close,
+                  newClose: price,
+                  dataLength: newData.length
+                });
+                
                 return {
                   ...prev,
-                  data: limitedData,
+                  data: newData,
+                  lastUpdate: Date.now(),
                   isLive: true,
-                  lastUpdate: Date.now()
+                  lastTickPrice: price,
+                  lastTickTime: Date.now()
                 };
               });
             } catch (error) {
-              console.error('Error processing candle data:', error, wsData);
+              console.error('Error processing tick data:', error);
             }
-          } else if (wsData.type === 'tick') {
-            // On tick, update the last candle's close price in real-time
-            setState(prev => {
-              if (!prev.data.length) return prev;
-              const updatedData = [...prev.data];
-              const lastIndex = updatedData.length - 1;
-              // Only update close price and optionally volume
-              updatedData[lastIndex] = {
-                ...updatedData[lastIndex],
-                close: typeof wsData.data?.price === 'number' ? wsData.data.price : updatedData[lastIndex].close,
-                volume: typeof wsData.data?.volume_traded === 'number' ? wsData.data.volume_traded : updatedData[lastIndex].volume
-              };
-              return {
-                ...prev,
-                data: updatedData,
-                isLive: true,
-                lastUpdate: Date.now()
-              };
-            });
           } else if (wsData.type === 'subscribed') {
-            console.log('Successfully subscribed to WebSocket:', wsData);
-            setState(prev => ({
-              ...prev,
+            console.log('✅ Successfully subscribed to WebSocket feed');
+            setState(prev => ({ 
+              ...prev, 
+              isConnected: true,
               connectionStatus: 'connected',
-              isConnected: true
+              reconnectAttempts: 0 
             }));
           } else if (wsData.type === 'error') {
-            console.error('WebSocket error:', wsData);
-            setState(prev => ({
-              ...prev,
-              error: wsData.data || 'WebSocket error',
+            console.error('❌ WebSocket error:', wsData.data);
+            setState(prev => ({ 
+              ...prev, 
+              error: wsData.data as string,
               connectionStatus: 'error'
             }));
+          } else {
+            console.log('⚠️ Unhandled message type or missing data:', wsData);
           }
         },
         (wsError) => {
@@ -295,6 +384,25 @@ export function useLiveChart({
             isConnected: false,
             isLive: false
           }));
+          
+          // Enhanced reconnection logic
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          
+          const currentAttempts = state.reconnectAttempts;
+          if (currentAttempts < maxReconnectAttempts) {
+            const delay = reconnectInterval * Math.pow(2, currentAttempts); // Exponential backoff
+            console.log(`Scheduling reconnection attempt ${currentAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`);
+            
+            reconnectTimeoutRef.current = setTimeout(() => {
+              setState(prev => ({ ...prev, reconnectAttempts: prev.reconnectAttempts + 1 }));
+              connect().catch(console.error);
+            }, delay);
+          } else {
+            console.log('Max reconnection attempts reached');
+            setState(prev => ({ ...prev, error: 'Max reconnection attempts reached' }));
+          }
         },
         [timeframe]
       );
@@ -312,11 +420,15 @@ export function useLiveChart({
         connectionStatus: 'error',
         error: error instanceof Error ? error.message : 'Failed to connect'
       }));
+    } finally {
+      isConnectingRef.current = false;
     }
-  }, [symbol, timeframe, maxDataPoints, getToken]);
+  }, [symbol, timeframe, maxDataPoints, maxReconnectAttempts, reconnectInterval, getToken]);
 
-  // Disconnect WebSocket
+  // Enhanced disconnect with cleanup
   const disconnect = useCallback(() => {
+    console.log('Disconnecting WebSocket...');
+    
     if (wsRef.current) {
       liveDataService.disconnectWebSocket();
       wsRef.current = null;
@@ -327,50 +439,60 @@ export function useLiveChart({
       reconnectTimeoutRef.current = null;
     }
 
+    isConnectingRef.current = false;
+    lastTickRef.current = null;
+
     setState(prev => ({
       ...prev,
       connectionStatus: 'disconnected',
       isConnected: false,
       isLive: false,
-      reconnectAttempts: 0
+      reconnectAttempts: 0,
+      lastTickPrice: undefined,
+      lastTickTime: undefined
     }));
   }, []);
 
-  // Refetch data
+  // Enhanced refetch with error handling
   const refetch = useCallback(async () => {
+    console.log('Refetching data...');
     await loadHistoricalData();
   }, [loadHistoricalData]);
 
-  // Update symbol
+  // Enhanced symbol update
   const updateSymbol = useCallback((newSymbol: string) => {
+    console.log(`Updating symbol from ${symbol} to ${newSymbol}`);
     disconnect();
     symbolRef.current = newSymbol;
     loadHistoricalData();
     if (autoConnect) {
       connect();
     }
-  }, [disconnect, loadHistoricalData, autoConnect, connect]);
+  }, [disconnect, loadHistoricalData, autoConnect, connect, symbol]);
 
-  // Update timeframe
+  // Enhanced timeframe update
   const updateTimeframe = useCallback((newTimeframe: string) => {
+    console.log(`Updating timeframe from ${timeframe} to ${newTimeframe}`);
     disconnect();
     timeframeRef.current = newTimeframe;
     loadHistoricalData();
     if (autoConnect) {
       connect();
     }
-  }, [disconnect, loadHistoricalData, autoConnect, connect]);
+  }, [disconnect, loadHistoricalData, autoConnect, connect, timeframe]);
 
-  // Initialize on mount
+  // Initialize on mount with better error handling
   useEffect(() => {
+    console.log('🚀 useLiveChart hook initializing for:', symbol, timeframe);
     loadHistoricalData();
     
-    // Enable WebSocket connection when autoConnect is true
     if (autoConnect) {
+      console.log('🔌 Auto-connecting to WebSocket...');
       connect();
     }
 
     return () => {
+      console.log('🧹 Cleaning up useLiveChart hook');
       disconnect();
     };
   }, []);

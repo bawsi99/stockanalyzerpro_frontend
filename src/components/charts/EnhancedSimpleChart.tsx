@@ -1,3 +1,12 @@
+/*
+ * EnhancedSimpleChart
+ * -------------------
+ * Chart component for static or enhanced chart rendering with technical indicators and pattern overlays.
+ * Does NOT handle live data or WebSocket connections. Use for historical or non-live chart displays only.
+ *
+ * All indicator and pattern calculation logic MUST be imported from '@/utils/chartUtils'.
+ * This component should only handle rendering, state, and UI logic.
+ */
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   createChart,
@@ -29,7 +38,16 @@ import {
   detectFlags, 
   SupportResistanceLevel, 
   TrianglePattern, 
-  FlagPattern 
+  FlagPattern,
+  calcSMA,
+  calcEMA,
+  calcRSI,
+  calcBollingerBands,
+  calcMACD,
+  calcStochastic,
+  calcATR,
+  calcOBV,
+  detectDivergence
 } from "@/utils/chartUtils";
 
 interface EnhancedSimpleChartProps {
@@ -41,6 +59,7 @@ interface EnhancedSimpleChartProps {
   debug?: boolean;
   showIndicators?: boolean;
   showPatterns?: boolean;
+  showVolume?: boolean;
   onValidationResult?: (result: ChartValidationResult) => void;
   onStatsCalculated?: (stats: any) => void;
 }
@@ -71,265 +90,78 @@ const toTimestamp = (iso: string): UTCTimestamp => {
   }
 };
 
-// Technical Indicator Calculation Functions
-function calcSMA(values: number[], period: number): (number | null)[] {
-  if (values.length < period) return new Array(values.length).fill(null);
-  
-  const sma: (number | null)[] = [];
-  let sum = 0;
-  
-  for (let i = 0; i < values.length; i++) {
-    if (i < period - 1) {
-      sma.push(null);
-      sum += values[i];
-    } else {
-      if (i === period - 1) {
-        sum += values[i];
-      } else {
-        sum = sum - values[i - period] + values[i];
+// Pattern detection functions
+function identifyPeaksLows(prices: number[], order = 5) {
+  const peaks: number[] = [];
+  const lows: number[] = [];
+  for (let i = order; i < prices.length - order; i++) {
+    let isPeak = true;
+    for (let j = i - order; j <= i + order; j++) {
+      if (j !== i && prices[j] >= prices[i]) {
+        isPeak = false;
+        break;
       }
-      sma.push(sum / period);
     }
+    if (isPeak) peaks.push(i);
+    let isLow = true;
+    for (let j = i - order; j <= i + order; j++) {
+      if (j !== i && prices[j] <= prices[i]) {
+        isLow = false;
+        break;
+      }
+    }
+    if (isLow) lows.push(i);
   }
-  return sma;
+  return { peaks, lows };
 }
 
-function calcEMA(values: number[], period: number): (number | null)[] {
-  if (values.length < period) return new Array(values.length).fill(null);
+function detectDivergence(prices: number[], indicator: number[], order = 5) {
+  const { peaks, lows } = identifyPeaksLows(prices, order);
+  const { peaks: indicatorPeaks, lows: indicatorLows } = identifyPeaksLows(indicator, order);
   
-  const ema: (number | null)[] = [];
-  const k = 2 / (period + 1);
-  let prevEma: number | null = null;
+  const divergences: any[] = [];
   
-  for (let i = 0; i < values.length; i++) {
-    const price = values[i];
-    if (prevEma === null) {
-      prevEma = price;
-    } else {
-      prevEma = price * k + prevEma * (1 - k);
-    }
-    ema.push(i >= period - 1 ? prevEma : null);
-  }
-  return ema;
-}
-
-function calcRSI(values: number[], period = 14): (number | null)[] {
-  if (values.length < period + 1) return new Array(values.length).fill(null);
-  
-  const rsi: (number | null)[] = [];
-  let gains = 0;
-  let losses = 0;
-  
-  // Calculate initial average gain and loss
-  for (let i = 1; i <= period; i++) {
-    const change = values[i] - values[i - 1];
-    if (change > 0) {
-      gains += change;
-    } else {
-      losses -= change;
+  // Bullish divergence: price makes lower lows, indicator makes higher lows
+  for (let i = 0; i < lows.length - 1; i++) {
+    for (let j = i + 1; j < lows.length; j++) {
+      const priceLow1 = prices[lows[i]];
+      const priceLow2 = prices[lows[j]];
+      const indicatorLow1 = indicator[lows[i]];
+      const indicatorLow2 = indicator[lows[j]];
+      
+      if (priceLow2 < priceLow1 && indicatorLow2 > indicatorLow1) {
+        divergences.push({
+          type: 'bullish',
+          priceIndices: [lows[i], lows[j]],
+          indicatorIndices: [lows[i], lows[j]],
+          priceValues: [priceLow1, priceLow2],
+          indicatorValues: [indicatorLow1, indicatorLow2]
+        });
+      }
     }
   }
   
-  let avgGain = gains / period;
-  let avgLoss = losses / period;
-  
-  // Calculate RSI for the first valid point
-  const rs = avgGain / avgLoss;
-  const firstRsi = 100 - (100 / (1 + rs));
-  rsi.push(...new Array(period).fill(null));
-  rsi.push(firstRsi);
-  
-  // Calculate RSI for remaining points
-  for (let i = period + 1; i < values.length; i++) {
-    const change = values[i] - values[i - 1];
-    let currentGain = 0;
-    let currentLoss = 0;
-    
-    if (change > 0) {
-      currentGain = change;
-    } else {
-      currentLoss = -change;
-    }
-    
-    avgGain = (avgGain * (period - 1) + currentGain) / period;
-    avgLoss = (avgLoss * (period - 1) + currentLoss) / period;
-    
-    const rs = avgGain / avgLoss;
-    const rsiValue = 100 - (100 / (1 + rs));
-    rsi.push(rsiValue);
-  }
-  
-  return rsi;
-}
-
-function calcBollingerBands(values: number[], period = 20, stdDev = 2): {
-  upper: (number | null)[];
-  middle: (number | null)[];
-  lower: (number | null)[];
-} {
-  const sma = calcSMA(values, period);
-  const upper: (number | null)[] = [];
-  const middle: (number | null)[] = [];
-  const lower: (number | null)[] = [];
-  
-  for (let i = 0; i < values.length; i++) {
-    if (i < period - 1) {
-      upper.push(null);
-      middle.push(null);
-      lower.push(null);
-      continue;
-    }
-    
-    const smaValue = sma[i];
-    if (smaValue === null) {
-      upper.push(null);
-      middle.push(null);
-      lower.push(null);
-      continue;
-    }
-    
-    // Calculate standard deviation
-    let sum = 0;
-    for (let j = i - period + 1; j <= i; j++) {
-      sum += Math.pow(values[j] - smaValue, 2);
-    }
-    const standardDeviation = Math.sqrt(sum / period);
-    
-    middle.push(smaValue);
-    upper.push(smaValue + (standardDeviation * stdDev));
-    lower.push(smaValue - (standardDeviation * stdDev));
-  }
-  
-  return { upper, middle, lower };
-}
-
-function calcMACD(values: number[], fastPeriod = 12, slowPeriod = 26, signalPeriod = 9): {
-  macd: (number | null)[];
-  signal: (number | null)[];
-  histogram: (number | null)[];
-} {
-  const fastEMA = calcEMA(values, fastPeriod);
-  const slowEMA = calcEMA(values, slowPeriod);
-  
-  const macd: (number | null)[] = [];
-  for (let i = 0; i < values.length; i++) {
-    if (fastEMA[i] !== null && slowEMA[i] !== null) {
-      macd.push(fastEMA[i]! - slowEMA[i]!);
-    } else {
-      macd.push(null);
+  // Bearish divergence: price makes higher highs, indicator makes lower highs
+  for (let i = 0; i < peaks.length - 1; i++) {
+    for (let j = i + 1; j < peaks.length; j++) {
+      const priceHigh1 = prices[peaks[i]];
+      const priceHigh2 = prices[peaks[j]];
+      const indicatorHigh1 = indicator[peaks[i]];
+      const indicatorHigh2 = indicator[peaks[j]];
+      
+      if (priceHigh2 > priceHigh1 && indicatorHigh2 < indicatorHigh1) {
+        divergences.push({
+          type: 'bearish',
+          priceIndices: [peaks[i], peaks[j]],
+          indicatorIndices: [peaks[i], peaks[j]],
+          priceValues: [priceHigh1, priceHigh2],
+          indicatorValues: [indicatorHigh1, indicatorHigh2]
+        });
+      }
     }
   }
   
-  const signal = calcEMA(macd.map(v => v || 0), signalPeriod);
-  const histogram: (number | null)[] = [];
-  
-  for (let i = 0; i < values.length; i++) {
-    if (macd[i] !== null && signal[i] !== null) {
-      histogram.push(macd[i]! - signal[i]!);
-    } else {
-      histogram.push(null);
-    }
-  }
-  
-  return { macd, signal, histogram };
-}
-
-function calcStochastic(highs: number[], lows: number[], closes: number[], kPeriod = 14, dPeriod = 3): {
-  k: (number | null)[];
-  d: (number | null)[];
-} {
-  const k: (number | null)[] = [];
-  const d: (number | null)[] = [];
-  
-  for (let i = 0; i < closes.length; i++) {
-    if (i < kPeriod - 1) {
-      k.push(null);
-      d.push(null);
-      continue;
-    }
-    
-    const highestHigh = Math.max(...highs.slice(i - kPeriod + 1, i + 1));
-    const lowestLow = Math.min(...lows.slice(i - kPeriod + 1, i + 1));
-    
-    if (highestHigh === lowestLow) {
-      k.push(50); // Neutral when high equals low
-    } else {
-      const kValue = ((closes[i] - lowestLow) / (highestHigh - lowestLow)) * 100;
-      k.push(kValue);
-    }
-  }
-  
-  // Calculate %D (SMA of %K)
-  for (let i = 0; i < k.length; i++) {
-    if (i < dPeriod - 1) {
-      d.push(null);
-      continue;
-    }
-    
-    const sum = k.slice(i - dPeriod + 1, i + 1).reduce((acc, val) => acc + (val || 0), 0);
-    d.push(sum / dPeriod);
-  }
-  
-  return { k, d };
-}
-
-function calcATR(highs: number[], lows: number[], closes: number[], period = 14): (number | null)[] {
-  const atr: (number | null)[] = [];
-  const trueRanges: number[] = [];
-  
-  for (let i = 0; i < highs.length; i++) {
-    if (i === 0) {
-      trueRanges.push(highs[i] - lows[i]);
-      atr.push(null);
-      continue;
-    }
-    
-    const tr1 = highs[i] - lows[i];
-    const tr2 = Math.abs(highs[i] - closes[i - 1]);
-    const tr3 = Math.abs(lows[i] - closes[i - 1]);
-    const trueRange = Math.max(tr1, tr2, tr3);
-    trueRanges.push(trueRange);
-    
-    if (i < period - 1) {
-      atr.push(null);
-    } else if (i === period - 1) {
-      const sum = trueRanges.slice(0, period).reduce((acc, val) => acc + val, 0);
-      atr.push(sum / period);
-    } else {
-      const prevAtr = atr[i - 1]!;
-      const currentTr = trueRanges[i];
-      const newAtr = ((prevAtr * (period - 1)) + currentTr) / period;
-      atr.push(newAtr);
-    }
-  }
-  
-  return atr;
-}
-
-function calcOBV(closes: number[], volumes: number[]): (number | null)[] {
-  const obv: (number | null)[] = [];
-  
-  for (let i = 0; i < closes.length; i++) {
-    if (i === 0) {
-      obv.push(volumes[i]);
-      continue;
-    }
-    
-    const prevObv = obv[i - 1]!;
-    const currentClose = closes[i];
-    const prevClose = closes[i - 1];
-    const currentVolume = volumes[i];
-    
-    if (currentClose > prevClose) {
-      obv.push(prevObv + currentVolume);
-    } else if (currentClose < prevClose) {
-      obv.push(prevObv - currentVolume);
-    } else {
-      obv.push(prevObv);
-    }
-  }
-  
-  return obv;
+  return divergences;
 }
 
 const EnhancedSimpleChart: React.FC<EnhancedSimpleChartProps> = ({ 
@@ -341,6 +173,7 @@ const EnhancedSimpleChart: React.FC<EnhancedSimpleChartProps> = ({
   debug = false,
   showIndicators = true,
   showPatterns = true,
+  showVolume = false,
   onValidationResult,
   onStatsCalculated
 }) => {
@@ -508,19 +341,6 @@ const EnhancedSimpleChart: React.FC<EnhancedSimpleChartProps> = ({
       wickDownColor: theme === 'dark' ? '#ef5350' : '#ef5350',
     });
 
-    // Add volume series
-    volumeSeriesRef.current = chart.addHistogramSeries({
-      color: theme === 'dark' ? '#26a69a' : '#26a69a',
-      priceFormat: {
-        type: 'volume',
-      },
-      priceScaleId: '',
-      scaleMargins: {
-        top: 0.8,
-        bottom: 0,
-      },
-    });
-
     // Set candlestick data
     const candlestickData: CandlestickData[] = validatedData.map(d => ({
       time: toTimestamp(d.date),
@@ -532,16 +352,31 @@ const EnhancedSimpleChart: React.FC<EnhancedSimpleChartProps> = ({
 
     candlestickSeriesRef.current.setData(candlestickData);
 
-    // Set volume data
-    const volumeData: HistogramData[] = validatedData.map(d => ({
-      time: toTimestamp(d.date),
-      value: d.volume,
-      color: d.close >= d.open ? 
-        (theme === 'dark' ? '#26a69a' : '#26a69a') : 
-        (theme === 'dark' ? '#ef5350' : '#ef5350'),
-    }));
+    // Add volume series if enabled
+    if (showVolume) {
+      volumeSeriesRef.current = chart.addHistogramSeries({
+        color: theme === 'dark' ? '#26a69a' : '#26a69a',
+        priceFormat: {
+          type: 'volume',
+        },
+        priceScaleId: '',
+        scaleMargins: {
+          top: 0.8,
+          bottom: 0,
+        },
+      });
 
-    volumeSeriesRef.current.setData(volumeData);
+      // Set volume data
+      const volumeData: HistogramData[] = validatedData.map(d => ({
+        time: toTimestamp(d.date),
+        value: d.volume,
+        color: d.close >= d.open ? 
+          (theme === 'dark' ? '#26a69a' : '#26a69a') : 
+          (theme === 'dark' ? '#ef5350' : '#ef5350'),
+      }));
+
+      volumeSeriesRef.current.setData(volumeData);
+    }
 
     // Add technical indicators if enabled
     if (showIndicators) {

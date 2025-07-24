@@ -1,5 +1,12 @@
 # Welcome to your Lovable project
 
+## Chart Components Overview
+
+- **LiveSimpleChart**: Main chart component for real-time, live-updating stock data. Handles all WebSocket connections and live data streaming. Use this for any live charting needs. Do not modify its WebSocket logic unless you are updating the live data infrastructure.
+- **EnhancedSimpleChart**: Used for static or enhanced chart rendering with technical indicators and pattern overlays. Does not handle live data or WebSocket connections. Use this for historical or non-live chart displays.
+- **ChartTest**: For testing the chart library integration. Not used in production.
+- **SimpleChart**: (Deprecated) This component has been removed as it was not used anywhere in the codebase and was superseded by the above components.
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/2f2c3e6d-81ed-4f81-8e96-4b887e117f0d

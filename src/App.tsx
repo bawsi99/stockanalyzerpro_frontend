@@ -14,7 +14,6 @@ import Output from "./pages/Output";
 import NewStockAnalysis from "./pages/NewStockAnalysis";
 import NewOutput from "./pages/NewOutput";
 import Dashboard from "./pages/Dashboard";
-import LiveChartTest from "./pages/LiveChartTest";
 import Charts from "./pages/Charts";
 import NotFound from "./pages/NotFound";
 
@@ -52,14 +51,6 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <NewOutput />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/test" 
-              element={
-                <ProtectedRoute>
-                  <LiveChartTest />
                 </ProtectedRoute>
               } 
             />
