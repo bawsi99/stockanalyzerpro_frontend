@@ -19,7 +19,7 @@ const PreviousAnalyses = ({ onSelectAnalysis }: PreviousAnalysesProps) => {
 
   // TODO: Replace with actual selected stock and timeframe from context or props
   const stockSymbol = "RELIANCE";
-  const timeframe = "day";
+  const timeframe = "1day";
 
   useEffect(() => {
     setLoading(true);

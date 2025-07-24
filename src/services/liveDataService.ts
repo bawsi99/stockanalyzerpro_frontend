@@ -238,12 +238,16 @@ class LiveDataService {
       this.reconnectAttempts = 0;
       
       // Subscribe to tokens with specific timeframes
-      if (tokens.length > 0) {
-        this.wsConnection?.send(JSON.stringify({
-          action: 'subscribe',
-          tokens: tokens,
-          timeframes: timeframes
-        }));
+      if (tokens.length > 0 && this.wsConnection?.readyState === WebSocket.OPEN) {
+        try {
+          this.wsConnection.send(JSON.stringify({
+            action: 'subscribe',
+            tokens: tokens,
+            timeframes: timeframes
+          }));
+        } catch (error) {
+          console.error('Error sending subscription message:', error);
+        }
       }
     };
 

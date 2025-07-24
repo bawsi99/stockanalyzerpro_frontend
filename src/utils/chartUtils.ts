@@ -710,7 +710,7 @@ export const initializeChartWithRetry = async (
         
         // Retry after a short delay
         if (retryCount < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 200)); // Increased delay
           return attemptInitialization(retryCount + 1);
         } else {
           throw new Error('Failed to initialize chart: container not properly sized after maximum retries');
@@ -725,8 +725,17 @@ export const initializeChartWithRetry = async (
       
       if (debug) console.log('Library imported successfully');
 
+      // Create chart with actual container dimensions
+      const finalConfig = {
+        ...chartConfig,
+        width: container.clientWidth,
+        height: container.clientHeight
+      };
+      
+      if (debug) console.log('Final chart config:', finalConfig);
+
       // Create chart
-      const chart = createChart(container, chartConfig);
+      const chart = createChart(container, finalConfig);
       
       if (debug) console.log('Chart created successfully:', chart);
       
@@ -736,7 +745,7 @@ export const initializeChartWithRetry = async (
       if (debug) console.error('Error in chart initialization attempt:', error);
       
       if (retryCount < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200)); // Increased delay
         return attemptInitialization(retryCount + 1);
       } else {
         throw error;
@@ -766,54 +775,13 @@ export const createChartTheme = (isDark: boolean, options: ChartInitOptions = {}
       timeVisible: true,
       secondsVisible: false,
       borderColor: isDark ? '#2a2a2a' : '#e1e1e1',
-      tickMarkFormatter: (time: number) => {
-        // Convert UTC time to IST for display
-        const utcDate = new Date(time * 1000);
-        
-        // For 1-day interval, show only date
-        if (timeframe === '1d') {
-          return utcDate.toLocaleDateString('en-IN', { 
-            timeZone: 'Asia/Kolkata',
-            month: 'short', 
-            day: 'numeric' 
-          });
-        } else {
-          // For other intervals, show time
-          return utcDate.toLocaleTimeString('en-IN', { 
-            timeZone: 'Asia/Kolkata',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-          });
-        }
-      },
+      tickMarkFormatter: createTickMarkFormatter(timeframe),
     },
     rightPriceScale: {
       borderColor: isDark ? '#2a2a2a' : '#e1e1e1',
     },
     localization: {
-      timeFormatter: (time: number) => {
-        // Convert UTC time to IST for display
-        const utcDate = new Date(time * 1000);
-        
-        // For 1-day interval, show only date
-        if (timeframe === '1d') {
-          return utcDate.toLocaleDateString('en-IN', { 
-            timeZone: 'Asia/Kolkata',
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-          });
-        } else {
-          // For other intervals, show time
-          return utcDate.toLocaleTimeString('en-IN', { 
-            timeZone: 'Asia/Kolkata',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-          });
-        }
-      },
+      timeFormatter: createTickMarkFormatter(timeframe),
       priceFormatter: (price: number) => {
         return price >= 1 ? price.toFixed(2) : price.toPrecision(4);
       },
@@ -851,12 +819,11 @@ export const isChartContainerReady = (containerRef: ChartContainer): boolean => 
     return false;
   }
   
-  // Check dimensions - but be more lenient
+  // Check dimensions - container must have both width and height
   const hasDimensions = container.clientWidth > 0 && container.clientHeight > 0;
   
-  // If container exists and is in DOM, consider it ready even without dimensions
-  // The chart library can handle dimension updates
-  return true;
+  // Container is ready only if it has proper dimensions
+  return hasDimensions;
 }; 
 
 // ===== TIMESTAMP UTILITIES =====
@@ -871,6 +838,11 @@ export function toUTCTimestamp(input: string | number | Date): number {
   
   try {
     if (typeof input === 'number') {
+      // Check if it's a valid Unix timestamp (not too small)
+      if (input < 1000000000) { // Less than 2001-09-09 (reasonable minimum)
+        console.warn(`Suspiciously small timestamp: ${input}, using current time as fallback`);
+        return Math.floor(Date.now() / 1000);
+      }
       // If it's already a Unix timestamp (seconds), convert to milliseconds
       timestamp = input * 1000;
     } else if (typeof input === 'string') {
@@ -889,15 +861,15 @@ export function toUTCTimestamp(input: string | number | Date): number {
     }
     
     if (isNaN(timestamp)) {
-      console.warn(`Invalid timestamp format: ${input}`);
-      return 0;
+      console.warn(`Invalid timestamp format: ${input}, using current time as fallback`);
+      return Math.floor(Date.now() / 1000);
     }
     
     // Return UTC timestamp in seconds (chart library format)
     return Math.floor(timestamp / 1000);
   } catch (error) {
-    console.warn(`Error parsing timestamp: ${input}`, error);
-    return 0;
+    console.warn(`Error parsing timestamp: ${input}, using current time as fallback`, error);
+    return Math.floor(Date.now() / 1000);
   }
 }
 
@@ -916,6 +888,55 @@ export function fromUTCTimestamp(utcTimestamp: number): string {
 }
 
 /**
+ * Sort chart data by timestamp in ascending order (oldest first)
+ * This is required by TradingView Lightweight Charts library
+ */
+export function sortChartDataByTime<T extends { date: string }>(data: T[]): T[] {
+  return [...data].sort((a, b) => {
+    const timeA = new Date(a.date).getTime();
+    const timeB = new Date(b.date).getTime();
+    return timeA - timeB;
+  });
+}
+
+/**
+ * Validate and clean chart data for TradingView Lightweight Charts
+ * Ensures data is properly sorted and formatted
+ */
+export function validateChartDataForTradingView<T extends { date: string; open: number; high: number; low: number; close: number }>(data: T[]): T[] {
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  // Filter out invalid data points
+  const validData = data.filter(item => {
+    const isValidDate = !isNaN(new Date(item.date).getTime());
+    const isValidOHLC = !isNaN(item.open) && !isNaN(item.high) && !isNaN(item.low) && !isNaN(item.close);
+    const isValidRange = item.high >= Math.max(item.open, item.close) && item.low <= Math.min(item.open, item.close);
+    
+    if (!isValidDate || !isValidOHLC || !isValidRange) {
+      console.warn('Invalid data point filtered out:', item);
+      return false;
+    }
+    return true;
+  });
+
+  // Sort by timestamp
+  const sortedData = sortChartDataByTime(validData);
+
+  // Remove duplicates based on timestamp
+  const uniqueData = sortedData.filter((item, index, array) => {
+    if (index === 0) return true;
+    const currentTime = new Date(item.date).getTime();
+    const previousTime = new Date(array[index - 1].date).getTime();
+    return currentTime !== previousTime;
+  });
+
+  console.log(`Chart data validation: ${data.length} input -> ${uniqueData.length} valid points`);
+  return uniqueData;
+}
+
+/**
  * Format timestamp for display in user's local timezone
  * This is for UI display only, not for chart data
  */
@@ -923,17 +944,33 @@ export function formatTimestampForDisplay(utcTimestamp: number, timeframe: strin
   try {
     const date = new Date(utcTimestamp * 1000);
     
+    // Normalize timeframe for consistent comparison
+    const normalizedTimeframe = timeframe.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
     // For daily intervals, show date only
-    if (timeframe === '1d' || timeframe === '1day') {
+    if (normalizedTimeframe === '1d' || normalizedTimeframe === '1day' || normalizedTimeframe === 'day') {
       return date.toLocaleDateString('en-IN', { 
         timeZone: 'Asia/Kolkata',
         month: 'short', 
-        day: 'numeric' 
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } else if (normalizedTimeframe === '1h' || normalizedTimeframe === '60min' || normalizedTimeframe === '60minute') {
+      // For hourly intervals, show date and full time
+      return date.toLocaleDateString('en-IN', { 
+        timeZone: 'Asia/Kolkata',
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
       });
     } else {
-      // For other intervals, show time
-      return date.toLocaleTimeString('en-IN', { 
+      // For minute intervals, show date and time
+      return date.toLocaleDateString('en-IN', { 
         timeZone: 'Asia/Kolkata',
+        month: 'short', 
+        day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
         hour12: false
@@ -943,4 +980,50 @@ export function formatTimestampForDisplay(utcTimestamp: number, timeframe: strin
     console.warn(`Error formatting timestamp: ${utcTimestamp}`, error);
     return 'Invalid';
   }
+}
+
+/**
+ * Create a comprehensive tick mark formatter for chart time scales
+ * Handles all timeframes with appropriate formatting
+ */
+export function createTickMarkFormatter(timeframe: string) {
+  return (time: number) => {
+    try {
+      const date = new Date(time * 1000);
+      const normalizedTimeframe = timeframe.toLowerCase().replace(/[^a-z0-9]/g, '');
+      
+      // For daily intervals, show date only
+      if (normalizedTimeframe === '1d' || normalizedTimeframe === '1day' || normalizedTimeframe === 'day') {
+        return date.toLocaleDateString('en-IN', { 
+          timeZone: 'Asia/Kolkata',
+          month: 'short', 
+          day: 'numeric',
+          year: 'numeric'
+        });
+      } else if (normalizedTimeframe === '1h' || normalizedTimeframe === '60min' || normalizedTimeframe === '60minute') {
+        // For hourly intervals, show date and full time
+        return date.toLocaleDateString('en-IN', { 
+          timeZone: 'Asia/Kolkata',
+          month: 'short', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+      } else {
+        // For minute intervals, show date and time
+        return date.toLocaleDateString('en-IN', { 
+          timeZone: 'Asia/Kolkata',
+          month: 'short', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+      }
+    } catch (error) {
+      console.warn(`Error formatting tick mark: ${time}`, error);
+      return 'Invalid';
+    }
+  };
 } 

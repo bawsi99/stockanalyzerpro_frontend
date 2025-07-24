@@ -225,22 +225,32 @@ const LiveChartComponent = React.forwardRef<any, LiveEnhancedMultiPaneChartProps
         tickMarkFormatter: (time: number) => {
           const date = new Date(time * 1000);
           
-          // For 1-day interval, show only date
-          if (timeframe === '1d') {
-            return date.toLocaleDateString('en-IN', { 
-              timeZone: 'Asia/Kolkata',
-              month: 'short', 
-              day: 'numeric' 
-            });
-          } else {
-            // For other intervals, show time
-            return date.toLocaleTimeString('en-IN', { 
-              timeZone: 'Asia/Kolkata',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false
-            });
-          }
+                      // For 1-day interval, show only date
+            if (timeframe === '1d') {
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric' 
+              });
+            } else if (timeframe === '1h' || timeframe === '60min' || timeframe === '60minute') {
+              // For hourly intervals, show date and full time
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            } else {
+              // For other intervals, show time
+              return date.toLocaleTimeString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
         },
       },
       localization: {
@@ -549,6 +559,8 @@ const LiveChartComponent = React.forwardRef<any, LiveEnhancedMultiPaneChartProps
         wickUpColor: isDark ? '#26a69a' : '#26a69a',
         wickDownColor: isDark ? '#ef5350' : '#ef5350',
       });
+
+
     }
 
     // Add volume series
@@ -617,6 +629,121 @@ const LiveChartComponent = React.forwardRef<any, LiveEnhancedMultiPaneChartProps
     }
 
   }, [isChartReady, theme, activeIndicators, validatedData]);
+
+  // Add tooltip subscription when chart is ready
+  useEffect(() => {
+    if (!chartInstance.current || !candleSeriesRef.current) return;
+
+    console.log('Setting up tooltip subscription for live enhanced chart');
+
+    // Enhanced candlestick tooltip for live chart
+    const unsubscribe = chartInstance.current.subscribeCrosshairMove((param) => {
+      const tooltip = document.getElementById('candlestick-tooltip');
+      if (!tooltip) return;
+      
+      if (param.time && param.seriesData) {
+        const candleDataPoint = param.seriesData.get(candleSeriesRef.current);
+        
+        if (candleDataPoint) {
+          const timeIndex = validatedData.findIndex(d => toTimestamp(d.date) === param.time);
+          if (timeIndex !== -1) {
+            const dataPoint = validatedData[timeIndex];
+            const date = new Date(dataPoint.date);
+            
+            // Format date based on timeframe
+            let dateStr = '';
+            if (timeframe === '1d') {
+              dateStr = date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+            } else {
+              dateStr = date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              }) + ' ' + date.toLocaleTimeString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
+            
+            // Format volume
+            const volumeStr = dataPoint.volume >= 1000 ? 
+              `${(dataPoint.volume / 1000).toFixed(1)} k` : 
+              dataPoint.volume.toString();
+            
+            // Create tooltip content
+            tooltip.innerHTML = `
+              <div class="tooltip-header">${dateStr}</div>
+              <div class="tooltip-price">${dataPoint.close}</div>
+              <div class="tooltip-details">
+                <div class="tooltip-row">
+                  <span class="tooltip-label">VOLUME:</span>
+                  <span class="tooltip-value">${volumeStr}</span>
+                </div>
+                <div class="tooltip-row">
+                  <span class="tooltip-label">OPEN:</span>
+                  <span class="tooltip-value">${dataPoint.open}</span>
+                </div>
+                <div class="tooltip-row">
+                  <span class="tooltip-label">HIGH:</span>
+                  <span class="tooltip-value">${dataPoint.high}</span>
+                </div>
+                <div class="tooltip-row">
+                  <span class="tooltip-label">LOW:</span>
+                  <span class="tooltip-value">${dataPoint.low}</span>
+                </div>
+                <div class="tooltip-row">
+                  <span class="tooltip-label">CLOSE:</span>
+                  <span class="tooltip-value">${dataPoint.close}</span>
+                </div>
+              </div>
+            `;
+            
+            // Position tooltip
+            const chartRect = chartInstance.current?.getElement()?.getBoundingClientRect();
+            if (chartRect && param.point) {
+              const tooltipWidth = 150;
+              const tooltipHeight = 120;
+              let left = param.point.x + 10;
+              let top = param.point.y - tooltipHeight - 10;
+              
+              // Adjust position if tooltip goes outside chart bounds
+              if (left + tooltipWidth > chartRect.width) {
+                left = param.point.x - tooltipWidth - 10;
+              }
+              if (top < 0) {
+                top = param.point.y + 10;
+              }
+              
+              tooltip.style.left = `${left}px`;
+              tooltip.style.top = `${top}px`;
+              tooltip.style.display = 'block';
+            }
+          } else {
+            tooltip.style.display = 'none';
+          }
+        } else {
+          tooltip.style.display = 'none';
+        }
+      } else {
+        tooltip.style.display = 'none';
+      }
+    });
+
+    // Cleanup subscription on unmount or when chart changes
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [chartInstance.current, candleSeriesRef.current, validatedData, timeframe]);
 
   // Handle window resize
   useEffect(() => {
@@ -688,7 +815,75 @@ const LiveChartComponent = React.forwardRef<any, LiveEnhancedMultiPaneChartProps
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full">
+    <>
+      <style>
+        {`
+          /* Candlestick Tooltip Styles */
+          #candlestick-tooltip {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+          }
+          
+          #candlestick-tooltip .tooltip-header {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+            font-size: 11px;
+          }
+          
+          #candlestick-tooltip .tooltip-price {
+            font-weight: 700;
+            font-size: 14px;
+            color: #111827;
+            margin-bottom: 8px;
+          }
+          
+          #candlestick-tooltip .tooltip-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+          
+          #candlestick-tooltip .tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          
+          #candlestick-tooltip .tooltip-label {
+            color: #6b7280;
+            font-weight: 500;
+            font-size: 10px;
+            min-width: 50px;
+          }
+          
+          #candlestick-tooltip .tooltip-value {
+            color: #111827;
+            font-weight: 600;
+            font-size: 11px;
+            text-align: right;
+          }
+          
+          /* Dark theme styles */
+          .dark #candlestick-tooltip .tooltip-header {
+            color: #d1d5db;
+          }
+          
+          .dark #candlestick-tooltip .tooltip-price {
+            color: #f9fafb;
+          }
+          
+          .dark #candlestick-tooltip .tooltip-label {
+            color: #9ca3af;
+          }
+          
+          .dark #candlestick-tooltip .tooltip-value {
+            color: #f9fafb;
+          }
+        `}
+      </style>
+      <div ref={containerRef} className="w-full h-full">
       {/* Live Status Bar */}
       <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-4">
@@ -709,6 +904,7 @@ const LiveChartComponent = React.forwardRef<any, LiveEnhancedMultiPaneChartProps
       <div className="relative">
         {/* Main Chart */}
         <div ref={candleChartRef} className="w-full" style={{ height: chartHeights.candle }}></div>
+        <div id="candlestick-tooltip" className="absolute hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 pointer-events-none z-30 min-w-[160px]" />
         
         {/* Volume Chart */}
         <div ref={volumeChartRef} className="w-full" style={{ height: chartHeights.volume }}></div>
@@ -746,6 +942,7 @@ const LiveChartComponent = React.forwardRef<any, LiveEnhancedMultiPaneChartProps
         </div>
       )}
     </div>
+    </>
   );
 });
 

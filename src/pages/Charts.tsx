@@ -6,11 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import LiveSimpleChart from '@/components/charts/LiveSimpleChart';
 import SimpleChart from '@/components/charts/SimpleChart';
+import EnhancedSimpleChart from '@/components/charts/EnhancedSimpleChart';
+// EnhancedLiveChart removed - using enhanced LiveSimpleChart instead
 import ChartTest from '@/components/charts/ChartTest';
 import { authService } from '@/services/authService';
 import { liveDataService, StockInfo } from '@/services/liveDataService';
+import { ChartData } from '@/types/analysis';
 
 // Type for candlestick data
 interface CandlestickData {
@@ -37,17 +41,28 @@ export default function Charts() {
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'error'>('loading');
   const [authError, setAuthError] = useState<string>('');
   const [chartData, setChartData] = useState<CandlestickData[]>([]);
+  const [enhancedChartData, setEnhancedChartData] = useState<ChartData[]>([]);
   const [showTestChart, setShowTestChart] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
   const [availableStocks, setAvailableStocks] = useState<StockInfo[]>([]);
   const [currentStockInfo, setCurrentStockInfo] = useState<StockInfo | null>(null);
   
+  // Chart type and features
+  // Enhanced charts are now the default - no toggle needed
+  const [showIndicators, setShowIndicators] = useState(true);
+  const [showPatterns, setShowPatterns] = useState(true);
+  const [debugMode, setDebugMode] = useState(false);
+  
   // Live chart state
   const [useLiveChart, setUseLiveChart] = useState(true); // Enabled by default
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [liveDataError, setLiveDataError] = useState<string | null>(null);
   const [lastDataUpdate, setLastDataUpdate] = useState<number>(0);
+  
+  // Chart statistics and validation
+  const [chartStats, setChartStats] = useState<any>(null);
+  const [validationResult, setValidationResult] = useState<any>(null);
 
   // Load available stocks
   useEffect(() => {
@@ -90,6 +105,9 @@ export default function Charts() {
 
         console.log(`Loading real data for ${stockInput} with timeframe ${selectedTimeframe}`);
 
+        // Clear cache for the previous interval to ensure fresh data
+        await liveDataService.clearIntervalCache(stockInput, selectedTimeframe);
+
         // Get historical data from backend
         const response = await liveDataService.getHistoricalData(
           stockInput,
@@ -101,6 +119,17 @@ export default function Charts() {
         // Convert backend data to frontend format
         const convertedData = liveDataService.convertToChartData(response.candles);
         setChartData(convertedData);
+        
+        // Convert to enhanced chart data format
+        const enhancedData: ChartData[] = convertedData.map(d => ({
+          date: d.date,
+          open: d.open,
+          high: d.high,
+          low: d.low,
+          close: d.close,
+          volume: d.volume
+        }));
+        setEnhancedChartData(enhancedData);
 
         // Get stock info
         try {
@@ -287,55 +316,104 @@ export default function Charts() {
               )}
             </div>
 
-            {/* Live Chart Controls */}
+            {/* Chart Type and Features Controls */}
             <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="live-chart"
-                  checked={useLiveChart}
-                  onCheckedChange={setUseLiveChart}
-                />
-                <Label htmlFor="live-chart" className="text-sm font-medium">
-                  Enable Live Updates
-                </Label>
-                {useLiveChart && isLiveConnected && (
-                  <Badge variant="default" className="ml-2">
-                    🔴 LIVE
-                  </Badge>
-                )}
+              <Separator />
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Chart Features</h4>
+                
+                {/* Indicators Toggle */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="show-indicators"
+                    checked={showIndicators}
+                    onCheckedChange={setShowIndicators}
+                  />
+                  <Label htmlFor="show-indicators" className="text-sm font-medium">
+                    Show Technical Indicators (SMA, EMA, RSI, MACD, Bollinger Bands)
+                  </Label>
+                </div>
+                
+                {/* Patterns Toggle */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="show-patterns"
+                    checked={showPatterns}
+                    onCheckedChange={setShowPatterns}
+                  />
+                  <Label htmlFor="show-patterns" className="text-sm font-medium">
+                    Show Pattern Recognition (Support/Resistance, Divergences, etc.)
+                  </Label>
+                </div>
+                
+                {/* Debug Mode Toggle */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="debug-mode"
+                    checked={debugMode}
+                    onCheckedChange={setDebugMode}
+                  />
+                  <Label htmlFor="debug-mode" className="text-sm font-medium">
+                    Debug Mode (Show Chart Statistics)
+                  </Label>
+                </div>
               </div>
               
-              {useLiveChart && (
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <span>Status:</span>
-                    <Badge variant={isLiveConnected ? 'default' : 'secondary'}>
-                      {isLiveConnected ? 'Connected' : 'Disconnected'}
+              <Separator />
+              
+              {/* Live Chart Controls */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Live Updates</h4>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="live-chart"
+                    checked={useLiveChart}
+                    onCheckedChange={setUseLiveChart}
+                  />
+                  <Label htmlFor="live-chart" className="text-sm font-medium">
+                    Enable Live Updates
+                  </Label>
+                  {useLiveChart && isLiveConnected && (
+                    <Badge variant="default" className="ml-2">
+                      🔴 LIVE
                     </Badge>
-                  </div>
-                  {lastDataUpdate > 0 && (
-                    <div className="flex items-center gap-1">
-                      <span>Last Update:</span>
-                      <span>{new Date(lastDataUpdate).toLocaleTimeString()}</span>
-                    </div>
                   )}
                 </div>
-              )}
+                
+                {useLiveChart && (
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <span>Status:</span>
+                      <Badge variant={isLiveConnected ? 'default' : 'secondary'}>
+                        {isLiveConnected ? 'Connected' : 'Disconnected'}
+                      </Badge>
+                    </div>
+                    {lastDataUpdate > 0 && (
+                      <div className="flex items-center gap-1">
+                        <span>Last Update:</span>
+                        <span>{new Date(lastDataUpdate).toLocaleTimeString()}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Data Controls */}
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  // Reload data
-                  setStockInput(stockInput);
-                }}
-                className="flex-1"
-                disabled={isLoadingData || useLiveChart}
-              >
-                {isLoadingData ? '🔄 Loading...' : '🔄 Reload Data'}
-              </Button>
+              {!useLiveChart && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Reload data
+                    setStockInput(stockInput);
+                  }}
+                  className="flex-1"
+                  disabled={isLoadingData}
+                >
+                  {isLoadingData ? '🔄 Loading...' : '🔄 Refresh Chart'}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={() => {
@@ -399,6 +477,7 @@ export default function Charts() {
             ) : useLiveChart ? (
               <div className="h-[600px] w-full">
                 <LiveSimpleChart
+                  key={`${stockInput}-${selectedTimeframe}-${theme}-enhanced`}
                   symbol={stockInput}
                   timeframe={selectedTimeframe}
                   theme={theme}
@@ -409,8 +488,13 @@ export default function Charts() {
                   autoConnect={true}
                   showConnectionStatus={true}
                   showLiveIndicator={true}
+                  showIndicators={showIndicators}
+                  showPatterns={showPatterns}
+                  showVolume={true}
+                  debug={debugMode}
                   onDataUpdate={(data) => {
                     setChartData(data);
+                    setEnhancedChartData(data);
                     setLastDataUpdate(Date.now());
                   }}
                   onConnectionChange={(isConnected) => {
@@ -419,6 +503,12 @@ export default function Charts() {
                   onError={(error) => {
                     setLiveDataError(error);
                     console.error('Live chart error:', error);
+                  }}
+                  onValidationResult={(result) => {
+                    setValidationResult(result);
+                  }}
+                  onStatsCalculated={(stats) => {
+                    setChartStats(stats);
                   }}
                 />
               </div>
@@ -447,17 +537,97 @@ export default function Charts() {
               </div>
             ) : (
               <div className="h-[600px] w-full">
-                <SimpleChart
-                  data={chartData}
+                <EnhancedSimpleChart
+                  data={enhancedChartData}
                   theme={theme}
                   height={600}
                   width={800}
                   timeframe={selectedTimeframe}
+                  showIndicators={showIndicators}
+                  showPatterns={showPatterns}
+                  debug={debugMode}
+                  onValidationResult={(result) => {
+                    setValidationResult(result);
+                  }}
+                  onStatsCalculated={(stats) => {
+                    setChartStats(stats);
+                  }}
                 />
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Chart Statistics (Debug Mode) */}
+        {debugMode && chartStats && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Chart Statistics & Analysis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                    <h4 className="font-semibold text-sm mb-2">Data Summary</h4>
+                    <div className="text-xs space-y-1">
+                      <p>Total Points: {chartStats.totalPoints}</p>
+                      <p>Date Range: {chartStats.dateRange?.start} to {chartStats.dateRange?.end} ({chartStats.dateRange?.days} days)</p>
+                      <p>Price Range: ₹{chartStats.priceRange?.min?.toFixed(2)} - ₹{chartStats.priceRange?.max?.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                    <h4 className="font-semibold text-sm mb-2">Volume Analysis</h4>
+                    <div className="text-xs space-y-1">
+                      <p>Total Volume: {chartStats.volumeStats?.totalVolume?.toLocaleString()}</p>
+                      <p>Avg Volume: {chartStats.volumeStats?.averageVolume?.toLocaleString()}</p>
+                      <p>Volume Anomalies: {chartStats.volumeStats?.anomalies?.length || 0}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                    <h4 className="font-semibold text-sm mb-2">Pattern Detection</h4>
+                    <div className="text-xs space-y-1">
+                      <p>Support Levels: {chartStats.patterns?.supportLevels?.length || 0}</p>
+                      <p>Resistance Levels: {chartStats.patterns?.resistanceLevels?.length || 0}</p>
+                      <p>Double Tops: {chartStats.patterns?.doubleTops?.length || 0}</p>
+                      <p>Double Bottoms: {chartStats.patterns?.doubleBottoms?.length || 0}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {validationResult && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                    <h4 className="font-semibold text-sm mb-2">Data Validation</h4>
+                    <div className="text-xs space-y-1">
+                      <p>Valid: {validationResult.isValid ? '✅ Yes' : '❌ No'}</p>
+                      {validationResult.errors.length > 0 && (
+                        <div>
+                          <p className="font-semibold">Errors:</p>
+                          <ul className="list-disc list-inside">
+                            {validationResult.errors.map((error: string, index: number) => (
+                              <li key={index}>{error}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {validationResult.warnings.length > 0 && (
+                        <div>
+                          <p className="font-semibold">Warnings:</p>
+                          <ul className="list-disc list-inside">
+                            {validationResult.warnings.map((warning: string, index: number) => (
+                              <li key={index}>{warning}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Instructions */}
         <Card>
@@ -470,11 +640,15 @@ export default function Charts() {
               <p>• Click on any available stock badge for quick selection</p>
               <p>• Use the interval buttons to switch between different timeframes</p>
               <p>• Toggle between light and dark themes</p>
+              <p>• <strong>Enhanced Charts:</strong> Enable for technical indicators and pattern recognition</p>
+              <p>• <strong>Technical Indicators:</strong> SMA, EMA, RSI, MACD, Bollinger Bands</p>
+              <p>• <strong>Pattern Recognition:</strong> Support/Resistance, RSI Divergences, Double Tops/Bottoms</p>
+              <p>• <strong>Debug Mode:</strong> View detailed chart statistics and validation results</p>
               <p>• Enable "Live Updates" for real-time WebSocket data streaming</p>
-              <p>• Live mode shows connection status and real-time indicators</p>
+              <p>• When live updates are enabled, charts update automatically</p>
+              <p>• When live updates are disabled, use the refresh button to update static charts</p>
               <p>• Real market data is fetched from Zerodha API</p>
               <p>• Data updates automatically when you change stock or timeframe</p>
-              <p>• Use the reload button to refresh current data (static mode only)</p>
               <p>• Live charts automatically reconnect on connection loss</p>
             </div>
           </CardContent>

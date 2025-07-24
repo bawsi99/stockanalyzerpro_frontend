@@ -25,6 +25,7 @@ export const ENDPOINTS = {
     WEBSOCKET_CONNECTIONS: `${DATA_SERVICE_URL}/ws/connections`,
     AUTH_TOKEN: `${DATA_SERVICE_URL}/auth/token`,
     AUTH_VERIFY: `${DATA_SERVICE_URL}/auth/verify`,
+    MARKET_OPTIMIZATION: `${DATA_SERVICE_URL}/market/optimization`,
   },
   
   // Analysis Service endpoints (Port 8001)

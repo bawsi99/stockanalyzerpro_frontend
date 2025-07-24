@@ -249,6 +249,23 @@ class ApiService {
     return await resp.json();
   }
 
+  // POST /market/optimization/clear-interval-cache - Clear cache for specific symbol and interval
+  async clearIntervalCache(symbol: string, interval: string): Promise<void> {
+    const params = new URLSearchParams({
+      symbol,
+      interval
+    });
+    
+    const resp = await fetch(`${ENDPOINTS.DATA.MARKET_OPTIMIZATION}/clear-interval-cache?${params}`, {
+      method: 'POST'
+    });
+    
+    if (!resp.ok) {
+      const errorData = await resp.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Failed to clear interval cache for ${symbol}`);
+    }
+  }
+
   // GET /stock/{symbol}/info - Stock information
   async getStockInfo(symbol: string, exchange: string = 'NSE'): Promise<any> {
     const resp = await fetch(`${ENDPOINTS.DATA.STOCK_INFO}/${symbol}/info?exchange=${exchange}`);

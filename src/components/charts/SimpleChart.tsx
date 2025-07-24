@@ -195,6 +195,107 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
       // Set data
       candlestickSeries.setData(candlestickData);
 
+      // Enhanced candlestick tooltip
+      chartRef.current.subscribeCrosshairMove((param) => {
+        const tooltip = document.getElementById('candlestick-tooltip');
+        if (!tooltip) return;
+        
+        if (param.time && param.seriesData) {
+          const candleDataPoint = param.seriesData.get(candlestickSeries);
+          
+          if (candleDataPoint) {
+            const timeIndex = data.findIndex(d => toTimestamp(d.date) === param.time);
+            if (timeIndex !== -1) {
+              const dataPoint = data[timeIndex];
+              const date = new Date(dataPoint.date);
+              
+              // Format date based on timeframe
+              let dateStr = '';
+              if (timeframe === '1d') {
+                dateStr = date.toLocaleDateString('en-IN', { 
+                  timeZone: 'Asia/Kolkata',
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                });
+              } else {
+                dateStr = date.toLocaleDateString('en-IN', { 
+                  timeZone: 'Asia/Kolkata',
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                }) + ' ' + date.toLocaleTimeString('en-IN', { 
+                  timeZone: 'Asia/Kolkata',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false
+                });
+              }
+              
+              // Format volume
+              const volumeStr = dataPoint.volume >= 1000 ? 
+                `${(dataPoint.volume / 1000).toFixed(1)} k` : 
+                dataPoint.volume.toString();
+              
+              // Create tooltip content
+              tooltip.innerHTML = `
+                <div class="tooltip-header">${dateStr}</div>
+                <div class="tooltip-price">${dataPoint.close}</div>
+                <div class="tooltip-details">
+                  <div class="tooltip-row">
+                    <span class="tooltip-label">VOLUME:</span>
+                    <span class="tooltip-value">${volumeStr}</span>
+                  </div>
+                  <div class="tooltip-row">
+                    <span class="tooltip-label">OPEN:</span>
+                    <span class="tooltip-value">${dataPoint.open}</span>
+                  </div>
+                  <div class="tooltip-row">
+                    <span class="tooltip-label">HIGH:</span>
+                    <span class="tooltip-value">${dataPoint.high}</span>
+                  </div>
+                  <div class="tooltip-row">
+                    <span class="tooltip-label">LOW:</span>
+                    <span class="tooltip-value">${dataPoint.low}</span>
+                  </div>
+                  <div class="tooltip-row">
+                    <span class="tooltip-label">CLOSE:</span>
+                    <span class="tooltip-value">${dataPoint.close}</span>
+                  </div>
+                </div>
+              `;
+              
+              // Position tooltip
+              const chartRect = chartContainerRef.current?.getBoundingClientRect();
+              if (chartRect && param.point) {
+                const tooltipWidth = 150;
+                const tooltipHeight = 120;
+                let left = param.point.x + 10;
+                let top = param.point.y - tooltipHeight - 10;
+                
+                // Adjust position if tooltip goes outside chart bounds
+                if (left + tooltipWidth > chartRect.width) {
+                  left = param.point.x - tooltipWidth - 10;
+                }
+                if (top < 0) {
+                  top = param.point.y + 10;
+                }
+                
+                tooltip.style.left = `${left}px`;
+                tooltip.style.top = `${top}px`;
+                tooltip.style.display = 'block';
+              }
+            } else {
+              tooltip.style.display = 'none';
+            }
+          } else {
+            tooltip.style.display = 'none';
+          }
+        } else {
+          tooltip.style.display = 'none';
+        }
+      });
+
       // Fit content
       chartRef.current.timeScale().fitContent();
 
@@ -248,9 +349,79 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
   }
 
   return (
-    <div className="w-full h-full">
-      <div ref={chartContainerRef} className="w-full h-full" />
-    </div>
+    <>
+      <style>
+        {`
+          /* Candlestick Tooltip Styles */
+          #candlestick-tooltip {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+          }
+          
+          #candlestick-tooltip .tooltip-header {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+            font-size: 11px;
+          }
+          
+          #candlestick-tooltip .tooltip-price {
+            font-weight: 700;
+            font-size: 14px;
+            color: #111827;
+            margin-bottom: 8px;
+          }
+          
+          #candlestick-tooltip .tooltip-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+          
+          #candlestick-tooltip .tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          
+          #candlestick-tooltip .tooltip-label {
+            color: #6b7280;
+            font-weight: 500;
+            font-size: 10px;
+            min-width: 50px;
+          }
+          
+          #candlestick-tooltip .tooltip-value {
+            color: #111827;
+            font-weight: 600;
+            font-size: 11px;
+            text-align: right;
+          }
+          
+          /* Dark theme styles */
+          .dark #candlestick-tooltip .tooltip-header {
+            color: #d1d5db;
+          }
+          
+          .dark #candlestick-tooltip .tooltip-price {
+            color: #f9fafb;
+          }
+          
+          .dark #candlestick-tooltip .tooltip-label {
+            color: #9ca3af;
+          }
+          
+          .dark #candlestick-tooltip .tooltip-value {
+            color: #f9fafb;
+          }
+        `}
+      </style>
+      <div className="w-full h-full relative">
+        <div ref={chartContainerRef} className="w-full h-full" />
+        <div id="candlestick-tooltip" className="absolute hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 pointer-events-none z-30 min-w-[160px]" />
+      </div>
+    </>
   );
 };
 

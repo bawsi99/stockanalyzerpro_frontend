@@ -8,10 +8,6 @@ import {
   HistogramData,
   LineData,
   ColorType,
-  CandlestickSeries,
-  HistogramSeries,
-  LineSeries,
-  AreaSeries,
 } from "lightweight-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,12 +76,12 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
   const macdInstance = useRef<IChartApi | null>(null);
   
   // Series refs
-  const candleSeriesRef = useRef<ISeriesApi<CandlestickData> | null>(null);
-  const volumeSeriesRef = useRef<ISeriesApi<HistogramData> | null>(null);
-  const rsiSeriesRef = useRef<ISeriesApi<LineData> | null>(null);
-  const macdSeriesRef = useRef<ISeriesApi<LineData> | null>(null);
-  const macdSignalSeriesRef = useRef<ISeriesApi<LineData> | null>(null);
-  const macdHistogramSeriesRef = useRef<ISeriesApi<HistogramData> | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const rsiSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const macdSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const macdSignalSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const macdHistogramSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   
   // State
   const [selectedTimeframe, setSelectedTimeframe] = useState('1day');
@@ -105,6 +101,8 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
   });
   const [showVolume, setShowVolume] = useState(true);
   const [showIndicators, setShowIndicators] = useState(true);
+  const [latestTickPrice, setLatestTickPrice] = useState<number | null>(null);
+  const [latestTickTime, setLatestTickTime] = useState<number | null>(null);
   
   // WebSocket ref
   const wsRef = useRef<WebSocket | null>(null);
@@ -158,12 +156,23 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
   }, [symbol, onDataLoaded, onError]);
 
   // Initialize WebSocket connection
-  const initializeWebSocket = useCallback(() => {
+  const initializeWebSocket = useCallback(async () => {
     if (wsRef.current) {
       wsRef.current.close();
     }
 
     try {
+      // Get the token for the symbol
+      let symbolToken = symbol;
+      try {
+        const tokenData = await apiService.getSymbolToToken(symbol, 'NSE');
+        if (tokenData && tokenData.token) {
+          symbolToken = tokenData.token.toString();
+        }
+      } catch (error) {
+        console.warn('Failed to get symbol token, using symbol as token:', error);
+      }
+
       const token = localStorage.getItem('jwt_token');
       const wsUrl = token 
         ? `ws://localhost:8000/ws/stream?token=${token}`
@@ -180,44 +189,12 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
         // Subscribe to symbol data
         ws.send(JSON.stringify({
           action: 'subscribe',
-          symbol: symbol,
-          interval: selectedTimeframe
+          tokens: [symbolToken],
+          timeframes: [selectedTimeframe]
         }));
       };
 
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'candle' && data.token === symbol) {
-            // Update chart with new candle
-            const newCandle: CandleData = {
-              time: data.data.start,
-              open: data.data.open,
-              high: data.data.high,
-              low: data.data.low,
-              close: data.data.close,
-              volume: data.data.volume
-            };
-            
-            setChartData(prev => {
-              const updated = [...prev];
-              const existingIndex = updated.findIndex(c => c.time === newCandle.time);
-              
-              if (existingIndex >= 0) {
-                updated[existingIndex] = newCandle;
-              } else {
-                updated.push(newCandle);
-              }
-              
-              // Keep only last 1000 candles
-              return updated.slice(-1000);
-            });
-          }
-        } catch (err) {
-          console.error('Error parsing WebSocket message:', err);
-        }
-      };
+      ws.onmessage = handleWebSocketMessage;
 
       ws.onclose = () => {
         console.log('WebSocket disconnected');
@@ -229,7 +206,7 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
           clearTimeout(reconnectTimeoutRef.current);
         }
         reconnectTimeoutRef.current = setTimeout(() => {
-          initializeWebSocket();
+          initializeWebSocket().catch(console.error);
         }, 5000);
       };
 
@@ -243,6 +220,30 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
       console.error('Failed to initialize WebSocket:', err);
       setIsConnected(false);
       setIsLive(false);
+    }
+  }, [symbol]); // Remove selectedTimeframe from dependencies
+
+  // Update WebSocket subscription when timeframe changes
+  const updateWebSocketSubscription = useCallback(async () => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      console.log('Updating WebSocket subscription for timeframe:', selectedTimeframe);
+      
+      // Get the token for the symbol
+      let symbolToken = symbol;
+      try {
+        const tokenData = await apiService.getSymbolToToken(symbol, 'NSE');
+        if (tokenData && tokenData.token) {
+          symbolToken = tokenData.token.toString();
+        }
+      } catch (error) {
+        console.warn('Failed to get symbol token, using symbol as token:', error);
+      }
+      
+      wsRef.current.send(JSON.stringify({
+        action: 'subscribe',
+        tokens: [symbolToken],
+        timeframes: [selectedTimeframe]
+      }));
     }
   }, [symbol, selectedTimeframe]);
 
@@ -287,22 +288,32 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
         tickMarkFormatter: (time: number) => {
           const date = new Date(time * 1000);
           
-          // For 1-day interval, show only date
-          if (selectedTimeframe === '1day') {
-            return date.toLocaleDateString('en-IN', { 
-              timeZone: 'Asia/Kolkata',
-              month: 'short', 
-              day: 'numeric' 
-            });
-          } else {
-            // For other intervals, show time
-            return date.toLocaleTimeString('en-IN', { 
-              timeZone: 'Asia/Kolkata',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false
-            });
-          }
+                      // For 1-day interval, show only date
+            if (selectedTimeframe === '1day') {
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric' 
+              });
+            } else if (selectedTimeframe === '1h' || selectedTimeframe === '60min' || selectedTimeframe === '60minute') {
+              // For hourly intervals, show date and full time
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            } else {
+              // For other intervals, show time
+              return date.toLocaleTimeString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
         },
       },
       localization: {
@@ -317,6 +328,16 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
               day: '2-digit',
               month: '2-digit',
               year: 'numeric'
+            });
+          } else if (selectedTimeframe === '1h' || selectedTimeframe === '60min' || selectedTimeframe === '60minute') {
+            // For hourly intervals, show date and full time
+            return utcDate.toLocaleDateString('en-IN', { 
+              timeZone: 'Asia/Kolkata',
+              month: 'short', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
             });
           } else {
             // For other intervals, show time
@@ -488,13 +509,13 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
     }
   }, [theme, chartDimensions, chartHeights, showVolume, showIndicators, activeIndicators]);
 
-  // Update chart data
+  // Update chart data - FIXED VERSION
   const updateChartData = useCallback(() => {
     if (!chartData.length) return;
 
     const isDark = theme === "dark";
 
-    // Update candle data
+    // Update candle data - Use update() for real-time updates, setData() only for initial load
     if (chartInstance.current && candleSeriesRef.current) {
       const candleData = chartData.map<CandlestickData>(d => ({
         time: d.time as UTCTimestamp,
@@ -504,10 +525,20 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
         close: d.close,
       }));
 
-      candleSeriesRef.current.setData(candleData);
+      // Only use setData() for initial load, use update() for real-time updates
+      if (chartData.length === 1) {
+        // Initial data load
+        candleSeriesRef.current.setData(candleData);
+      } else {
+        // Real-time updates - update only the last candle
+        const lastCandle = candleData[candleData.length - 1];
+        if (lastCandle) {
+          candleSeriesRef.current.update(lastCandle);
+        }
+      }
     }
 
-    // Update volume data
+    // Update volume data - Only update if volume series exists
     if (showVolume && volumeInstance.current && volumeSeriesRef.current) {
       const volumeData = chartData.map<HistogramData>(d => ({
         time: d.time as UTCTimestamp,
@@ -515,10 +546,18 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
         color: d.close >= d.open ? 'rgba(38, 166, 154, 0.8)' : 'rgba(239, 83, 80, 0.8)',
       }));
 
-      volumeSeriesRef.current.setData(volumeData);
+      // Only update volume on initial load or when volume changes significantly
+      if (chartData.length === 1) {
+        volumeSeriesRef.current.setData(volumeData);
+      } else {
+        const lastVolume = volumeData[volumeData.length - 1];
+        if (lastVolume) {
+          volumeSeriesRef.current.update(lastVolume);
+        }
+      }
     }
 
-    // Update RSI data
+    // Update indicators - Only update when indicators change significantly
     if (showIndicators && activeIndicators.rsi && rsiInstance.current && rsiSeriesRef.current && indicators.rsi) {
       const rsiData = chartData
         .map<LineData>((d, idx) => ({
@@ -527,10 +566,13 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
         }))
         .filter(d => d.value !== null && !isNaN(d.value) && d.value >= 0 && d.value <= 100) as LineData[];
 
-      rsiSeriesRef.current.setData(rsiData);
+      // Only update RSI on initial load
+      if (chartData.length === 1) {
+        rsiSeriesRef.current.setData(rsiData);
+      }
     }
 
-    // Update MACD data
+    // Update MACD data - Only update on initial load
     if (showIndicators && activeIndicators.macd && macdInstance.current && macdSeriesRef.current && indicators.macd) {
       const macdData = chartData
         .map<LineData>((d, idx) => ({
@@ -554,11 +596,90 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
         }))
         .filter(d => d.value !== null && !isNaN(d.value)) as HistogramData[];
 
-      macdSeriesRef.current.setData(macdData);
-      macdSignalSeriesRef.current?.setData(signalData);
-      macdHistogramSeriesRef.current?.setData(histogramData);
+      // Only update MACD on initial load
+      if (chartData.length === 1) {
+        macdSeriesRef.current.setData(macdData);
+        macdSignalSeriesRef.current?.setData(signalData);
+        macdHistogramSeriesRef.current?.setData(histogramData);
+      }
     }
   }, [chartData, theme, showVolume, showIndicators, activeIndicators, indicators]);
+
+  // Fix tick data handling
+  const handleTickUpdate = useCallback((tickData: any) => {
+    if (!chartInstance.current || !candleSeriesRef.current) return;
+
+    // Update the last candle with tick data
+    const lastCandle = chartData[chartData.length - 1];
+    if (lastCandle) {
+      const updatedCandle: CandlestickData = {
+        time: lastCandle.time as UTCTimestamp,
+        open: lastCandle.open,
+        high: Math.max(lastCandle.high, tickData.price),
+        low: Math.min(lastCandle.low, tickData.price),
+        close: tickData.price,
+      };
+
+      // Use update() to preserve chart state (zoom, pan, crosshair)
+      candleSeriesRef.current.update(updatedCandle);
+      
+      // Update the chart data state
+      setChartData(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          ...lastCandle,
+          close: tickData.price,
+          high: Math.max(lastCandle.high, tickData.price),
+          low: Math.min(lastCandle.low, tickData.price)
+        };
+        return updated;
+      });
+    }
+  }, [chartData]);
+
+  // Update WebSocket message handler
+  const handleWebSocketMessage = useCallback((event: MessageEvent) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log('WebSocket message received:', data);
+      
+      if (data.type === 'candle' && data.token === symbol) {
+        // Update chart with new candle
+        const newCandle: CandleData = {
+          time: data.data.start,
+          open: data.data.open,
+          high: data.data.high,
+          low: data.data.low,
+          close: data.data.close,
+          volume: data.data.volume
+        };
+        
+        setChartData(prev => {
+          const updated = [...prev];
+          const existingIndex = updated.findIndex(c => c.time === newCandle.time);
+          
+          if (existingIndex >= 0) {
+            updated[existingIndex] = newCandle;
+          } else {
+            updated.push(newCandle);
+          }
+          
+          // Keep only last 1000 candles
+          return updated.slice(-1000);
+        });
+      } else if (data.type === 'tick' && data.token === symbol) {
+        // Handle tick data for real-time price updates
+        console.log('Tick data received:', data);
+        setLatestTickPrice(data.price);
+        setLatestTickTime(data.timestamp);
+        
+        // Use the new tick update handler
+        handleTickUpdate(data);
+      }
+    } catch (err) {
+      console.error('Error parsing WebSocket message:', err);
+    }
+  }, [symbol, handleTickUpdate]);
 
   // Add series to charts
   useEffect(() => {
@@ -575,6 +696,8 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
         wickUpColor: isDark ? '#26a69a' : '#26a69a',
         wickDownColor: isDark ? '#ef5350' : '#ef5350',
       });
+
+
     }
 
     // Add volume series
@@ -643,19 +766,162 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
     }
   }, [theme, showVolume, showIndicators, activeIndicators, chartData]);
 
-  // Handle timeframe change
-  const handleTimeframeChange = useCallback((timeframe: string) => {
-    setSelectedTimeframe(timeframe);
-    loadHistoricalData(timeframe);
+  // Add tooltip subscription when chart is ready
+  useEffect(() => {
+    if (!chartInstance.current || !candleSeriesRef.current) return;
+
+    console.log('Setting up tooltip subscription for live chart section');
+
+    // Enhanced candlestick tooltip for live chart section
+    const unsubscribe = chartInstance.current.subscribeCrosshairMove((param) => {
+      const tooltip = document.getElementById('candlestick-tooltip');
+      if (!tooltip) return;
+      
+      if (param.time && param.seriesData) {
+        const candleDataPoint = param.seriesData.get(candleSeriesRef.current);
+        
+        if (candleDataPoint) {
+          const timeIndex = chartData.findIndex(d => d.time === param.time);
+          if (timeIndex !== -1) {
+            const dataPoint = chartData[timeIndex];
+            const date = new Date(dataPoint.time * 1000);
+            
+            // Format date based on timeframe
+            let dateStr = '';
+            if (selectedTimeframe === '1d') {
+              dateStr = date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+            } else {
+              dateStr = date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              }) + ' ' + date.toLocaleTimeString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
+            
+            // Format volume
+            const volumeStr = dataPoint.volume >= 1000 ? 
+              `${(dataPoint.volume / 1000).toFixed(1)} k` : 
+              dataPoint.volume.toString();
+            
+            // Create tooltip content
+            tooltip.innerHTML = `
+              <div class="tooltip-header">${dateStr}</div>
+              <div class="tooltip-price">${dataPoint.close}</div>
+              <div class="tooltip-details">
+                <div class="tooltip-row">
+                  <span class="tooltip-label">VOLUME:</span>
+                  <span class="tooltip-value">${volumeStr}</span>
+                </div>
+                <div class="tooltip-row">
+                  <span class="tooltip-label">OPEN:</span>
+                  <span class="tooltip-value">${dataPoint.open}</span>
+                </div>
+                <div class="tooltip-row">
+                  <span class="tooltip-label">HIGH:</span>
+                  <span class="tooltip-value">${dataPoint.high}</span>
+                </div>
+                <div class="tooltip-row">
+                  <span class="tooltip-label">LOW:</span>
+                  <span class="tooltip-value">${dataPoint.low}</span>
+                </div>
+                <div class="tooltip-row">
+                  <span class="tooltip-label">CLOSE:</span>
+                  <span class="tooltip-value">${dataPoint.close}</span>
+                </div>
+              </div>
+            `;
+            
+            // Position tooltip
+            const chartRect = chartInstance.current?.getElement()?.getBoundingClientRect();
+            if (chartRect && param.point) {
+              const tooltipWidth = 150;
+              const tooltipHeight = 120;
+              let left = param.point.x + 10;
+              let top = param.point.y - tooltipHeight - 10;
+              
+              // Adjust position if tooltip goes outside chart bounds
+              if (left + tooltipWidth > chartRect.width) {
+                left = param.point.x - tooltipWidth - 10;
+              }
+              if (top < 0) {
+                top = param.point.y + 10;
+              }
+              
+              tooltip.style.left = `${left}px`;
+              tooltip.style.top = `${top}px`;
+              tooltip.style.display = 'block';
+            }
+          } else {
+            tooltip.style.display = 'none';
+          }
+        } else {
+          tooltip.style.display = 'none';
+        }
+      } else {
+        tooltip.style.display = 'none';
+      }
+    });
+
+    // Cleanup subscription on unmount or when chart changes
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [chartInstance.current, candleSeriesRef.current, chartData, selectedTimeframe]);
+
+  // Add real-time price display
+  const renderRealTimePrice = () => {
+    if (!latestTickPrice) return null;
     
-    // Update WebSocket subscription
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        action: 'subscribe',
-        symbol: symbol,
-        interval: timeframe
-      }));
+    const priceChange = chartData.length > 1 
+      ? latestTickPrice - chartData[chartData.length - 2].close 
+      : 0;
+    const priceChangePercent = chartData.length > 1 
+      ? (priceChange / chartData[chartData.length - 2].close) * 100 
+      : 0;
+    
+    return (
+      <div className="absolute top-4 right-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 z-20">
+        <div className="text-sm text-gray-500 dark:text-gray-400">Live Price</div>
+        <div className="text-xl font-bold text-gray-900 dark:text-white">
+          ₹{latestTickPrice.toFixed(2)}
+        </div>
+        <div className={`text-sm font-medium ${priceChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePercent >= 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%)
+        </div>
+        {latestTickTime && (
+          <div className="text-xs text-gray-400 mt-1">
+            {new Date(latestTickTime * 1000).toLocaleTimeString()}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Handle timeframe change
+  const handleTimeframeChange = useCallback(async (timeframe: string) => {
+    setSelectedTimeframe(timeframe);
+    
+    // Clear cache for the new interval to ensure fresh data
+    try {
+      await apiService.clearIntervalCache(symbol, timeframe);
+    } catch (error) {
+      console.warn('Failed to clear interval cache:', error);
     }
+    
+    loadHistoricalData(timeframe);
   }, [symbol, loadHistoricalData]);
 
   // Handle window resize
@@ -689,7 +955,7 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
 
   // Initialize WebSocket on mount
   useEffect(() => {
-    initializeWebSocket();
+    initializeWebSocket().catch(console.error);
     
     return () => {
       if (wsRef.current) {
@@ -700,6 +966,11 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
       }
     };
   }, [initializeWebSocket]);
+
+  // Update subscription when timeframe changes
+  useEffect(() => {
+    updateWebSocketSubscription().catch(console.error);
+  }, [updateWebSocketSubscription]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -731,7 +1002,75 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
   }));
 
   return (
-    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+    <>
+      <style>
+        {`
+          /* Candlestick Tooltip Styles */
+          #candlestick-tooltip {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+          }
+          
+          #candlestick-tooltip .tooltip-header {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+            font-size: 11px;
+          }
+          
+          #candlestick-tooltip .tooltip-price {
+            font-weight: 700;
+            font-size: 14px;
+            color: #111827;
+            margin-bottom: 8px;
+          }
+          
+          #candlestick-tooltip .tooltip-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+          
+          #candlestick-tooltip .tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          
+          #candlestick-tooltip .tooltip-label {
+            color: #6b7280;
+            font-weight: 500;
+            font-size: 10px;
+            min-width: 50px;
+          }
+          
+          #candlestick-tooltip .tooltip-value {
+            color: #111827;
+            font-weight: 600;
+            font-size: 11px;
+            text-align: right;
+          }
+          
+          /* Dark theme styles */
+          .dark #candlestick-tooltip .tooltip-header {
+            color: #d1d5db;
+          }
+          
+          .dark #candlestick-tooltip .tooltip-price {
+            color: #f9fafb;
+          }
+          
+          .dark #candlestick-tooltip .tooltip-label {
+            color: #9ca3af;
+          }
+          
+          .dark #candlestick-tooltip .tooltip-value {
+            color: #f9fafb;
+          }
+        `}
+      </style>
+      <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
       <CardHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -801,16 +1140,6 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
                 {showIndicators ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                 Indicators
               </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => loadHistoricalData(selectedTimeframe)}
-                className="text-xs h-7"
-                disabled={isLoading}
-              >
-                <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
-              </Button>
             </div>
           </div>
         </div>
@@ -832,9 +1161,13 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
           </div>
         )}
         
-        <div ref={containerRef} className="w-full h-full">
+        <div ref={containerRef} className="w-full h-full relative">
+          {/* Real-time Price Display */}
+          {renderRealTimePrice()}
+          
           {/* Main Chart */}
           <div ref={candleChartRef} className="w-full" style={{ height: chartHeights.candle }}></div>
+          <div id="candlestick-tooltip" className="absolute hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 pointer-events-none z-30 min-w-[160px]" />
           
           {/* Volume Chart */}
           {showVolume && (
@@ -864,6 +1197,7 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
         )}
       </CardContent>
     </Card>
+    </>
   );
 });
 

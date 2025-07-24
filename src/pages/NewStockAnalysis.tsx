@@ -61,7 +61,7 @@ const NewStockAnalysis = () => {
     stock: "RELIANCE",
     exchange: "NSE",
     period: "365",
-    interval: "day",
+    interval: "1day",
     sector: "none"
   });
 

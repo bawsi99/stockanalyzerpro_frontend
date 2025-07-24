@@ -236,17 +236,10 @@ interface LiveChartControlsProps {
 }
 
 function LiveChartControls({ className = '' }: LiveChartControlsProps) {
-  const { refetch, recalculate, redetect, isConnected } = useLiveChart();
+  const { recalculate, redetect, isConnected } = useLiveChart();
 
   return (
     <div className={`flex items-center space-x-2 ${className}`}>
-      <button
-        onClick={refetch}
-        disabled={!isConnected}
-        className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Refresh
-      </button>
       <button
         onClick={recalculate}
         disabled={!isConnected}

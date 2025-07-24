@@ -67,7 +67,7 @@ export const useStockAnalyses = () => {
   const { user } = useAuth();
 
   // Fetch analysis history for a stock and timeframe
-  const fetchAnalyses = async (stockSymbol: string, timeframe: string = 'day') => {
+  const fetchAnalyses = async (stockSymbol: string, timeframe: string = '1day') => {
     try {
       const result = await apiService.getAnalysisHistory(stockSymbol, timeframe);
       if (result && result.history) {
