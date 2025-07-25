@@ -13,6 +13,7 @@ import { PatternMarkers, TrianglePattern, FlagPattern, VolumeAnomalyDetailed, Ov
 interface CombinedChartAnalysisCardProps {
   chartData: Array<{
     date: string;
+    time?: number; // Optional for backward compatibility
     open: number;
     high: number;
     low: number;

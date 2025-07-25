@@ -14,16 +14,7 @@ import { useStockAnalyses, StoredAnalysis } from "@/hooks/useStockAnalyses";
 import { useAuth } from "@/contexts/AuthContext";
 import { AnalysisResponse, ErrorResponse, isAnalysisResponse, isErrorResponse } from "@/types/analysis";
 import { apiService } from "@/services/api";
-import stockList from "@/utils/stockList.json";
-import {
-  Command,
-  CommandDialog,
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-} from "@/components/ui/command";
+import { StockSelector } from "@/components/ui/stock-selector";
 
 // Type definitions
 interface SectorInfo {
@@ -68,8 +59,6 @@ const NewStockAnalysis = () => {
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stockDialogOpen, setStockDialogOpen] = useState(false);
-  const [stockSearch, setStockSearch] = useState("");
   const [timer, setTimer] = useState(0);
 
   // Sector state
@@ -289,67 +278,11 @@ const NewStockAnalysis = () => {
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <Label htmlFor="stock" className="text-slate-700 font-medium">
-                            Stock Symbol
-                          </Label>
-                          <button
-                            id="stock"
-                            type="button"
-                            className="w-full flex items-center justify-between rounded-lg border border-slate-300 bg-white px-4 py-3 text-left shadow-sm hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
-                            onClick={() => setStockDialogOpen(true)}
-                          >
-                            {formData.stock ? (
-                              (() => {
-                                const selected = stockList.find(s => s.symbol === formData.stock);
-                                return selected
-                                  ? `${selected.symbol} – ${selected.name}`
-                                  : formData.stock;
-                              })()
-                            ) : (
-                              "Select a stock"
-                            )}
-                            <span className="text-slate-400">▼</span>
-                          </button>
-                          
-                          <CommandDialog open={stockDialogOpen} onOpenChange={setStockDialogOpen}>
-                            <CommandInput
-                              placeholder="Search stock by symbol or name..."
-                              value={stockSearch}
-                              onValueChange={setStockSearch}
-                              autoFocus
-                            />
-                            <CommandList>
-                              <CommandEmpty>No stocks found.</CommandEmpty>
-                              <CommandGroup>
-                                {stockList
-                                  .filter((s) =>
-                                    (s.symbol + " " + s.name + " " + s.exchange)
-                                      .toLowerCase()
-                                      .includes(stockSearch.toLowerCase())
-                                  )
-                                  .slice(0, 50)
-                                  .map((s) => (
-                                    <CommandItem
-                                      key={`${s.symbol}_${s.exchange}`}
-                                      value={s.symbol}
-                                      onSelect={() => {
-                                        handleInputChange("stock", s.symbol);
-                                        setStockDialogOpen(false);
-                                        setStockSearch("");
-                                      }}
-                                    >
-                                      <div className="flex items-center justify-between w-full">
-                                        <div>
-                                          <span className="font-semibold">{s.symbol}</span>
-                                          <span className="ml-2 text-slate-600">{s.name}</span>
-                                        </div>
-                                        <span className="text-xs text-slate-400">{s.exchange}</span>
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </CommandDialog>
+                          <StockSelector
+                            value={formData.stock}
+                            onValueChange={(value) => handleInputChange("stock", value)}
+                            label="Stock Symbol"
+                          />
                         </div>
 
                         <div className="space-y-2">

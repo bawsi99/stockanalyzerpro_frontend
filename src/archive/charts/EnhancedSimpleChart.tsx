@@ -1,11 +1,10 @@
-/*
- * EnhancedSimpleChart
- * -------------------
- * Chart component for static or enhanced chart rendering with technical indicators and pattern overlays.
- * Does NOT handle live data or WebSocket connections. Use for historical or non-live chart displays only.
- *
- * All indicator and pattern calculation logic MUST be imported from '@/utils/chartUtils'.
- * This component should only handle rendering, state, and UI logic.
+/**
+ * @deprecated This component has been archived and is no longer in use.
+ * The enhanced simple chart functionality has been integrated into the unified Charts page.
+ * See: frontend/src/pages/Charts.tsx for the current implementation.
+ * 
+ * Archived on: 2024-07-25
+ * Reason: Consolidated into unified chart system
  */
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
@@ -65,6 +64,26 @@ interface EnhancedSimpleChartProps {
   onStatsCalculated?: (stats: any) => void;
   onResetScale?: () => void; // Add reset scale callback
   onRegisterReset?: (resetFn: () => void) => void; // Add reset function registration
+  activeIndicators?: {
+    sma20?: boolean;
+    sma50?: boolean;
+    ema12?: boolean;
+    ema26?: boolean;
+    ema50?: boolean;
+    sma200?: boolean;
+    bollingerBands?: boolean;
+    macd?: boolean;
+    stochastic?: boolean;
+    atr?: boolean;
+    obv?: boolean;
+    rsiDivergence?: boolean;
+    doublePatterns?: boolean;
+    volumeAnomaly?: boolean;
+    peaksLows?: boolean;
+    support?: boolean;
+    resistance?: boolean;
+    trianglesFlags?: boolean;
+  };
 }
 
 // ---- Utility helpers ---- //
@@ -180,7 +199,8 @@ const EnhancedSimpleChart: React.FC<EnhancedSimpleChartProps> = ({
   onValidationResult,
   onStatsCalculated,
   onResetScale,
-  onRegisterReset
+  onRegisterReset,
+  activeIndicators = {}
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);

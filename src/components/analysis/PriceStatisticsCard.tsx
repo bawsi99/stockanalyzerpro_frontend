@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, BarChart3, Target, Activity } from "lucide-react";
+import { TrendingUp, TrendingDown, BarChart3, Target, Activity, Loader2 } from "lucide-react";
 
 interface PriceStatisticsProps {
   summaryStats: {
@@ -25,6 +25,20 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
   latestPrice, 
   timeframe = "All Time" 
 }) => {
+  // Add null checks and default values
+  const stats = summaryStats || {
+    mean: 0,
+    max: 0,
+    min: 0,
+    current: 0,
+    distFromMean: 0,
+    distFromMax: 0,
+    distFromMin: 0,
+    distFromMeanPct: 0,
+    distFromMaxPct: 0,
+    distFromMinPct: 0
+  };
+
   const getPerformanceColor = (value: number) => {
     if (value > 0) return "text-green-600";
     if (value < 0) return "text-red-600";
@@ -38,9 +52,9 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
   };
 
   const getPositionInRange = () => {
-    const range = summaryStats.max - summaryStats.min;
+    const range = stats.max - stats.min;
     if (range === 0) return 50; // If max and min are the same
-    return ((summaryStats.current - summaryStats.min) / range) * 100;
+    return ((stats.current - stats.min) / range) * 100;
   };
 
   const formatCurrency = (value: number) => {
@@ -50,6 +64,29 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
   const formatPercentage = (value: number) => {
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
   };
+
+  // If no valid data, show loading state
+  if (!summaryStats || stats.current === 0) {
+    return (
+      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
+          <div className="flex items-center space-x-2">
+            <Target className="h-6 w-6" />
+            <CardTitle className="text-xl">Price Statistics</CardTitle>
+          </div>
+          <div className="text-blue-100 text-sm">
+            {timeframe} Analysis
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="text-center text-gray-500">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+            <p>Loading price statistics...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
@@ -68,9 +105,9 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
           <div className="text-center">
             <div className="text-sm text-slate-600 mb-1">Current Price</div>
             <div className="text-3xl font-bold text-slate-800">
-              {formatCurrency(summaryStats.current)}
+              {formatCurrency(stats.current)}
             </div>
-            {latestPrice && latestPrice !== summaryStats.current && (
+            {latestPrice && latestPrice !== stats.current && (
               <div className="text-sm text-slate-500 mt-1">
                 Latest: {formatCurrency(latestPrice)}
               </div>
@@ -83,19 +120,19 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
           <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
             <div className="text-sm text-slate-600 mb-1">All-Time High</div>
             <div className="text-xl font-bold text-green-700">
-              {formatCurrency(summaryStats.max)}
+              {formatCurrency(stats.max)}
             </div>
           </div>
           <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
             <div className="text-sm text-slate-600 mb-1">Mean Price</div>
             <div className="text-xl font-bold text-blue-700">
-              {formatCurrency(summaryStats.mean)}
+              {formatCurrency(stats.mean)}
             </div>
           </div>
           <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
             <div className="text-sm text-slate-600 mb-1">All-Time Low</div>
             <div className="text-xl font-bold text-red-700">
-              {formatCurrency(summaryStats.min)}
+              {formatCurrency(stats.min)}
             </div>
           </div>
         </div>
@@ -111,12 +148,12 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
               <span className="text-slate-700">Deviation from Mean</span>
             </div>
             <div className="text-right">
-              <div className={`font-semibold ${getPerformanceColor(summaryStats.distFromMean)}`}>
-                {getPerformanceIcon(summaryStats.distFromMean)}
-                <span className="ml-1">{formatCurrency(summaryStats.distFromMean)}</span>
+              <div className={`font-semibold ${getPerformanceColor(stats.distFromMean)}`}>
+                {getPerformanceIcon(stats.distFromMean)}
+                <span className="ml-1">{formatCurrency(stats.distFromMean)}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {formatPercentage(summaryStats.distFromMeanPct)}
+                {formatPercentage(stats.distFromMeanPct)}
               </div>
             </div>
           </div>
@@ -128,12 +165,12 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
               <span className="text-slate-700">Distance from High</span>
             </div>
             <div className="text-right">
-              <div className={`font-semibold ${getPerformanceColor(summaryStats.distFromMax)}`}>
-                {getPerformanceIcon(summaryStats.distFromMax)}
-                <span className="ml-1">{formatCurrency(summaryStats.distFromMax)}</span>
+              <div className={`font-semibold ${getPerformanceColor(stats.distFromMax)}`}>
+                {getPerformanceIcon(stats.distFromMax)}
+                <span className="ml-1">{formatCurrency(stats.distFromMax)}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {formatPercentage(summaryStats.distFromMaxPct)}
+                {formatPercentage(stats.distFromMaxPct)}
               </div>
             </div>
           </div>
@@ -145,12 +182,12 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
               <span className="text-slate-700">Distance from Low</span>
             </div>
             <div className="text-right">
-              <div className={`font-semibold ${getPerformanceColor(summaryStats.distFromMin)}`}>
-                {getPerformanceIcon(summaryStats.distFromMin)}
-                <span className="ml-1">{formatCurrency(summaryStats.distFromMin)}</span>
+              <div className={`font-semibold ${getPerformanceColor(stats.distFromMin)}`}>
+                {getPerformanceIcon(stats.distFromMin)}
+                <span className="ml-1">{formatCurrency(stats.distFromMin)}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {formatPercentage(summaryStats.distFromMinPct)}
+                {formatPercentage(stats.distFromMinPct)}
               </div>
             </div>
           </div>
@@ -173,8 +210,8 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
               ></div>
             </div>
             <div className="flex justify-between text-xs text-slate-500 mt-1">
-              <span>Low ({formatCurrency(summaryStats.min)})</span>
-              <span>High ({formatCurrency(summaryStats.max)})</span>
+              <span>Low ({formatCurrency(stats.min)})</span>
+              <span>High ({formatCurrency(stats.max)})</span>
             </div>
           </div>
         </div>
@@ -183,7 +220,7 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
         <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
           <h4 className="font-semibold text-amber-800 mb-2">Quick Insights</h4>
           <div className="space-y-2 text-sm text-amber-700">
-            {summaryStats.current > summaryStats.mean ? (
+            {stats.current > stats.mean ? (
               <div className="flex items-center space-x-2">
                 <TrendingUp className="h-4 w-4" />
                 <span>Price is above the mean, indicating bullish momentum</span>

@@ -1,3 +1,12 @@
+/**
+ * @deprecated This component has been archived and is no longer in use.
+ * The live chart provider functionality has been integrated into the unified Charts page.
+ * See: frontend/src/pages/Charts.tsx for the current implementation.
+ * 
+ * Archived on: 2024-07-25
+ * Reason: Consolidated into unified chart system
+ */
+
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { ChartData } from '@/types/analysis';
 import { useLiveData } from '@/services/liveDataService';

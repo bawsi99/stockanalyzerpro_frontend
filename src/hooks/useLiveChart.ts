@@ -5,6 +5,7 @@ import { toUTCTimestamp } from '@/utils/chartUtils';
 // Types for live chart data
 export interface LiveChartData {
   date: string;
+  time: number; // UTC timestamp in seconds for lightweight-charts
   open: number;
   high: number;
   low: number;
@@ -250,14 +251,25 @@ export function useLiveChart({
               if (candleData && typeof candleData.open === 'number') {
                 setState(prev => {
                   const newData = [...prev.data];
-                  const existingIndex = newData.findIndex(d => d.date === candleData.date);
+                  // Convert CandleData to LiveChartData format
+                  const liveChartData: LiveChartData = {
+                    date: new Date(candleData.time * 1000).toISOString(),
+                    time: candleData.time,
+                    open: candleData.open,
+                    high: candleData.high,
+                    low: candleData.low,
+                    close: candleData.close,
+                    volume: candleData.volume
+                  };
+                  
+                  const existingIndex = newData.findIndex(d => d.time === candleData.time);
                   
                   if (existingIndex >= 0) {
-                    newData[existingIndex] = candleData;
-                    console.log('🔄 Updated existing candle:', candleData);
+                    newData[existingIndex] = liveChartData;
+                    console.log('🔄 Updated existing candle:', liveChartData);
                   } else {
-                    newData.push(candleData);
-                    console.log('➕ Added new candle:', candleData);
+                    newData.push(liveChartData);
+                    console.log('➕ Added new candle:', liveChartData);
                   }
                   
                   return {
@@ -324,7 +336,8 @@ export function useLiveChart({
                   close: price,
                   high: Math.max(lastCandle.high, price),
                   low: Math.min(lastCandle.low, price),
-                  volume: tickData.volume_traded || tickData.volume || lastCandle.volume
+                  volume: tickData.volume_traded || tickData.volume || lastCandle.volume,
+                  time: lastCandle.time // Preserve the time property
                 };
                 
                 newData[newData.length - 1] = updatedCandle;

@@ -1,42 +1,113 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ZoomIn } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import {
-  Command,
-  CommandDialog,
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-} from '@/components/ui/command';
+
+// Icons
+import { 
+  TrendingUp, 
+  BarChart3, 
+  AlertTriangle, 
+  ArrowUpRight, 
+  ArrowDownRight,
+  Minus,
+  Settings,
+  Loader2,
+  Eye,
+  Activity,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  ZoomIn
+} from 'lucide-react';
+
+// Chart Components
 import LiveSimpleChart from '@/components/charts/LiveSimpleChart';
-import EnhancedSimpleChart from '@/components/charts/EnhancedSimpleChart';
-// EnhancedLiveChart removed - using enhanced LiveSimpleChart instead
-import ChartTest from '@/components/charts/ChartTest';
-import { authService } from '@/services/authService';
-import { liveDataService } from '@/services/liveDataService';
-import type { StockInfo } from '@/services/liveDataService';
-import { ChartData } from '@/types/analysis';
 import { useLiveChart } from '@/hooks/useLiveChart';
+
+// Analysis Components
+import ConsensusSummaryCard from '@/components/analysis/ConsensusSummaryCard';
+import AITradingAnalysisOverviewCard from '@/components/analysis/AITradingAnalysisOverviewCard';
+import TechnicalAnalysisCard from '@/components/analysis/TechnicalAnalysisCard';
+import AdvancedPatternAnalysisCard from '@/components/analysis/AdvancedPatternAnalysisCard';
+import MultiTimeframeAnalysisCard from '@/components/analysis/MultiTimeframeAnalysisCard';
+import AdvancedRiskAssessmentCard from '@/components/analysis/AdvancedRiskAssessmentCard';
+import ComplexPatternAnalysisCard from '@/components/analysis/ComplexPatternAnalysisCard';
+import AdvancedRiskMetricsCard from '@/components/analysis/AdvancedRiskMetricsCard';
+import SectorAnalysisCard from '@/components/analysis/SectorAnalysisCard';
+import SectorBenchmarkingCard from '@/components/analysis/SectorBenchmarkingCard';
+import EnhancedPatternRecognitionCard from '@/components/analysis/EnhancedPatternRecognitionCard';
+import PriceStatisticsCard from '@/components/analysis/PriceStatisticsCard';
+import ActionButtonsSection from '@/components/analysis/ActionButtonsSection';
+import DisclaimerCard from '@/components/analysis/DisclaimerCard';
+
+// Services and Utils
+import { authService } from '@/services/authService';
+import { apiService } from '@/services/api';
+import { AnalysisData, EnhancedOverlays } from '@/types/analysis';
 import stockList from '@/utils/stockList.json';
 
-// Type for candlestick data
-interface CandlestickData {
-  date: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
+// Types
+interface ChartStats {
+  dateRange: { start: string; end: string; days: number };
+  price: { min: number; max: number; current: number };
+  volume: { avg: number; total: number };
+  returns: { avg: number; volatility: number };
 }
+
+// Price Statistics calculation function
+const calculatePriceStatistics = (data: any[] | null) => {
+  if (!data || data.length === 0) {
+    return null;
+  }
+
+  const prices = data.map(d => d.close || d.price || 0).filter(p => p > 0);
+  if (prices.length === 0) return null;
+
+  const current = prices[prices.length - 1];
+  const max = Math.max(...prices);
+  const min = Math.min(...prices);
+  const mean = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+
+  const distFromMean = current - mean;
+  const distFromMax = current - max;
+  const distFromMin = current - min;
+
+  const distFromMeanPct = (distFromMean / mean) * 100;
+  const distFromMaxPct = (distFromMax / max) * 100;
+  const distFromMinPct = (distFromMin / min) * 100;
+
+  return {
+    mean,
+    max,
+    min,
+    current,
+    distFromMean,
+    distFromMax,
+    distFromMin,
+    distFromMeanPct,
+    distFromMaxPct,
+    distFromMinPct
+  };
+};
+
+// Map frontend timeframe values to API interval values
+const mapTimeframeToInterval = (timeframe: string): string => {
+  const mapping: Record<string, string> = {
+    '1m': '1min',
+    '5m': '5min',
+    '15m': '15min',
+    '1h': '1h',
+    '1d': '1day'
+  };
+  return mapping[timeframe] || '1day';
+};
 
 const TIMEFRAMES = [
   { label: '1 Minute', value: '1m' },
@@ -47,70 +118,35 @@ const TIMEFRAMES = [
 ];
 
 export default function Charts() {
-  const [stockInput, setStockInput] = useState('RELIANCE');
+  // Core State
+  const [stockSymbol, setStockSymbol] = useState<string>('RELIANCE');
   const [selectedTimeframe, setSelectedTimeframe] = useState('1d');
+  const [activeTab, setActiveTab] = useState('overview');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  
+  // Authentication
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'error'>('loading');
   const [authError, setAuthError] = useState<string>('');
-  const [chartData, setChartData] = useState<CandlestickData[]>([]);
-  const [enhancedChartData, setEnhancedChartData] = useState<ChartData[]>([]);
-  const [showTestChart, setShowTestChart] = useState(false);
-  const [isLoadingData, setIsLoadingData] = useState(false);
-  const [dataError, setDataError] = useState<string | null>(null);
-  const [availableStocks, setAvailableStocks] = useState<StockInfo[]>([]);
-  const [currentStockInfo, setCurrentStockInfo] = useState<StockInfo | null>(null);
   
-  // Stock dropdown state
-  const [stockDialogOpen, setStockDialogOpen] = useState(false);
-  const [stockSearch, setStockSearch] = useState('');
+  // Analysis State
+  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  // Chart type and features
-  // Enhanced charts are now the default - no toggle needed
+  // Chart Features
   const [showIndicators, setShowIndicators] = useState(true);
   const [showPatterns, setShowPatterns] = useState(true);
+  const [showVolume, setShowVolume] = useState(true);
   const [debugMode, setDebugMode] = useState(false);
+  const [chartDataLoaded, setChartDataLoaded] = useState(false);
   
-  // Live chart state
-  const [enableLiveChart, setEnableLiveChart] = useState(true); // Enabled by default
-  const [isLiveConnected, setIsLiveConnected] = useState(false);
-  const [liveDataError, setLiveDataError] = useState<string | null>(null);
-  // Remove the lastDataUpdate state since we'll use lastUpdate from the hook
-  
-  // Chart statistics and validation
-  const [chartStats, setChartStats] = useState<any>(null);
-  const [validationResult, setValidationResult] = useState<any>(null);
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
-
-  // Chart reset refs
-  const liveChartResetRef = useRef<(() => void) | null>(null);
-  const enhancedChartResetRef = useRef<(() => void) | null>(null);
-  
-  // Functions to register reset functions from chart components
-  const registerLiveChartReset = (resetFn: () => void) => {
-    liveChartResetRef.current = resetFn;
-    console.log('Live chart reset function registered');
-  };
-  
-  const registerEnhancedChartReset = (resetFn: () => void) => {
-    enhancedChartResetRef.current = resetFn;
-    console.log('Enhanced chart reset function registered');
-  };
-  
-
-
-  // Update current time every second
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
   // Live chart hook for real-time data
+  // This hook provides real-time WebSocket data streaming with auto-reconnection
+  // and handles all live chart functionality including data updates, connection status,
+  // and error handling
   const {
     data: liveData,
-    isConnected: isLiveConnectedFromHook,
+    isConnected: isLiveConnected,
     isLive,
     isLoading: isLiveLoading,
     error: liveError,
@@ -122,45 +158,191 @@ export default function Charts() {
     updateSymbol,
     updateTimeframe
   } = useLiveChart({
-    symbol: stockInput,
+    symbol: stockSymbol,
     timeframe: selectedTimeframe,
     exchange: 'NSE',
     maxDataPoints: 1000,
     autoConnect: true
   });
 
-  // Update local state from hook
+  // Initialize authentication
   useEffect(() => {
-    setIsLiveConnected(isLiveConnectedFromHook);
-  }, [isLiveConnectedFromHook]);
+    const initializeAuth = async () => {
+      try {
+        setAuthStatus('loading');
+        const token = await authService.ensureAuthenticated();
+        if (token) {
+          setAuthStatus('authenticated');
+          console.log('✅ Authentication successful');
+        } else {
+          setAuthStatus('error');
+          setAuthError('Failed to authenticate');
+        }
+      } catch (error) {
+        setAuthStatus('error');
+        setAuthError(error instanceof Error ? error.message : 'Authentication failed');
+        console.error('❌ Authentication error:', error);
+      }
+    };
 
+    initializeAuth();
+  }, []);
+
+  // Load analysis data
   useEffect(() => {
-    if (liveError) {
-      setLiveDataError(liveError);
-    } else {
-      setLiveDataError(null);
+    const loadAnalysisData = async () => {
+      if (!stockSymbol || authStatus !== 'authenticated') return;
+      
+      try {
+        setAnalysisLoading(true);
+        setError(null);
+        
+        // Try to get from API first
+        const interval = mapTimeframeToInterval(selectedTimeframe);
+        const data = await apiService.getHistoricalData(stockSymbol, interval, 'NSE', 1000);
+        if (data && data.success && data.candles && data.candles.length > 0) {
+          // For now, we'll use the live data for analysis since we have it
+          // In a real implementation, you might want to call a separate analysis API
+          setAnalysisData({
+            consensus: { 
+              overall_signal: 'Neutral',
+              signal_strength: 'Weak',
+              bullish_percentage: 50,
+              bearish_percentage: 50,
+              neutral_percentage: 0
+            },
+            indicators: {
+              moving_averages: {
+                sma_20: 0,
+                sma_50: 0,
+                sma_200: 0,
+                ema_20: 0,
+                ema_50: 0,
+                price_to_sma_200: 0,
+                sma_20_to_sma_50: 0,
+                golden_cross: false,
+                death_cross: false
+              },
+              rsi: {
+                rsi_14: 50,
+                trend: 'neutral',
+                status: 'neutral'
+              },
+              macd: {
+                macd_line: 0,
+                signal_line: 0,
+                histogram: 0
+              },
+              bollinger_bands: {
+                upper_band: 0,
+                middle_band: 0,
+                lower_band: 0,
+                percent_b: 0.5,
+                bandwidth: 0
+              },
+              volume: {
+                volume_ratio: 1,
+                obv: 0,
+                obv_trend: 'neutral'
+              },
+              adx: {
+                adx: 25,
+                plus_di: 25,
+                minus_di: 25,
+                trend_direction: 'neutral'
+              },
+              trend_data: {
+                direction: 'neutral',
+                strength: 'weak',
+                adx: 25,
+                plus_di: 25,
+                minus_di: 25
+              },
+              raw_data: {
+                open: [],
+                high: [],
+                low: [],
+                close: [],
+                volume: []
+              },
+              metadata: {
+                start: '',
+                end: '',
+                period: 0,
+                last_price: 0,
+                last_volume: 0,
+                data_quality: {
+                  is_valid: true,
+                  warnings: [],
+                  data_quality_issues: [],
+                  missing_data: [],
+                  suspicious_patterns: []
+                },
+                indicator_availability: {
+                  sma_20: true,
+                  sma_50: true,
+                  sma_200: true,
+                  ema_20: true,
+                  ema_50: true,
+                  macd: true,
+                  rsi: true,
+                  bollinger_bands: true,
+                  stochastic: true,
+                  adx: true,
+                  obv: true,
+                  volume_ratio: true,
+                  atr: true
+                }
+              }
+            },
+            chart_insights: 'Live chart data available',
+            indicator_summary_md: 'Technical indicators will be calculated from live data'
+          });
+        } else {
+          // Fallback to localStorage
+          const storedAnalysis = localStorage.getItem('analysisResult');
+          if (storedAnalysis) {
+            const parsed = JSON.parse(storedAnalysis);
+            setAnalysisData(parsed);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading analysis data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load analysis data');
+      } finally {
+        setAnalysisLoading(false);
+      }
+    };
+
+    loadAnalysisData();
+  }, [stockSymbol, selectedTimeframe, authStatus]);
+
+  // Update live chart when stock symbol changes
+  useEffect(() => {
+    if (stockSymbol && updateSymbol) {
+      console.log('🔄 Updating symbol in useLiveChart hook:', stockSymbol);
+      updateSymbol(stockSymbol);
     }
-  }, [liveError]);
+  }, [stockSymbol, updateSymbol]);
 
-  // Update symbol when stockInput changes
+  // Update live chart when timeframe changes
   useEffect(() => {
-    if (stockInput && enableLiveChart) {
-      console.log('🔄 Updating symbol in useLiveChart hook:', stockInput);
-      updateSymbol(stockInput);
-    }
-  }, [stockInput, enableLiveChart, updateSymbol]);
-
-  // Update timeframe when selectedTimeframe changes
-  useEffect(() => {
-    if (selectedTimeframe && enableLiveChart) {
+    if (selectedTimeframe && updateTimeframe) {
       console.log('🔄 Updating timeframe in useLiveChart hook:', selectedTimeframe);
       updateTimeframe(selectedTimeframe);
     }
-  }, [selectedTimeframe, enableLiveChart, updateTimeframe]);
+  }, [selectedTimeframe, updateTimeframe]);
 
-  // Debug live data updates
+  // Handle chart data loaded
+  const handleChartDataLoaded = (data: any[]) => {
+    setChartDataLoaded(true);
+    console.log('Chart data loaded:', data.length, 'candles');
+  };
+
+  // Handle live chart data updates
   useEffect(() => {
     if (liveData && liveData.length > 0) {
+      setChartDataLoaded(true);
       console.log('📈 Live data updated in Charts page:', {
         dataLength: liveData.length,
         lastCandle: liveData[liveData.length - 1],
@@ -169,668 +351,561 @@ export default function Charts() {
     }
   }, [liveData, lastUpdate]);
 
-  // Load available stocks
-  useEffect(() => {
-    const loadStocks = async () => {
-      try {
-        const stocks = await liveDataService.getAvailableStocks();
-        setAvailableStocks(stocks);
-      } catch (error) {
-        console.error('Error loading stocks:', error);
-      }
-    };
-    loadStocks();
-  }, []);
-
-  // Handle authentication on component mount
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        setAuthStatus('loading');
-        await authService.ensureAuthenticated();
-        setAuthStatus('authenticated');
-      } catch (error) {
-        console.error('Authentication failed:', error);
-        setAuthStatus('error');
-        setAuthError(error instanceof Error ? error.message : 'Authentication failed');
-      }
-    };
-
-    initializeAuth();
-  }, []);
-
-  // Load real data when stock or timeframe changes (only for static chart)
-  useEffect(() => {
-    if (authStatus !== 'authenticated' || !stockInput || enableLiveChart) return;
-
-    const loadRealData = async () => {
-      try {
-        setIsLoadingData(true);
-        setDataError(null);
-
-        console.log(`Loading real data for ${stockInput} with timeframe ${selectedTimeframe}`);
-
-        // Clear cache for the previous interval to ensure fresh data
-        await liveDataService.clearIntervalCache(stockInput, selectedTimeframe);
-
-        // Get historical data from backend
-        const response = await liveDataService.getHistoricalData(
-          stockInput,
-          selectedTimeframe,
-          'NSE',
-          1000
-        );
-
-        // Convert backend data to frontend format
-        const convertedData = liveDataService.convertToChartData(response.candles);
-        setChartData(convertedData);
-        
-        // Convert to enhanced chart data format
-        const enhancedData: ChartData[] = convertedData.map(d => ({
-          date: d.date,
-          open: d.open,
-          high: d.high,
-          low: d.low,
-          close: d.close,
-          volume: d.volume
-        }));
-        setEnhancedChartData(enhancedData);
-
-        // Get stock info
-        try {
-          const stockInfo = await liveDataService.getStockInfo(stockInput, 'NSE');
-          setCurrentStockInfo(stockInfo);
-        } catch (error) {
-          console.warn('Could not fetch stock info:', error);
-          setCurrentStockInfo(null);
-        }
-
-        console.log(`Loaded ${convertedData.length} data points for ${stockInput}`);
-      } catch (error) {
-        console.error('Error loading real data:', error);
-        setDataError(error instanceof Error ? error.message : 'Failed to load data');
-        setChartData([]);
-      } finally {
-        setIsLoadingData(false);
-      }
-    };
-
-    loadRealData();
-  }, [authStatus, stockInput, selectedTimeframe, enableLiveChart]);
-
-  // Get token for the entered stock
-  const getToken = (stockName: string) => {
-    const stock = availableStocks.find(s => s.symbol.toUpperCase() === stockName.toUpperCase());
-    return stock?.token || '256265'; // Default to RELIANCE if not found
+  // Handle chart error
+  const handleChartError = (error: string) => {
+    console.error('Chart error:', error);
+    setError(error);
   };
 
-  const token = getToken(stockInput);
+  // Handle live chart errors
+  useEffect(() => {
+    if (liveError) {
+      console.error('Live chart error:', liveError);
+      setError(liveError);
+    }
+  }, [liveError]);
+
+  // Show charts immediately when stock symbol is available, regardless of analysis loading
+  const canShowCharts = stockSymbol && !error;
+
+  // Loading and error states
+  if (authStatus === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <div className="container mx-auto px-4 py-16 text-center">
+          <div className="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Loader2 className="h-12 w-12 text-slate-400 animate-spin" />
+          </div>
+          <h1 className="text-3xl font-bold text-slate-800 mb-4">Authenticating...</h1>
+        </div>
+      </div>
+    );
+  }
+
+  if (authStatus === 'error') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <div className="container mx-auto px-4 py-16 text-center">
+          <div className="w-24 h-24 bg-red-200 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="h-12 w-12 text-red-400" />
+          </div>
+          <h1 className="text-3xl font-bold text-red-800 mb-4">Authentication Failed</h1>
+          <p className="text-red-600 mb-4">{authError}</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !canShowCharts) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <div className="container mx-auto px-4 py-16 text-center">
+          <div className="w-24 h-24 bg-red-200 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="h-12 w-12 text-red-400" />
+          </div>
+          <h1 className="text-3xl font-bold text-red-800 mb-4">{error}</h1>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const consensus = analysisData?.consensus;
+  const indicators = analysisData?.indicators;
+  const indicator_summary_md = analysisData?.indicator_summary_md;
+  const chart_insights = analysisData?.chart_insights;
+
+  // Get signal color
+  const getSignalColor = (signal: string) => {
+    switch (signal?.toLowerCase()) {
+      case 'bullish': return 'text-green-600 bg-green-50 border-green-200';
+      case 'bearish': return 'text-red-600 bg-red-50 border-red-200';
+      default: return 'text-slate-600 bg-slate-50 border-slate-200';
+    }
+  };
+
+  // Get signal icon
+  const getSignalIcon = (signal: string) => {
+    switch (signal?.toLowerCase()) {
+      case 'bullish': return <ArrowUpRight className="h-4 w-4" />;
+      case 'bearish': return <ArrowDownRight className="h-4 w-4" />;
+      default: return <Minus className="h-4 w-4" />;
+    }
+  };
+
+  // Loading skeleton for analysis cards
+  const AnalysisCardSkeleton = ({ title, description }: { title: string; description: string }) => (
+    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+      <CardHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center space-x-4">
+          <CardTitle className="flex items-center text-slate-800">
+            <Loader2 className="h-5 w-5 mr-2 text-blue-500 animate-spin" />
+            {title}
+          </CardTitle>
+        </div>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+          <div className="flex space-x-2">
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-20" />
+          </div>
+        </div>
+        {analysisLoading && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+              <span className="text-sm text-blue-700">Waiting for analysis data...</span>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            Live Stock Charts
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Real-time stock data with live chart functionality
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="container mx-auto px-4 py-8">
+        {/* Stock Header */}
+        <div className="mb-8">
+          <div className="text-center mb-6">
+            <h1 className="text-4xl font-bold text-slate-800 mb-2">
+              {stockSymbol || "Loading..."} Analysis
+            </h1>
+            <p className="text-slate-600">Comprehensive technical analysis and insights</p>
+          </div>
+
+          {/* Quick Stats Bar */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-slate-200">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-slate-800">
+                  {chartDataLoaded ? "₹0.00" : <Skeleton className="h-8 w-20 mx-auto" />}
+                </div>
+                <div className="text-sm text-slate-600">Current Price</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold flex items-center justify-center text-red-600`}>
+                  {chartDataLoaded ? "₹0.00" : <Skeleton className="h-8 w-20 mx-auto" />}
+                </div>
+                <div className="text-sm text-slate-600">Change</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold text-red-600`}>
+                  {chartDataLoaded ? "0.00%" : <Skeleton className="h-8 w-20 mx-auto" />}
+                </div>
+                <div className="text-sm text-slate-600">Change %</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-slate-800">
+                  {consensus?.overall_signal || (analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : 'Neutral')}
+                </div>
+                <div className="text-sm text-slate-600">Signal</div>
+              </div>
+            </div>
+            
+            {/* Analysis Loading Indicator */}
+            {analysisLoading && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                  <span className="text-sm text-blue-700">Analysis in progress... Charts are ready for viewing</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Test Chart Toggle */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Chart Library Test</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="outline"
-              onClick={() => setShowTestChart(!showTestChart)}
-              className="mb-4"
-            >
-              {showTestChart ? 'Hide' : 'Show'} Test Chart
-            </Button>
-            {showTestChart && <ChartTest />}
-          </CardContent>
-        </Card>
-
-        {/* Authentication Status */}
-        {authStatus === 'loading' && (
-          <Alert>
-            <AlertDescription>
-              🔐 Authenticating with server... Please wait.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {authStatus === 'error' && (
-          <Alert variant="destructive">
-            <AlertDescription>
-              ❌ Authentication failed: {authError}. Real data may not be available.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {authStatus === 'authenticated' && (
-          <Alert>
-            <AlertDescription>
-              ✅ Authenticated successfully. Real data is available.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Data Error */}
-        {dataError && (
-          <Alert variant="destructive">
-            <AlertDescription>
-              ❌ Data Error: {dataError}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Controls Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Chart Controls</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Stock Selection */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Stock Symbol
-              </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="flex-1 flex items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-3 text-left shadow-sm hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-                  onClick={() => setStockDialogOpen(true)}
-                >
-                  {stockInput ? (
-                    (() => {
-                      const selected = stockList.find(s => s.symbol === stockInput);
-                      return selected
-                        ? `${selected.symbol} – ${selected.name}`
-                        : stockInput;
-                    })()
-                  ) : (
-                    "Select a stock"
-                  )}
-                  <span className="text-gray-400">▼</span>
-                </button>
-                <Button
-                  variant="outline"
-                  onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                >
-                  {theme === 'light' ? '🌙' : '☀️'} Theme
-                </Button>
-              </div>
-              
-              <CommandDialog open={stockDialogOpen} onOpenChange={setStockDialogOpen}>
-                <CommandInput
-                  placeholder="Search stock by symbol or name..."
-                  value={stockSearch}
-                  onValueChange={setStockSearch}
-                  autoFocus
-                />
-                <CommandList>
-                  <CommandEmpty>No stocks found.</CommandEmpty>
-                  <CommandGroup>
-                    {stockList
-                      .filter((s) =>
-                        (s.symbol + " " + s.name + " " + s.exchange)
-                          .toLowerCase()
-                          .includes(stockSearch.toLowerCase())
-                      )
-                      .slice(0, 50)
-                      .map((s) => (
-                        <CommandItem
-                          key={`${s.symbol}_${s.exchange}`}
-                          value={s.symbol}
-                          onSelect={() => {
-                            setStockInput(s.symbol);
-                            setStockDialogOpen(false);
-                            setStockSearch("");
-                          }}
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <div>
-                              <span className="font-semibold">{s.symbol}</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">{s.name}</span>
-                            </div>
-                            <span className="text-xs text-gray-400">{s.exchange}</span>
-                          </div>
-                        </CommandItem>
-                      ))}
-                  </CommandGroup>
-                </CommandList>
-              </CommandDialog>
-            </div>
-
-            {/* Timeframe Buttons */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Data Interval
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {TIMEFRAMES.map((timeframe) => (
-                  <Button
-                    key={timeframe.value}
-                    variant={selectedTimeframe === timeframe.value ? 'default' : 'outline'}
-                    onClick={() => setSelectedTimeframe(timeframe.value)}
-                    className="min-w-[100px]"
-                  >
-                    {timeframe.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Current Selection Info */}
-            <div className="flex flex-wrap gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Stock:</span>
-                <Badge variant="secondary">{stockInput.toUpperCase()}</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Token:</span>
-                <Badge variant="outline">{token}</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Interval:</span>
-                <Badge variant="outline">
-                  {TIMEFRAMES.find(tf => tf.value === selectedTimeframe)?.label}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Theme:</span>
-                <Badge variant="outline">{theme}</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Data Points:</span>
-                <Badge variant="outline">{chartData.length}</Badge>
-              </div>
-              {currentStockInfo && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Sector:</span>
-                  <Badge variant="outline">{currentStockInfo.sector || 'N/A'}</Badge>
-                </div>
+        {/* Main Content Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm">
+            <TabsTrigger value="overview" className="flex items-center space-x-2">
+              <Eye className="h-4 w-4" />
+              <span>Overview</span>
+            </TabsTrigger>
+            <TabsTrigger value="charts" className="flex items-center space-x-2">
+              <BarChart3 className="h-4 w-4" />
+              <span>Charts</span>
+              {chartDataLoaded && (
+                <div className="w-2 h-2 bg-green-500 rounded-full ml-1"></div>
               )}
-            </div>
+            </TabsTrigger>
+            <TabsTrigger value="technical" className="flex items-center space-x-2">
+              <TrendingUp className="h-4 w-4" />
+              <span>Technical</span>
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="flex items-center space-x-2">
+              <Settings className="h-4 w-4" />
+              <span>Advanced</span>
+            </TabsTrigger>
+          </TabsList>
 
-            {/* Chart Type and Features Controls */}
-            <div className="space-y-4">
-              <Separator />
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Chart Features</h4>
-                
-                {/* Indicators Toggle */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="show-indicators"
-                    checked={showIndicators}
-                    onCheckedChange={setShowIndicators}
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            {/* Top Row - Summary Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Consensus Summary */}
+              <div className="lg:col-span-1">
+                {analysisLoading ? (
+                  <AnalysisCardSkeleton 
+                    title="Consensus Summary" 
+                    description="Loading consensus analysis..." 
                   />
-                  <Label htmlFor="show-indicators" className="text-sm font-medium">
-                    Show Technical Indicators (SMA, EMA, RSI, MACD, Bollinger Bands)
-                  </Label>
-                </div>
-                
-                {/* Patterns Toggle */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="show-patterns"
-                    checked={showPatterns}
-                    onCheckedChange={setShowPatterns}
-                  />
-                  <Label htmlFor="show-patterns" className="text-sm font-medium">
-                    Show Pattern Recognition (Support/Resistance, Divergences, etc.)
-                  </Label>
-                </div>
-                
-                {/* Debug Mode Toggle */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="debug-mode"
-                    checked={debugMode}
-                    onCheckedChange={setDebugMode}
-                  />
-                  <Label htmlFor="debug-mode" className="text-sm font-medium">
-                    Debug Mode (Show Chart Statistics)
-                  </Label>
-                </div>
+                ) : (
+                  <ConsensusSummaryCard consensus={consensus} />
+                )}
               </div>
               
-              <Separator />
-              
-              {/* Live Chart Controls */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Live Updates</h4>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="live-chart"
-                    checked={enableLiveChart}
-                    onCheckedChange={setEnableLiveChart}
+              {/* AI Trading Analysis */}
+              <div className="lg:col-span-1">
+                {analysisLoading ? (
+                  <AnalysisCardSkeleton 
+                    title="AI Trading Analysis" 
+                    description="Loading AI analysis..." 
                   />
-                  <Label htmlFor="live-chart" className="text-sm font-medium">
-                    Enable Live Updates
-                  </Label>
-                  {enableLiveChart && isLiveConnected && (
-                    <Badge variant="default" className="ml-2">
-                      🔴 LIVE
-                    </Badge>
-                  )}
+                ) : (
+                  <AITradingAnalysisOverviewCard aiAnalysis={analysisData?.ai_analysis} />
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Row - Price Statistics and Sector Analysis */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Price Statistics Card */}
+              <div className="lg:col-span-1">
+                {analysisLoading ? (
+                  <AnalysisCardSkeleton 
+                    title="Price Statistics" 
+                    description="Loading price statistics..." 
+                  />
+                ) : (
+                  <PriceStatisticsCard 
+                    summaryStats={calculatePriceStatistics(liveData) || {
+                      mean: 0,
+                      max: 0,
+                      min: 0,
+                      current: 0,
+                      distFromMean: 0,
+                      distFromMax: 0,
+                      distFromMin: 0,
+                      distFromMeanPct: 0,
+                      distFromMaxPct: 0,
+                      distFromMinPct: 0
+                    }}
+                    latestPrice={liveData && liveData.length > 0 ? liveData[liveData.length - 1].close || liveData[liveData.length - 1].price : null}
+                    timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
+                  />
+                )}
+              </div>
+              
+              <div className="lg:col-span-1">
+                {analysisLoading ? (
+                  <AnalysisCardSkeleton 
+                    title="Sector Benchmarking" 
+                    description="Loading sector analysis..." 
+                  />
+                ) : (
+                  analysisData?.sector_benchmarking && (
+                    <SectorBenchmarkingCard 
+                      sectorBenchmarking={analysisData.sector_benchmarking} 
+                    />
+                  )
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Charts Tab */}
+          <TabsContent value="charts" className="space-y-6">
+            {/* Chart Controls */}
+            <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Chart Controls
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                  {/* Stock Symbol */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Stock Symbol</label>
+                    <select
+                      value={stockSymbol}
+                      onChange={(e) => setStockSymbol(e.target.value)}
+                      className="w-full p-2 border rounded-md"
+                    >
+                      {stockList.slice(0, 50).map((stock: any) => (
+                        <option key={stock.symbol} value={stock.symbol}>
+                          {stock.symbol} - {stock.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Timeframe */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Timeframe</label>
+                    <select
+                      value={selectedTimeframe}
+                      onChange={(e) => setSelectedTimeframe(e.target.value)}
+                      className="w-full p-2 border rounded-md"
+                    >
+                      {TIMEFRAMES.map((tf) => (
+                        <option key={tf.value} value={tf.value}>
+                          {tf.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Theme */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Theme</label>
+                    <Button
+                      onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
+                    </Button>
+                  </div>
+
+                  {/* Connection Status */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Connection</label>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${isLiveConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <span className="text-sm">{isLiveConnected ? 'Connected' : 'Disconnected'}</span>
+                    </div>
+                  </div>
                 </div>
-                
-                {enableLiveChart && (
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <span>Status:</span>
-                      <Badge variant={isLiveConnected ? 'default' : 'secondary'}>
-                        {isLiveConnected ? 'Connected' : 'Disconnected'}
+
+                {/* Feature Toggles */}
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="show-indicators"
+                      checked={showIndicators}
+                      onCheckedChange={setShowIndicators}
+                    />
+                    <Label htmlFor="show-indicators">Technical Indicators</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="show-patterns"
+                      checked={showPatterns}
+                      onCheckedChange={setShowPatterns}
+                    />
+                    <Label htmlFor="show-patterns">Pattern Recognition</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="show-volume"
+                      checked={showVolume}
+                      onCheckedChange={setShowVolume}
+                    />
+                    <Label htmlFor="show-volume">Volume</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="debug-mode"
+                      checked={debugMode}
+                      onCheckedChange={setDebugMode}
+                    />
+                    <Label htmlFor="debug-mode">Debug Mode</Label>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Enhanced Live Chart Section */}
+            <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>{stockSymbol} - {TIMEFRAMES.find(tf => tf.value === selectedTimeframe)?.label}</span>
+                  <div className="flex items-center gap-2">
+                    {isLiveConnected && (
+                      <Badge variant="secondary" className="animate-pulse">
+                        🔴 LIVE
                       </Badge>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span>Current Time:</span>
-                      <span className="font-mono">{currentTime.toLocaleTimeString()}</span>
-                    </div>
-                    {lastUpdate > 0 && (
-                      <div className="flex items-center gap-1">
-                        <span>Last Update:</span>
-                        <span className="font-mono">{new Date(lastUpdate).toLocaleTimeString()}</span>
-                      </div>
+                    )}
+                    <Badge variant="outline">
+                      {theme === 'light' ? '☀️ Light' : '🌙 Dark'}
+                    </Badge>
+                  </div>
+                </CardTitle>
+                <CardDescription>
+                  Real-time market data with advanced technical analysis
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {canShowCharts ? (
+                  <LiveSimpleChart
+                    symbol={stockSymbol}
+                    timeframe={selectedTimeframe}
+                    theme={theme}
+                    height={800}
+                    width={800}
+                    exchange="NSE"
+                    maxDataPoints={1000}
+                    autoConnect={true}
+                    showConnectionStatus={true}
+                    showLiveIndicator={true}
+                    showIndicators={showIndicators}
+                    showPatterns={showPatterns}
+                    showVolume={showVolume}
+                    debug={debugMode}
+                    data={liveData}
+                    isConnected={isLiveConnected}
+                    isLive={isLive}
+                    isLoading={isLiveLoading}
+                    error={liveError}
+                    lastUpdate={lastUpdate}
+                    connectionStatus={connectionStatus}
+                    refetch={refetch}
+                    onDataUpdate={handleChartDataLoaded}
+                    onConnectionChange={(isConnected) => {
+                      console.log('Connection status changed:', isConnected);
+                    }}
+                    onError={handleChartError}
+                    onValidationResult={(result) => {
+                      console.log('Chart validation result:', result);
+                    }}
+                    onStatsCalculated={(stats) => {
+                      console.log('Chart stats calculated:', stats);
+                    }}
+                  />
+                ) : (
+                  <div className="text-center py-16 text-slate-500">
+                    <BarChart3 className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                    <p>{stockSymbol ? 'Initializing chart...' : 'Loading stock data...'}</p>
+                    {stockSymbol && (
+                      <p className="text-sm text-slate-400 mt-2">Chart will be available shortly</p>
                     )}
                   </div>
                 )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-            {/* Data Controls */}
-            <div className="flex gap-2">
-              {!enableLiveChart && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    // Reload data
-                    setStockInput(stockInput);
-                  }}
-                  className="flex-1"
-                  disabled={isLoadingData}
-                >
-                  {isLoadingData ? '🔄 Loading...' : '🔄 Refresh Chart'}
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  // Call the appropriate reset function based on chart type
-                  if (enableLiveChart) {
-                    console.log('Calling live chart reset function...');
-                    liveChartResetRef.current?.();
-                  } else {
-                    console.log('Calling enhanced chart reset function...');
-                    enhancedChartResetRef.current?.();
-                  }
-                }}
-                className="flex-1"
-                title="Reset chart scale to fit all data"
-              >
-                <ZoomIn className="w-4 h-4 mr-2" />
-                Reset Scale
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  console.log('Current chart data:', chartData);
-                  console.log('Current stock info:', currentStockInfo);
-                }}
-              >
-                📊 Debug Data
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Chart Container */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>
-                {stockInput.toUpperCase()} - {enableLiveChart ? 'Live' : 'Real'} Data Chart
-                {currentStockInfo && (
-                  <span className="text-sm font-normal text-gray-500 ml-2">
-                    ({currentStockInfo.name})
-                  </span>
-                )}
-              </span>
-              <div className="flex items-center gap-2">
-                {enableLiveChart && isLiveConnected && (
-                  <Badge variant="destructive" className="animate-pulse">
-                    🔴 LIVE
-                  </Badge>
-                )}
-                <Badge variant="outline">
-                  {TIMEFRAMES.find(tf => tf.value === selectedTimeframe)?.label}
-                </Badge>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {authStatus === 'loading' ? (
-              <div className="h-[600px] w-full flex items-center justify-center">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Authenticating...</p>
-                </div>
-              </div>
-            ) : authStatus === 'error' ? (
-              <div className="h-[600px] w-full flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-red-500 text-6xl mb-4">⚠️</div>
-                  <p className="text-gray-600 mb-2">Authentication failed</p>
-                  <p className="text-sm text-gray-500">Real data is not available</p>
-                  <Button 
-                    onClick={() => window.location.reload()} 
-                    className="mt-4"
-                    variant="outline"
-                  >
-                    Retry
-                  </Button>
-                </div>
-              </div>
-            ) : enableLiveChart ? (
-              <div className="h-[600px] w-full">
-                <LiveSimpleChart
-                  key={`${stockInput}-${selectedTimeframe}-${theme}-enhanced`}
-                  symbol={stockInput}
-                  timeframe={selectedTimeframe}
-                  theme={theme}
-                  height={600}
-                  width={800}
-                  exchange="NSE"
-                  maxDataPoints={1000}
-                  autoConnect={true}
-                  showConnectionStatus={true}
-                  showLiveIndicator={true}
-                  showIndicators={showIndicators}
-                  showPatterns={showPatterns}
-                  showVolume={false}
-                  debug={debugMode}
-                  data={liveData}
-                  isConnected={isLiveConnectedFromHook}
-                  isLive={isLive}
-                  isLoading={isLiveLoading}
-                  error={liveError}
-                  lastUpdate={lastUpdate}
-                  connectionStatus={connectionStatus}
-                  refetch={refetch}
-                  onConnectionChange={(isConnected) => {
-                    setIsLiveConnected(isConnected);
-                  }}
-                  onError={(error) => {
-                    setLiveDataError(error);
-                    console.error('Live chart error:', error);
-                  }}
-                  onValidationResult={(result) => {
-                    setValidationResult(result);
-                  }}
-                  onStatsCalculated={(stats) => {
-                    setChartStats(stats);
-                  }}
-                  onResetScale={() => {
-                    console.log('Live chart scale reset');
-                  }}
-                  onRegisterReset={registerLiveChartReset}
-                />
-              </div>
-            ) : isLoadingData ? (
-              <div className="h-[600px] w-full flex items-center justify-center">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading real market data...</p>
-                  <p className="text-sm text-gray-500">{stockInput.toUpperCase()} - {TIMEFRAMES.find(tf => tf.value === selectedTimeframe)?.label}</p>
-                </div>
-              </div>
-            ) : dataError ? (
-              <div className="h-[600px] w-full flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-red-500 text-6xl mb-4">📊</div>
-                  <p className="text-gray-600 mb-2">Failed to load data</p>
-                  <p className="text-sm text-gray-500">{dataError}</p>
-                  <Button 
-                    onClick={() => setStockInput(stockInput)} 
-                    className="mt-4"
-                    variant="outline"
-                  >
-                    Retry
-                  </Button>
-                </div>
-              </div>
+          {/* Technical Tab */}
+          <TabsContent value="technical" className="space-y-6">
+            {analysisLoading ? (
+              <AnalysisCardSkeleton 
+                title="Technical Analysis" 
+                description="Loading technical indicators..." 
+              />
             ) : (
-              <div className="h-[600px] w-full">
-                <EnhancedSimpleChart
-                  data={enhancedChartData}
-                  theme={theme}
-                  height={600}
-                  width={800}
-                  timeframe={selectedTimeframe}
-                  showIndicators={showIndicators}
-                  showPatterns={showPatterns}
-                  showVolume={false}
-                  debug={debugMode}
-                  onValidationResult={(result) => {
-                    setValidationResult(result);
-                  }}
-                  onStatsCalculated={(stats) => {
-                    setChartStats(stats);
-                  }}
-                  onResetScale={() => {
-                    console.log('Enhanced chart scale reset');
-                  }}
-                  onRegisterReset={registerEnhancedChartReset}
+              indicator_summary_md && (
+                <TechnicalAnalysisCard 
+                  indicatorSummary={indicator_summary_md || ''} 
                 />
-              </div>
+              )
             )}
-          </CardContent>
-        </Card>
 
-        {/* Chart Statistics (Debug Mode) */}
-        {debugMode && chartStats && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Chart Statistics & Analysis</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
-                    <h4 className="font-semibold text-sm mb-2">Data Summary</h4>
-                    <div className="text-xs space-y-1">
-                      <p>Total Points: {chartStats.totalPoints}</p>
-                      <p>Date Range: {chartStats.dateRange?.start} to {chartStats.dateRange?.end} ({chartStats.dateRange?.days} days)</p>
-                      <p>Price Range: ₹{chartStats.priceRange?.min?.toFixed(2)} - ₹{chartStats.priceRange?.max?.toFixed(2)}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
-                    <h4 className="font-semibold text-sm mb-2">Volume Analysis</h4>
-                    <div className="text-xs space-y-1">
-                      <p>Total Volume: {chartStats.volumeStats?.totalVolume?.toLocaleString()}</p>
-                      <p>Avg Volume: {chartStats.volumeStats?.averageVolume?.toLocaleString()}</p>
-                      <p>Volume Anomalies: {chartStats.volumeStats?.anomalies?.length || 0}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
-                    <h4 className="font-semibold text-sm mb-2">Pattern Detection</h4>
-                    <div className="text-xs space-y-1">
-                      <p>Support Levels: {chartStats.patterns?.supportLevels?.length || 0}</p>
-                      <p>Resistance Levels: {chartStats.patterns?.resistanceLevels?.length || 0}</p>
-                      <p>Double Tops: {chartStats.patterns?.doubleTops?.length || 0}</p>
-                      <p>Double Bottoms: {chartStats.patterns?.doubleBottoms?.length || 0}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                {validationResult && (
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
-                    <h4 className="font-semibold text-sm mb-2">Data Validation</h4>
-                    <div className="text-xs space-y-1">
-                      <p>Valid: {validationResult.isValid ? '✅ Yes' : '❌ No'}</p>
-                      {validationResult.errors.length > 0 && (
-                        <div>
-                          <p className="font-semibold">Errors:</p>
-                          <ul className="list-disc list-inside">
-                            {validationResult.errors.map((error: string, index: number) => (
-                              <li key={index}>{error}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {validationResult.warnings.length > 0 && (
-                        <div>
-                          <p className="font-semibold">Warnings:</p>
-                          <ul className="list-disc list-inside">
-                            {validationResult.warnings.map((warning: string, index: number) => (
-                              <li key={index}>{warning}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            {analysisLoading ? (
+              <AnalysisCardSkeleton 
+                title="Pattern Recognition" 
+                description="Loading pattern analysis..." 
+              />
+            ) : (
+              analysisData?.overlays && (
+                <EnhancedPatternRecognitionCard 
+                  overlays={analysisData.overlays as EnhancedOverlays}
+                  symbol={stockSymbol}
+                />
+              )
+            )}
 
-        {/* Instructions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Instructions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <p>• Click the stock selection dropdown to search and select stocks by symbol or name</p>
-              <p>• Click on any available stock badge for quick selection</p>
-              <p>• Use the interval buttons to switch between different timeframes</p>
-              <p>• Toggle between light and dark themes</p>
-              <p>• <strong>Enhanced Charts:</strong> Enable for technical indicators and pattern recognition</p>
-              <p>• <strong>Technical Indicators:</strong> SMA, EMA, RSI, MACD, Bollinger Bands</p>
-              <p>• <strong>Pattern Recognition:</strong> Support/Resistance, RSI Divergences, Double Tops/Bottoms</p>
-              <p>• <strong>Debug Mode:</strong> View detailed chart statistics and validation results</p>
-              <p>• Enable "Live Updates" for real-time WebSocket data streaming</p>
-              <p>• When live updates are enabled, charts update automatically</p>
-              <p>• When live updates are disabled, use the refresh button to update static charts</p>
-              <p>• Real market data is fetched from Zerodha API</p>
-              <p>• Data updates automatically when you change stock or timeframe</p>
-              <p>• Live charts automatically reconnect on connection loss</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {analysisLoading ? (
+                <>
+                  <AnalysisCardSkeleton 
+                    title="Advanced Patterns" 
+                    description="Loading pattern analysis..." 
+                  />
+                  <AnalysisCardSkeleton 
+                    title="Multi-timeframe Analysis" 
+                    description="Loading timeframe analysis..." 
+                  />
+                </>
+              ) : (
+                <>
+                  {(indicators as any)?.advanced_patterns && (
+                    <AdvancedPatternAnalysisCard 
+                      patterns={(indicators as any).advanced_patterns} 
+                      symbol={stockSymbol}
+                    />
+                  )}
+
+                  {(indicators as any)?.multi_timeframe && !(indicators as any).multi_timeframe.error && (
+                    <MultiTimeframeAnalysisCard 
+                      analysis={(indicators as any).multi_timeframe} 
+                      symbol={stockSymbol}
+                    />
+                  )}
+                </>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </TabsContent>
+
+          {/* Advanced Tab */}
+          <TabsContent value="advanced" className="space-y-6">
+            {analysisLoading ? (
+              <>
+                <AnalysisCardSkeleton 
+                  title="Risk Assessment" 
+                  description="Loading risk analysis..." 
+                />
+                <AnalysisCardSkeleton 
+                  title="Complex Patterns" 
+                  description="Loading complex patterns..." 
+                />
+                <AnalysisCardSkeleton 
+                  title="Risk Metrics" 
+                  description="Loading risk metrics..." 
+                />
+              </>
+            ) : (
+              <>
+                {(indicators as any)?.advanced_risk && !(indicators as any).advanced_risk.error && (
+                  <AdvancedRiskAssessmentCard 
+                    riskMetrics={(indicators as any).advanced_risk}
+                    symbol={stockSymbol}
+                  />
+                )}
+
+                {(indicators as any)?.advanced_patterns && (
+                  <ComplexPatternAnalysisCard 
+                    patterns={(indicators as any).advanced_patterns}
+                  />
+                )}
+
+                {((indicators as any)?.stress_testing || (indicators as any)?.scenario_analysis) && (
+                  <AdvancedRiskMetricsCard 
+                    stress_testing={(indicators as any)?.stress_testing}
+                    scenario_analysis={(indicators as any)?.scenario_analysis}
+                  />
+                )}
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
-} 
+}

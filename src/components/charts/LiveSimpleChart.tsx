@@ -8,7 +8,6 @@ import {
   type ChartContainer
 } from '@/utils/chartUtils';
 import { useLiveChart } from '@/hooks/useLiveChart';
-import { useChartReset } from '@/hooks/useChartReset';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -44,6 +43,26 @@ interface LiveSimpleChartProps {
   onStatsCalculated?: (stats: any) => void;
   onResetScale?: () => void; // Add reset scale callback
   onRegisterReset?: (resetFn: () => void) => void; // Add reset function registration
+  activeIndicators?: {
+    sma20?: boolean;
+    sma50?: boolean;
+    ema12?: boolean;
+    ema26?: boolean;
+    ema50?: boolean;
+    sma200?: boolean;
+    bollingerBands?: boolean;
+    macd?: boolean;
+    stochastic?: boolean;
+    atr?: boolean;
+    obv?: boolean;
+    rsiDivergence?: boolean;
+    doublePatterns?: boolean;
+    volumeAnomaly?: boolean;
+    peaksLows?: boolean;
+    support?: boolean;
+    resistance?: boolean;
+    trianglesFlags?: boolean;
+  };
 }
 
 // Interface for chart state preservation
@@ -102,11 +121,11 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
   onValidationResult,
   onStatsCalculated,
   onResetScale,
-  onRegisterReset
+  onRegisterReset,
+  activeIndicators = {}
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const candlestickSeriesRef = useRef<any>(null);
-  const volumeSeriesRef = useRef<any>(null);
   
   // Chart state
   const [isChartReady, setIsChartReady] = useState(false);
@@ -115,23 +134,104 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
   const [lastChartUpdate, setLastChartUpdate] = useState<number>(0);
 
   // Chart reset functionality
-  const {
-    chartRef,
-    chartStateRef,
-    isInitialState,
-    hasUserInteracted,
-    saveChartState,
-    restoreChartState,
-    resetToInitialState,
-    resetToFitContent,
-    handleUserInteraction,
-    handleChartUpdate,
-  } = useChartReset({
-    debug,
-    onReset: () => {
-      console.log('Live chart reset completed');
+  const chartRef = useRef<ChartContainer | null>(null);
+  const chartStateRef = useRef<ChartState | null>(null);
+  const [isInitialState, setIsInitialState] = useState(true);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+
+  // Reset functionality
+  const saveChartState = useCallback(() => {
+    if (chartRef.current) {
+      const timeScale = chartRef.current.timeScale();
+      const priceScale = chartRef.current.priceScale('right');
+      
+      chartStateRef.current = {
+        timeScale: {
+          rightOffset: timeScale.options().rightOffset || 0,
+          barSpacing: timeScale.options().barSpacing || 0,
+          fixLeftEdge: timeScale.options().fixLeftEdge || false,
+          fixRightEdge: timeScale.options().fixRightEdge || false,
+          lockVisibleTimeRangeOnResize: timeScale.options().lockVisibleTimeRangeOnResize || false,
+          rightBarStaysOnScroll: timeScale.options().rightBarStaysOnScroll || false,
+          borderVisible: timeScale.options().borderVisible || false,
+          visible: timeScale.options().visible || false,
+          timeVisible: timeScale.options().timeVisible || false,
+          secondsVisible: timeScale.options().secondsVisible || false,
+        },
+        priceScale: {
+          autoScale: priceScale.options().autoScale || false,
+          scaleMargins: {
+            top: priceScale.options().scaleMargins?.top || 0,
+            bottom: priceScale.options().scaleMargins?.bottom || 0,
+          },
+        },
+      };
     }
-  });
+  }, []);
+
+  const restoreChartState = useCallback(() => {
+    if (chartRef.current && chartStateRef.current) {
+      const timeScale = chartRef.current.timeScale();
+      const priceScale = chartRef.current.priceScale('right');
+      
+      timeScale.applyOptions(chartStateRef.current.timeScale);
+      priceScale.applyOptions(chartStateRef.current.priceScale);
+    }
+  }, []);
+
+  const resetToInitialState = useCallback(() => {
+    if (chartRef.current) {
+      const timeScale = chartRef.current.timeScale();
+      const priceScale = chartRef.current.priceScale('right');
+      
+      // Reset to default settings
+      timeScale.applyOptions({
+        rightOffset: 0,
+        barSpacing: 6,
+        fixLeftEdge: false,
+        fixRightEdge: false,
+        lockVisibleTimeRangeOnResize: false,
+        rightBarStaysOnScroll: false,
+        borderVisible: false,
+        visible: true,
+        timeVisible: true,
+        secondsVisible: false,
+      });
+      
+      priceScale.applyOptions({
+        autoScale: true,
+        scaleMargins: { top: 0.1, bottom: 0.1 },
+      });
+      
+      setIsInitialState(true);
+      setHasUserInteracted(false);
+      
+      if (debug) {
+        console.log('Live chart reset to initial state');
+      }
+    }
+  }, [debug]);
+
+  const resetToFitContent = useCallback(() => {
+    if (chartRef.current) {
+      chartRef.current.timeScale().fitContent();
+      if (debug) {
+        console.log('Live chart reset to fit content');
+      }
+    }
+  }, [debug]);
+
+  const handleUserInteraction = useCallback(() => {
+    setHasUserInteracted(true);
+    setIsInitialState(false);
+  }, []);
+
+  const handleChartUpdate = useCallback(() => {
+    // Handle chart updates
+    if (debug) {
+      console.log('Chart update handled');
+    }
+  }, [debug]);
 
   // Legacy refs for compatibility
   const lastSymbolRef = useRef<string>('');
@@ -237,23 +337,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         }
       }
 
-      // Update volume data if enabled
-      if (showVolume && volumeSeriesRef.current) {
-        const volumeData = validatedData.map(d => ({
-          time: toUTCTimestamp(d.date),
-          value: d.volume,
-          color: d.close >= d.open ? 'rgba(38, 166, 154, 0.8)' : 'rgba(239, 83, 80, 0.8)',
-        }));
-
-        if (isInitialLoad) {
-          volumeSeriesRef.current.setData(volumeData);
-        } else {
-          const lastVolume = volumeData[volumeData.length - 1];
-          if (lastVolume) {
-            volumeSeriesRef.current.update(lastVolume);
-          }
-        }
-      }
+      // Volume data update removed - volume is displayed in separate chart below
 
       // Store last data for comparison
       lastDataRef.current = candlestickData;
@@ -291,7 +375,6 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       if (chartRef.current) {
         safeChartCleanup(chartRef);
         candlestickSeriesRef.current = null;
-        volumeSeriesRef.current = null;
         setIsChartReady(false);
       }
 
@@ -358,15 +441,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         wickDownColor: theme === 'dark' ? '#ef5350' : '#ef5350',
       });
 
-      // Add volume series if enabled
-      if (showVolume) {
-        volumeSeriesRef.current = chart.addHistogramSeries({
-          color: theme === 'dark' ? '#26a69a' : '#26a69a',
-          priceFormat: { type: 'volume' },
-          priceScaleId: '',
-          scaleMargins: { top: 0.8, bottom: 0 },
-        });
-      }
+      // Volume series removed from main chart - volume is displayed in separate chart below
 
       // Add event listeners for chart interactions to save state
       const timeScale = chart.timeScale();
@@ -472,7 +547,6 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       saveChartState(); // Save state before destroying
       safeChartCleanup(chartRef);
       candlestickSeriesRef.current = null;
-      volumeSeriesRef.current = null;
       setIsChartReady(false);
       chartRef.current = null;
       // Reset last data reference for new symbol
@@ -549,15 +623,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           wickDownColor: theme === 'dark' ? '#ef5350' : '#ef5350',
         });
 
-        // Add volume series if enabled
-        if (showVolume) {
-          volumeSeriesRef.current = chart.addHistogramSeries({
-            color: theme === 'dark' ? '#26a69a' : '#26a69a',
-            priceFormat: { type: 'volume' },
-            priceScaleId: '',
-            scaleMargins: { top: 0.8, bottom: 0 },
-          });
-        }
+        // Volume series removed from main chart - volume is displayed in separate chart below
 
         // Add event listeners for chart interactions
         const timeScale = chart.timeScale();
@@ -653,7 +719,6 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         saveChartState(); // Save state before cleanup
         safeChartCleanup(chartRef);
         candlestickSeriesRef.current = null;
-        volumeSeriesRef.current = null;
         setIsChartReady(false);
       }
     };

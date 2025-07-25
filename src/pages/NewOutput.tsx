@@ -1,10 +1,31 @@
-import { useEffect, useState, useRef } from "react";
-import Header from "@/components/Header";
-import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
+import React, { useEffect, useState, useRef } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+
+// Icons
+import { 
+  TrendingUp, 
+  BarChart3, 
+  AlertTriangle, 
+  ArrowUpRight, 
+  ArrowDownRight,
+  Minus,
+  Settings,
+  Loader2,
+  Eye,
+  Activity,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  ZoomIn
+} from 'lucide-react';
 
 // Analysis Components
 import ConsensusSummaryCard from "@/components/analysis/ConsensusSummaryCard";
@@ -22,71 +43,72 @@ import PriceStatisticsCard from "@/components/analysis/PriceStatisticsCard";
 import ActionButtonsSection from "@/components/analysis/ActionButtonsSection";
 import DisclaimerCard from "@/components/analysis/DisclaimerCard";
 
-// Chart Components
-import LiveSimpleChart from "@/components/charts/LiveSimpleChart";
-import { useLiveChart } from "@/hooks/useLiveChart";
-
-// Icons
-import { 
-  TrendingUp, 
-  BarChart3, 
-  AlertTriangle, 
-  ArrowUpRight, 
-  ArrowDownRight,
-  Minus,
-  Settings,
-  Loader2
-} from "lucide-react";
-
-// Types and Utils
-import { AnalysisData, EnhancedOverlays } from "@/types/analysis";
+// Services and Utils
 import { apiService } from "@/services/api";
+import { AnalysisData, EnhancedOverlays } from "@/types/analysis";
+import Header from "@/components/Header";
 
-// Chart statistics interface
-interface ChartStats {
-  dateRange: { start: string; end: string; days: number };
-  price: { min: number; max: number; current: number };
-  volume: { avg: number; total: number };
-  returns: { avg: number; volatility: number };
-}
+// Price Statistics calculation function
+const calculatePriceStatistics = (data: any[] | null) => {
+  if (!data || data.length === 0) {
+    return null;
+  }
+
+  const prices = data.map(d => d.close || d.price || 0).filter(p => p > 0);
+  if (prices.length === 0) return null;
+
+  const current = prices[prices.length - 1];
+  const max = Math.max(...prices);
+  const min = Math.min(...prices);
+  const mean = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+
+  const distFromMean = current - mean;
+  const distFromMax = current - max;
+  const distFromMin = current - min;
+
+  const distFromMeanPct = (distFromMean / mean) * 100;
+  const distFromMaxPct = (distFromMax / max) * 100;
+  const distFromMinPct = (distFromMin / min) * 100;
+
+  return {
+    mean,
+    max,
+    min,
+    current,
+    distFromMean,
+    distFromMax,
+    distFromMin,
+    distFromMeanPct,
+    distFromMaxPct,
+    distFromMinPct
+  };
+};
+
+// Map frontend timeframe values to API interval values
+const mapTimeframeToInterval = (timeframe: string): string => {
+  const mapping: Record<string, string> = {
+    '1m': '1min',
+    '5m': '5min',
+    '15m': '15min',
+    '1h': '1h',
+    '1d': '1day'
+  };
+  return mapping[timeframe] || '1day';
+};
+
 
 const NewOutput: React.FC = () => {
   // State
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [stockSymbol, setStockSymbol] = useState<string>("");
-  const [selectedTimeframe, setSelectedTimeframe] = useState('1day');
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(true); // Separate loading for analysis
-  const [chartDataLoaded, setChartDataLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
 
 
-  // Live chart hook for real-time data
-  // This hook provides real-time WebSocket data streaming with auto-reconnection
-  // and handles all live chart functionality including data updates, connection status,
-  // and error handling
-  const {
-    data: liveData,
-    isConnected: isLiveConnected,
-    isLive,
-    isLoading: isLiveLoading,
-    error: liveError,
-    lastUpdate,
-    connectionStatus,
-    connect,
-    disconnect,
-    refetch,
-    updateSymbol,
-    updateTimeframe
-  } = useLiveChart({
-    symbol: stockSymbol,
-    timeframe: selectedTimeframe,
-    exchange: 'NSE',
-    maxDataPoints: 1000,
-    autoConnect: true
-  });
+
 
   // Load analysis data and stock symbol from localStorage or route params
   useEffect(() => {
@@ -99,17 +121,112 @@ const NewOutput: React.FC = () => {
         setStockSymbol(parsed.stock_symbol || "RELIANCE");
         setAnalysisLoading(false);
       } else {
-        // If no stored analysis, try to get from realtime analysis
+        // If no stored analysis, try to get from historical data
         const token = stockSymbol || "RELIANCE";
-        const timeframe = selectedTimeframe;
         if (!token) return;
         
         setAnalysisLoading(true);
-        apiService.getRealtimeAnalysis(token, timeframe)
+        apiService.getHistoricalData(token, "1day", "NSE", 1000)
           .then((data) => {
-            if (data && data.analysis) {
-              setAnalysisData(data.analysis);
-              setStockSymbol(data.analysis.symbol || token);
+            if (data && data.success && data.candles && data.candles.length > 0) {
+              // Create a basic analysis structure from historical data
+              setAnalysisData({
+                consensus: { 
+                  overall_signal: 'Neutral',
+                  signal_strength: 'Weak',
+                  bullish_percentage: 50,
+                  bearish_percentage: 50,
+                  neutral_percentage: 0
+                },
+                indicators: {
+                  moving_averages: {
+                    sma_20: 0,
+                    sma_50: 0,
+                    sma_200: 0,
+                    ema_20: 0,
+                    ema_50: 0,
+                    price_to_sma_200: 0,
+                    sma_20_to_sma_50: 0,
+                    golden_cross: false,
+                    death_cross: false
+                  },
+                  rsi: {
+                    rsi_14: 50,
+                    trend: 'neutral',
+                    status: 'neutral'
+                  },
+                  macd: {
+                    macd_line: 0,
+                    signal_line: 0,
+                    histogram: 0
+                  },
+                  bollinger_bands: {
+                    upper_band: 0,
+                    middle_band: 0,
+                    lower_band: 0,
+                    percent_b: 0.5,
+                    bandwidth: 0
+                  },
+                  volume: {
+                    volume_ratio: 1,
+                    obv: 0,
+                    obv_trend: 'neutral'
+                  },
+                  adx: {
+                    adx: 25,
+                    plus_di: 25,
+                    minus_di: 25,
+                    trend_direction: 'neutral'
+                  },
+                  trend_data: {
+                    direction: 'neutral',
+                    strength: 'weak',
+                    adx: 25,
+                    plus_di: 25,
+                    minus_di: 25
+                  },
+                  raw_data: {
+                    open: [],
+                    high: [],
+                    low: [],
+                    close: [],
+                    volume: []
+                  },
+                  metadata: {
+                    start: '',
+                    end: '',
+                    period: 0,
+                    last_price: 0,
+                    last_volume: 0,
+                    data_quality: {
+                      is_valid: true,
+                      warnings: [],
+                      data_quality_issues: [],
+                      missing_data: [],
+                      suspicious_patterns: []
+                    },
+                    indicator_availability: {
+                      sma_20: true,
+                      sma_50: true,
+                      sma_200: true,
+                      ema_20: true,
+                      ema_50: true,
+                      macd: true,
+                      rsi: true,
+                      bollinger_bands: true,
+                      stochastic: true,
+                      adx: true,
+                      obv: true,
+                      volume_ratio: true,
+                      atr: true
+                    }
+                  }
+                },
+                chart_insights: 'Historical data available',
+                indicator_summary_md: 'Technical indicators will be calculated from historical data',
+                data: data.candles
+              });
+              setStockSymbol(token);
             } else {
               setError("No analysis data available.");
             }
@@ -124,60 +241,13 @@ const NewOutput: React.FC = () => {
       setError("Failed to load analysis data.");
       setAnalysisLoading(false);
     }
-  }, [stockSymbol, selectedTimeframe]);
+  }, [stockSymbol]);
 
-  // Update live chart when stock symbol changes
-  useEffect(() => {
-    if (stockSymbol && updateSymbol) {
-      console.log('🔄 Updating symbol in useLiveChart hook:', stockSymbol);
-      updateSymbol(stockSymbol);
-    }
-  }, [stockSymbol, updateSymbol]);
 
-  // Update live chart when timeframe changes
-  useEffect(() => {
-    if (selectedTimeframe && updateTimeframe) {
-      console.log('🔄 Updating timeframe in useLiveChart hook:', selectedTimeframe);
-      updateTimeframe(selectedTimeframe);
-    }
-  }, [selectedTimeframe, updateTimeframe]);
 
-  // Handle chart data loaded
-  const handleChartDataLoaded = (data: any[]) => {
-    setChartDataLoaded(true);
-    console.log('Chart data loaded:', data.length, 'candles');
-  };
 
-  // Handle live chart data updates
-  useEffect(() => {
-    if (liveData && liveData.length > 0) {
-      setChartDataLoaded(true);
-      console.log('📈 Live data updated in Output page:', {
-        dataLength: liveData.length,
-        lastCandle: liveData[liveData.length - 1],
-        lastUpdate: new Date(lastUpdate).toLocaleTimeString()
-      });
-    }
-  }, [liveData, lastUpdate]);
 
-  // Handle chart error
-  const handleChartError = (error: string) => {
-    console.error('Chart error:', error);
-    setError(error);
-  };
-
-  // Handle live chart errors
-  useEffect(() => {
-    if (liveError) {
-      console.error('Live chart error:', liveError);
-      setError(liveError);
-    }
-  }, [liveError]);
-
-  // Show charts immediately when stock symbol is available, regardless of analysis loading
-  const canShowCharts = stockSymbol && !error;
-
-  // Loading and error states - only show full page loading if no stock symbol
+  // Loading and error states
   if (loading && !stockSymbol) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -192,7 +262,7 @@ const NewOutput: React.FC = () => {
     );
   }
 
-  if (error && !canShowCharts) {
+  if (error && !stockSymbol) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <Header />
@@ -286,19 +356,19 @@ const NewOutput: React.FC = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-slate-800">
-                  {chartDataLoaded ? "₹0.00" : <Skeleton className="h-8 w-20 mx-auto" />}
+                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : "₹0.00"}
                 </div>
                 <div className="text-sm text-slate-600">Current Price</div>
               </div>
               <div className="text-center">
                 <div className={`text-2xl font-bold flex items-center justify-center text-red-600`}>
-                  {chartDataLoaded ? "₹0.00" : <Skeleton className="h-8 w-20 mx-auto" />}
+                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : "₹0.00"}
                 </div>
                 <div className="text-sm text-slate-600">Change</div>
               </div>
               <div className="text-center">
                 <div className={`text-2xl font-bold text-red-600`}>
-                  {chartDataLoaded ? "0.00%" : <Skeleton className="h-8 w-20 mx-auto" />}
+                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : "0.00%"}
                 </div>
                 <div className="text-sm text-slate-600">Change %</div>
               </div>
@@ -315,7 +385,7 @@ const NewOutput: React.FC = () => {
               <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                  <span className="text-sm text-blue-700">Analysis in progress... Charts are ready for viewing</span>
+                  <span className="text-sm text-blue-700">Analysis in progress...</span>
                 </div>
               </div>
             )}
@@ -324,17 +394,10 @@ const NewOutput: React.FC = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-3 bg-white/80 backdrop-blur-sm">
             <TabsTrigger value="overview" className="flex items-center space-x-2">
               <Eye className="h-4 w-4" />
               <span>Overview</span>
-            </TabsTrigger>
-            <TabsTrigger value="charts" className="flex items-center space-x-2">
-              <BarChart3 className="h-4 w-4" />
-              <span>Charts</span>
-              {chartDataLoaded && (
-                <div className="w-2 h-2 bg-green-500 rounded-full ml-1"></div>
-              )}
             </TabsTrigger>
             <TabsTrigger value="technical" className="flex items-center space-x-2">
               <TrendingUp className="h-4 w-4" />
@@ -386,9 +449,20 @@ const NewOutput: React.FC = () => {
                   />
                 ) : (
                   <PriceStatisticsCard 
-                    summaryStats={null}
-                    latestPrice={null}
-                    timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
+                    summaryStats={calculatePriceStatistics(analysisData?.data || null) || {
+                      mean: 0,
+                      max: 0,
+                      min: 0,
+                      current: 0,
+                      distFromMean: 0,
+                      distFromMax: 0,
+                      distFromMin: 0,
+                      distFromMeanPct: 0,
+                      distFromMaxPct: 0,
+                      distFromMinPct: 0
+                    }}
+                    latestPrice={analysisData?.data && analysisData.data.length > 0 ? analysisData.data[analysisData.data.length - 1].close || analysisData.data[analysisData.data.length - 1].price : null}
+                    timeframe="1 Day"
                   />
                 )}
               </div>
@@ -410,65 +484,7 @@ const NewOutput: React.FC = () => {
             </div>
           </TabsContent>
 
-          {/* Charts Tab */}
-          <TabsContent value="charts" className="space-y-6">
-            {/* Enhanced Live Chart Section */}
-            {/* 
-              This section integrates the advanced LiveSimpleChart component with:
-              - Real-time WebSocket data streaming
-              - Technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands)
-              - Pattern recognition features
-              - Live price updates and connection status
-              - Auto-reconnection and error handling
-            */}
-            <div className="w-full">
-              {canShowCharts ? (
-                <LiveSimpleChart
-                  symbol={stockSymbol}
-                  timeframe={selectedTimeframe}
-                  theme="light"
-                  height={800}
-                  width={800}
-                  exchange="NSE"
-                  maxDataPoints={1000}
-                  autoConnect={true}
-                  showConnectionStatus={true}
-                  showLiveIndicator={true}
-                  showIndicators={true}
-                  showPatterns={true}
-                  showVolume={true}
-                  debug={false}
-                  data={liveData}
-                  isConnected={isLiveConnected}
-                  isLive={isLive}
-                  isLoading={isLiveLoading}
-                  error={liveError}
-                  lastUpdate={lastUpdate}
-                  connectionStatus={connectionStatus}
-                  refetch={refetch}
-                  onDataUpdate={handleChartDataLoaded}
-                  onConnectionChange={(isConnected) => {
-                    console.log('Connection status changed:', isConnected);
-                  }}
-                  onError={handleChartError}
-                  onValidationResult={(result) => {
-                    console.log('Chart validation result:', result);
-                  }}
-                  onStatsCalculated={(stats) => {
-                    console.log('Chart stats calculated:', stats);
-                  }}
-                />
-              ) : (
-                <div className="text-center py-16 text-slate-500">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-                  <p>{stockSymbol ? 'Initializing chart...' : 'Loading stock data...'}</p>
-                  {stockSymbol && (
-                    <p className="text-sm text-slate-400 mt-2">Chart will be available shortly</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </TabsContent>
+
 
           {/* Technical Tab */}
           <TabsContent value="technical" className="space-y-6">

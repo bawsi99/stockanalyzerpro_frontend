@@ -422,6 +422,7 @@ export interface AnalysisResults {
 
 export interface ChartData {
   date: string;
+  time?: number; // Optional for backward compatibility
   open: number;
   close: number;
   high: number;
@@ -487,6 +488,7 @@ export interface PatternMarkers {
 
 export interface ChartDataPoint {
   date: string;
+  time?: number; // Optional for backward compatibility
   open: number;
   high: number;
   low: number;

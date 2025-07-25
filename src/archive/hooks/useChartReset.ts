@@ -1,3 +1,12 @@
+/**
+ * @deprecated This hook has been archived and is no longer in use.
+ * The chart reset functionality has been integrated into the unified Charts page.
+ * See: frontend/src/pages/Charts.tsx for the current implementation.
+ * 
+ * Archived on: 2024-07-25
+ * Reason: Consolidated into unified chart system
+ */
+
 import { useRef, useCallback, useMemo } from 'react';
 
 // Chart state interface that matches the existing chart components

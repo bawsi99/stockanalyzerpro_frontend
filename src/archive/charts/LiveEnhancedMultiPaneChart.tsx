@@ -1,3 +1,12 @@
+/**
+ * @deprecated This component has been archived and is no longer in use.
+ * The live enhanced multi-pane chart functionality has been integrated into the unified Charts page.
+ * See: frontend/src/pages/Charts.tsx for the current implementation.
+ * 
+ * Archived on: 2024-07-25
+ * Reason: Consolidated into unified chart system
+ */
+
 import React, { useEffect, useRef, useState, useCallback, useMemo, useImperativeHandle } from "react";
 import {
   createChart,

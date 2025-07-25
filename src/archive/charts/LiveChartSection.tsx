@@ -1,3 +1,12 @@
+/**
+ * @deprecated This component has been archived and is no longer in use.
+ * The live chart section functionality has been integrated into the unified Charts page.
+ * See: frontend/src/pages/Charts.tsx for the current implementation.
+ * 
+ * Archived on: 2024-07-25
+ * Reason: Consolidated into unified chart system
+ */
+
 import React, { useEffect, useRef, useState, useCallback, useMemo, useImperativeHandle } from "react";
 import {
   createChart,
@@ -135,7 +144,9 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
       setIsLoading(true);
       setError(null);
       
+      console.log('Loading historical data for:', symbol, timeframe);
       const data = await apiService.getHistoricalData(symbol, timeframe, 'NSE', 1000);
+      console.log('Historical data loaded:', data.candles.length, 'candles');
       setChartData(data.candles);
       
       // Load indicators
@@ -226,7 +237,16 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
 
   // Initialize charts
   const initializeCharts = useCallback(() => {
-    if (!containerRef.current || !candleChartRef.current) return;
+    if (!containerRef.current || !candleChartRef.current) {
+      console.log('Chart containers not ready:', { 
+        container: !!containerRef.current, 
+        candleChart: !!candleChartRef.current 
+      });
+      return;
+    }
+
+    console.log('Initializing charts with dimensions:', chartDimensions);
+    console.log('Chart heights:', chartHeights);
 
     const isDark = theme === "dark";
     
@@ -488,7 +508,11 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
 
   // Update chart data - FIXED VERSION
   const updateChartData = useCallback(() => {
-    if (!chartData.length) return;
+    console.log('updateChartData called with:', chartData.length, 'candles');
+    if (!chartData.length) {
+      console.log('No chart data to update');
+      return;
+    }
 
     const isDark = theme === "dark";
 
@@ -509,8 +533,14 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
       } else {
         // Real-time updates - update only the last candle
         const lastCandle = candleData[candleData.length - 1];
-        if (lastCandle) {
-          candleSeriesRef.current.update(lastCandle);
+        if (lastCandle && typeof lastCandle.time === 'number') {
+          try {
+            // Temporarily disable real-time updates to prevent chart errors
+            // candleSeriesRef.current.update(lastCandle);
+            console.log('Tick update received:', lastCandle);
+          } catch (error) {
+            console.warn('Failed to update candle data:', error);
+          }
         }
       }
     }
@@ -528,8 +558,14 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
         volumeSeriesRef.current.setData(volumeData);
       } else {
         const lastVolume = volumeData[volumeData.length - 1];
-        if (lastVolume) {
-          volumeSeriesRef.current.update(lastVolume);
+        if (lastVolume && typeof lastVolume.time === 'number') {
+          try {
+            // Temporarily disable real-time volume updates to prevent chart errors
+            // volumeSeriesRef.current.update(lastVolume);
+            console.log('Volume update received:', lastVolume);
+          } catch (error) {
+            console.warn('Failed to update volume data:', error);
+          }
         }
       }
     }
@@ -588,7 +624,7 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
 
     // Update the last candle with tick data
     const lastCandle = chartData[chartData.length - 1];
-    if (lastCandle) {
+    if (lastCandle && typeof lastCandle.time === 'number') {
       const updatedCandle: CandlestickData = {
         time: lastCandle.time as UTCTimestamp,
         open: lastCandle.open,
@@ -650,8 +686,12 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
         setLatestTickPrice(data.price);
         setLatestTickTime(data.timestamp);
         
-        // Use the new tick update handler
-        handleTickUpdate(data);
+        // Use the new tick update handler with error handling
+        try {
+          handleTickUpdate(data);
+        } catch (error) {
+          console.warn('Error handling tick update:', error);
+        }
       }
     } catch (err) {
       console.error('Error parsing WebSocket message:', err);
@@ -1142,8 +1182,16 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
           {/* Real-time Price Display */}
           {renderRealTimePrice()}
           
+          {/* Debug Info */}
+          <div className="p-2 bg-yellow-100 text-xs">
+            <div>Container Dimensions: {chartDimensions.width} x {chartDimensions.height}</div>
+            <div>Chart Heights: {JSON.stringify(chartHeights)}</div>
+            <div>Data Points: {chartData.length}</div>
+            <div>Is Loading: {isLoading ? 'Yes' : 'No'}</div>
+          </div>
+          
           {/* Main Chart */}
-          <div ref={candleChartRef} className="w-full" style={{ height: chartHeights.candle }}></div>
+          <div ref={candleChartRef} className="w-full border-2 border-red-500" style={{ height: chartHeights.candle }}></div>
           <div id="candlestick-tooltip" className="absolute hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 pointer-events-none z-30 min-w-[160px]" />
           
           {/* Volume Chart */}

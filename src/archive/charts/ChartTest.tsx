@@ -1,8 +1,10 @@
-/*
- * ChartTest
- * ---------
- * Component for testing the chart library integration (lightweight-charts).
- * Not used in production. For development/debugging only.
+/**
+ * @deprecated This component has been archived and is no longer in use.
+ * The chart testing functionality has been integrated into the unified Charts page.
+ * See: frontend/src/pages/Charts.tsx for the current implementation.
+ * 
+ * Archived on: 2024-07-25
+ * Reason: Consolidated into unified chart system
  */
 import React, { useEffect, useRef, useState } from 'react';
 

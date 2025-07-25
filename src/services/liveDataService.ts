@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChartData } from '@/types/analysis';
 import { toUTCTimestamp } from '@/utils/chartUtils';
 import { ENDPOINTS } from '../config';
+import { performanceMonitor } from '@/utils/performanceMonitor';
 
 // Types for real data
 export interface RealCandlestickData {
@@ -68,45 +69,49 @@ class LiveDataService {
     exchange: string = 'NSE',
     limit: number = 1000
   ): Promise<HistoricalDataResponse> {
-    try {
-      const token = await authService.ensureAuthenticated();
-      if (!token) {
-        throw new Error('Authentication token not available');
-      }
-
-      const backendInterval = INTERVAL_MAPPING[interval as keyof typeof INTERVAL_MAPPING] || '1day';
-      
-      const response = await fetch(
-        `${ENDPOINTS.DATA.STOCK_HISTORY}/${symbol}/history?interval=${backendInterval}&exchange=${exchange}&limit=${limit}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+    const apiCallKey = `getHistoricalData-${symbol}-${interval}`;
+    
+    return performanceMonitor.monitorApiCall(apiCallKey, async () => {
+      try {
+        const token = await authService.ensureAuthenticated();
+        if (!token) {
+          throw new Error('Authentication token not available');
         }
-      );
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Authentication failed. Please login again.');
-        } else if (response.status === 404) {
-          throw new Error(`Stock ${symbol} not found or no data available`);
-        } else {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        const backendInterval = INTERVAL_MAPPING[interval as keyof typeof INTERVAL_MAPPING] || '1day';
+        
+        const response = await fetch(
+          `${ENDPOINTS.DATA.STOCK_HISTORY}/${symbol}/history?interval=${backendInterval}&exchange=${exchange}&limit=${limit}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Authentication failed. Please login again.');
+          } else if (response.status === 404) {
+            throw new Error(`Stock ${symbol} not found or no data available`);
+          } else {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
         }
-      }
 
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch historical data');
-      }
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to fetch historical data');
+        }
 
-      return data;
-    } catch (error) {
-      console.error('Error fetching historical data:', error);
-      throw error;
-    }
+        return data;
+      } catch (error) {
+        console.error('Error fetching historical data:', error);
+        throw error;
+      }
+    });
   }
 
   // Get stock information (Data Service - Port 8000)
@@ -451,14 +456,23 @@ class LiveDataService {
 
   // Convert backend data format to frontend format
   convertToChartData(backendData: RealCandlestickData[]): any[] {
-    return backendData.map(candle => ({
-      date: new Date(candle.time * 1000).toISOString(), // Use UTC ISO string
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
-      volume: candle.volume
-    }));
+    return backendData.map(candle => {
+      // Validate that time is a valid number
+      if (typeof candle.time !== 'number' || isNaN(candle.time) || candle.time <= 0) {
+        console.warn('Invalid timestamp in candle data:', candle.time, 'using current time as fallback');
+        candle.time = Math.floor(Date.now() / 1000);
+      }
+      
+      return {
+        date: new Date(candle.time * 1000).toISOString(), // Use UTC ISO string
+        time: candle.time, // UTC timestamp in seconds for lightweight-charts
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+        volume: candle.volume
+      };
+    });
   }
 
   // Get real-time status (Data Service - Port 8000)
