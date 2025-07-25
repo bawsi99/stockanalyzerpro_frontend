@@ -23,6 +23,7 @@ import {
   AreaSeries,
 } from "lightweight-charts";
 import { ChartData } from "@/types/analysis";
+import { useChartReset } from "@/hooks/useChartReset";
 import { 
   validateChartData, 
   ValidatedChartData, 
@@ -62,6 +63,8 @@ interface EnhancedSimpleChartProps {
   showVolume?: boolean;
   onValidationResult?: (result: ChartValidationResult) => void;
   onStatsCalculated?: (stats: any) => void;
+  onResetScale?: () => void; // Add reset scale callback
+  onRegisterReset?: (resetFn: () => void) => void; // Add reset function registration
 }
 
 // ---- Utility helpers ---- //
@@ -175,13 +178,33 @@ const EnhancedSimpleChart: React.FC<EnhancedSimpleChartProps> = ({
   showPatterns = true,
   showVolume = false,
   onValidationResult,
-  onStatsCalculated
+  onStatsCalculated,
+  onResetScale,
+  onRegisterReset
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const patternSeriesRef = useRef<{ [key: string]: ISeriesApi<any> }>({});
+
+  // Chart reset functionality
+  const {
+    chartRef,
+    chartStateRef,
+    isInitialState,
+    hasUserInteracted,
+    saveChartState,
+    restoreChartState,
+    resetToInitialState,
+    resetToFitContent,
+    handleUserInteraction,
+    handleChartUpdate,
+  } = useChartReset({
+    debug,
+    onReset: () => {
+      console.log('Enhanced chart reset completed');
+    }
+  });
   
   const [isChartReady, setIsChartReady] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
@@ -573,13 +596,41 @@ const EnhancedSimpleChart: React.FC<EnhancedSimpleChartProps> = ({
     );
   }
 
+  // Reset scale function - use hook's resetToInitialState
+  const resetScale = useCallback(() => {
+    resetToInitialState();
+    // Call parent callback if provided
+    onResetScale?.();
+  }, [resetToInitialState, onResetScale]);
+
+  // Register reset function with parent component
+  useEffect(() => {
+    if (onRegisterReset) {
+      onRegisterReset(resetScale);
+    }
+  }, [onRegisterReset, resetScale]);
+
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
       <div 
         ref={chartContainerRef} 
         className="w-full h-full"
         style={{ width: `${width}px`, height: `${height}px` }}
       />
+      
+      {/* Reset Scale Button */}
+      <div className="absolute bottom-2 right-2 z-10">
+        <button
+          onClick={resetScale}
+          className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          title="Reset chart scale to fit all data"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+          </svg>
+        </button>
+      </div>
+      
       {debug && chartStats && (
         <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded">
           <h3 className="font-bold mb-2">Chart Statistics</h3>

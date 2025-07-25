@@ -1,5 +1,23 @@
 # Welcome to your Lovable project
 
+## Configuration
+
+This frontend application uses environment variables for configuration. See [CONFIGURATION.md](./CONFIGURATION.md) for detailed setup instructions.
+
+### Quick Setup
+
+1. Copy the example environment file:
+   ```bash
+   cp env.example .env.local
+   ```
+
+2. Modify `.env.local` with your settings:
+   ```env
+   VITE_DATA_SERVICE_URL=http://localhost:8000
+   VITE_ANALYSIS_SERVICE_URL=http://localhost:8001
+   VITE_WEBSOCKET_URL=ws://localhost:8000/ws/stream
+   ```
+
 ## Chart Components Overview
 
 - **LiveSimpleChart**: Main chart component for real-time, live-updating stock data. Handles all WebSocket connections and live data streaming. Use this for any live charting needs. Do not modify its WebSocket logic unless you are updating the live data infrastructure.

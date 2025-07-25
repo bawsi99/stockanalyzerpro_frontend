@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ZoomIn } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -79,6 +80,23 @@ export default function Charts() {
   const [chartStats, setChartStats] = useState<any>(null);
   const [validationResult, setValidationResult] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
+
+  // Chart reset refs
+  const liveChartResetRef = useRef<(() => void) | null>(null);
+  const enhancedChartResetRef = useRef<(() => void) | null>(null);
+  
+  // Functions to register reset functions from chart components
+  const registerLiveChartReset = (resetFn: () => void) => {
+    liveChartResetRef.current = resetFn;
+    console.log('Live chart reset function registered');
+  };
+  
+  const registerEnhancedChartReset = (resetFn: () => void) => {
+    enhancedChartResetRef.current = resetFn;
+    console.log('Enhanced chart reset function registered');
+  };
+  
+
 
   // Update current time every second
   useEffect(() => {
@@ -546,6 +564,24 @@ export default function Charts() {
               <Button
                 variant="outline"
                 onClick={() => {
+                  // Call the appropriate reset function based on chart type
+                  if (enableLiveChart) {
+                    console.log('Calling live chart reset function...');
+                    liveChartResetRef.current?.();
+                  } else {
+                    console.log('Calling enhanced chart reset function...');
+                    enhancedChartResetRef.current?.();
+                  }
+                }}
+                className="flex-1"
+                title="Reset chart scale to fit all data"
+              >
+                <ZoomIn className="w-4 h-4 mr-2" />
+                Reset Scale
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
                   console.log('Current chart data:', chartData);
                   console.log('Current stock info:', currentStockInfo);
                 }}
@@ -642,6 +678,10 @@ export default function Charts() {
                   onStatsCalculated={(stats) => {
                     setChartStats(stats);
                   }}
+                  onResetScale={() => {
+                    console.log('Live chart scale reset');
+                  }}
+                  onRegisterReset={registerLiveChartReset}
                 />
               </div>
             ) : isLoadingData ? (
@@ -685,6 +725,10 @@ export default function Charts() {
                   onStatsCalculated={(stats) => {
                     setChartStats(stats);
                   }}
+                  onResetScale={() => {
+                    console.log('Enhanced chart scale reset');
+                  }}
+                  onRegisterReset={registerEnhancedChartReset}
                 />
               </div>
             )}

@@ -1,12 +1,9 @@
-import { useEffect, useState, useMemo, useRef } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
 import Header from "@/components/Header";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Analysis Components
@@ -26,19 +23,17 @@ import ActionButtonsSection from "@/components/analysis/ActionButtonsSection";
 import DisclaimerCard from "@/components/analysis/DisclaimerCard";
 
 // Chart Components
-import LiveChartSection from "@/components/charts/LiveChartSection";
+import LiveSimpleChart from "@/components/charts/LiveSimpleChart";
+import { useLiveChart } from "@/hooks/useLiveChart";
 
 // Icons
 import { 
   TrendingUp, 
   BarChart3, 
-  Target, 
   AlertTriangle, 
   ArrowUpRight, 
   ArrowDownRight,
   Minus,
-  Clock,
-  Eye,
   Settings,
   Loader2
 } from "lucide-react";
@@ -46,8 +41,6 @@ import {
 // Types and Utils
 import { AnalysisData, EnhancedOverlays } from "@/types/analysis";
 import { apiService } from "@/services/api";
-import { ChartValidationResult } from "@/utils/chartUtils";
-import { filterDataByTimeframe } from "@/utils/chartUtils";
 
 // Chart statistics interface
 interface ChartStats {
@@ -62,16 +55,38 @@ const NewOutput: React.FC = () => {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [stockSymbol, setStockSymbol] = useState<string>("");
   const [selectedTimeframe, setSelectedTimeframe] = useState('1day');
-  const [chartType, setChartType] = useState<'candlestick' | 'line'>('candlestick');
   const [activeTab, setActiveTab] = useState("overview");
-  const [showShortcuts, setShowShortcuts] = useState(false);
   const [loading, setLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(true); // Separate loading for analysis
   const [chartDataLoaded, setChartDataLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Chart ref
-  const chartRef = useRef<any>(null);
+
+
+  // Live chart hook for real-time data
+  // This hook provides real-time WebSocket data streaming with auto-reconnection
+  // and handles all live chart functionality including data updates, connection status,
+  // and error handling
+  const {
+    data: liveData,
+    isConnected: isLiveConnected,
+    isLive,
+    isLoading: isLiveLoading,
+    error: liveError,
+    lastUpdate,
+    connectionStatus,
+    connect,
+    disconnect,
+    refetch,
+    updateSymbol,
+    updateTimeframe
+  } = useLiveChart({
+    symbol: stockSymbol,
+    timeframe: selectedTimeframe,
+    exchange: 'NSE',
+    maxDataPoints: 1000,
+    autoConnect: true
+  });
 
   // Load analysis data and stock symbol from localStorage or route params
   useEffect(() => {
@@ -111,17 +126,53 @@ const NewOutput: React.FC = () => {
     }
   }, [stockSymbol, selectedTimeframe]);
 
+  // Update live chart when stock symbol changes
+  useEffect(() => {
+    if (stockSymbol && updateSymbol) {
+      console.log('🔄 Updating symbol in useLiveChart hook:', stockSymbol);
+      updateSymbol(stockSymbol);
+    }
+  }, [stockSymbol, updateSymbol]);
+
+  // Update live chart when timeframe changes
+  useEffect(() => {
+    if (selectedTimeframe && updateTimeframe) {
+      console.log('🔄 Updating timeframe in useLiveChart hook:', selectedTimeframe);
+      updateTimeframe(selectedTimeframe);
+    }
+  }, [selectedTimeframe, updateTimeframe]);
+
   // Handle chart data loaded
   const handleChartDataLoaded = (data: any[]) => {
     setChartDataLoaded(true);
     console.log('Chart data loaded:', data.length, 'candles');
   };
 
+  // Handle live chart data updates
+  useEffect(() => {
+    if (liveData && liveData.length > 0) {
+      setChartDataLoaded(true);
+      console.log('📈 Live data updated in Output page:', {
+        dataLength: liveData.length,
+        lastCandle: liveData[liveData.length - 1],
+        lastUpdate: new Date(lastUpdate).toLocaleTimeString()
+      });
+    }
+  }, [liveData, lastUpdate]);
+
   // Handle chart error
   const handleChartError = (error: string) => {
     console.error('Chart error:', error);
     setError(error);
   };
+
+  // Handle live chart errors
+  useEffect(() => {
+    if (liveError) {
+      console.error('Live chart error:', liveError);
+      setError(liveError);
+    }
+  }, [liveError]);
 
   // Show charts immediately when stock symbol is available, regardless of analysis loading
   const canShowCharts = stockSymbol && !error;
@@ -361,17 +412,51 @@ const NewOutput: React.FC = () => {
 
           {/* Charts Tab */}
           <TabsContent value="charts" className="space-y-6">
-            {/* Live Chart Section */}
+            {/* Enhanced Live Chart Section */}
+            {/* 
+              This section integrates the advanced LiveSimpleChart component with:
+              - Real-time WebSocket data streaming
+              - Technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands)
+              - Pattern recognition features
+              - Live price updates and connection status
+              - Auto-reconnection and error handling
+            */}
             <div className="w-full">
               {canShowCharts ? (
-                <LiveChartSection
-                  ref={chartRef}
+                <LiveSimpleChart
                   symbol={stockSymbol}
+                  timeframe={selectedTimeframe}
                   theme="light"
                   height={800}
+                  width={800}
+                  exchange="NSE"
+                  maxDataPoints={1000}
+                  autoConnect={true}
+                  showConnectionStatus={true}
+                  showLiveIndicator={true}
+                  showIndicators={true}
+                  showPatterns={true}
+                  showVolume={true}
                   debug={false}
-                  onDataLoaded={handleChartDataLoaded}
+                  data={liveData}
+                  isConnected={isLiveConnected}
+                  isLive={isLive}
+                  isLoading={isLiveLoading}
+                  error={liveError}
+                  lastUpdate={lastUpdate}
+                  connectionStatus={connectionStatus}
+                  refetch={refetch}
+                  onDataUpdate={handleChartDataLoaded}
+                  onConnectionChange={(isConnected) => {
+                    console.log('Connection status changed:', isConnected);
+                  }}
                   onError={handleChartError}
+                  onValidationResult={(result) => {
+                    console.log('Chart validation result:', result);
+                  }}
+                  onStatsCalculated={(stats) => {
+                    console.log('Chart stats calculated:', stats);
+                  }}
                 />
               ) : (
                 <div className="text-center py-16 text-slate-500">

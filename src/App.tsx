@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, UNSAFE_future } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { logConfiguration } from "@/utils/configUtils";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Auth from "./pages/Auth";
@@ -18,6 +19,9 @@ import Charts from "./pages/Charts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+// Initialize configuration logging
+logConfiguration();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

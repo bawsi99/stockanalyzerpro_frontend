@@ -30,6 +30,7 @@ import {
 
 // API Service
 import { apiService, CandleData, IndicatorData } from "@/services/api";
+import { buildWebSocketUrl } from "@/utils/configUtils";
 
 // Types
 interface LiveChartSectionProps {
@@ -163,9 +164,7 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
 
     try {
       const token = localStorage.getItem('jwt_token');
-      const wsUrl = token 
-        ? `ws://localhost:8000/ws/stream?token=${token}`
-        : 'ws://localhost:8000/ws/stream';
+      const wsUrl = buildWebSocketUrl(token || undefined);
       
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
