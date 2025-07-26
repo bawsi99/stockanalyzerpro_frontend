@@ -9,25 +9,8 @@ import {
   CommandItem,
 } from '@/components/ui/command';
 
-// Try to import stockList, fallback to default if it fails
-let stockList: any[] = [];
-try {
-  stockList = require('@/utils/stockList.json');
-} catch (error) {
-  console.warn('Failed to load stockList.json, using fallback stocks');
-  stockList = [
-    { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', exchange: 'NSE' },
-    { symbol: 'TCS', name: 'Tata Consultancy Services Ltd', exchange: 'NSE' },
-    { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', exchange: 'NSE' },
-    { symbol: 'INFY', name: 'Infosys Ltd', exchange: 'NSE' },
-    { symbol: 'ICICIBANK', name: 'ICICI Bank Ltd', exchange: 'NSE' },
-    { symbol: 'HINDUNILVR', name: 'Hindustan Unilever Ltd', exchange: 'NSE' },
-    { symbol: 'ITC', name: 'ITC Ltd', exchange: 'NSE' },
-    { symbol: 'SBIN', name: 'State Bank of India', exchange: 'NSE' },
-    { symbol: 'BHARTIARTL', name: 'Bharti Airtel Ltd', exchange: 'NSE' },
-    { symbol: 'AXISBANK', name: 'Axis Bank Ltd', exchange: 'NSE' },
-  ];
-}
+// Import stockList using ES6 import syntax
+import stockList from '@/utils/stockList.json';
 
 interface StockSelectorProps {
   value: string;
@@ -88,7 +71,6 @@ export const StockSelector: React.FC<StockSelectorProps> = ({
                   .toLowerCase()
                   .includes(search.toLowerCase())
               )
-              .slice(0, 50)
               .map((s) => (
                 <CommandItem
                   key={`${s.symbol}_${s.exchange}`}

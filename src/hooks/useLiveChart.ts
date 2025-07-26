@@ -77,7 +77,12 @@ interface WebSocketErrorMessage {
   data: string;
 }
 
-type WebSocketMessage = WebSocketCandleMessage | WebSocketTickMessage | WebSocketSubscribedMessage | WebSocketErrorMessage;
+interface WebSocketHeartbeatMessage {
+  type: 'heartbeat';
+  timestamp: number;
+}
+
+type WebSocketMessage = WebSocketCandleMessage | WebSocketTickMessage | WebSocketSubscribedMessage | WebSocketErrorMessage | WebSocketHeartbeatMessage;
 
 export function useLiveChart({
   symbol,
@@ -123,9 +128,10 @@ export function useLiveChart({
       const stocks = await liveDataService.getAvailableStocks();
       const stock = stocks.find(s => s.symbol.toUpperCase() === stockSymbol.toUpperCase());
       if (!stock) {
-        console.warn(`Stock ${stockSymbol} not found in available stocks, using default`);
+        console.warn(`Stock ${stockSymbol} not found in available stocks, using default RELIANCE token`);
         return '256265'; // Default to RELIANCE
       }
+      console.log(`Found token for ${stockSymbol}: ${stock.token}`);
       return stock.token;
     } catch (error) {
       console.error('Error getting token for symbol:', error);
@@ -150,14 +156,14 @@ export function useLiveChart({
       );
 
       if (!response.success || !response.candles || response.candles.length === 0) {
-        throw new Error('No data received from server');
+        throw new Error(`No data received from server for ${symbol}`);
       }
 
       const convertedData = liveDataService.convertToChartData(response.candles);
       
       // Validate data before setting
       if (convertedData.length === 0) {
-        throw new Error('No valid data points received');
+        throw new Error(`No valid data points received for ${symbol}`);
       }
       
       // Limit data points for performance
@@ -182,12 +188,12 @@ export function useLiveChart({
       }));
 
     } catch (error) {
-      console.error('Error loading historical data:', error);
+      console.error(`Error loading historical data for ${symbol}:`, error);
       
       // Retry logic for transient errors
       if (retryCount < 2 && error instanceof Error && 
           (error.message.includes('network') || error.message.includes('timeout'))) {
-        console.log(`Retrying historical data load (${retryCount + 1}/2)...`);
+        console.log(`Retrying historical data load for ${symbol} (${retryCount + 1}/2)...`);
         setTimeout(() => loadHistoricalData(retryCount + 1), 2000);
         return;
       }
@@ -195,7 +201,8 @@ export function useLiveChart({
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to load data'
+        error: error instanceof Error ? error.message : `Failed to load data for ${symbol}`,
+        data: [] // Clear data on error
       }));
     }
   }, [symbol, timeframe, exchange, maxDataPoints]);
@@ -375,6 +382,14 @@ export function useLiveChart({
               error: wsData.data as string,
               connectionStatus: 'error'
             }));
+          } else if (wsData.type === 'heartbeat') {
+            // Handle heartbeat messages silently - just log for debugging
+            console.log('💓 Heartbeat received:', wsData.timestamp);
+            // Update last activity timestamp to keep connection alive
+            setState(prev => ({
+              ...prev,
+              lastUpdate: Date.now()
+            }));
           } else {
             console.log('⚠️ Unhandled message type or missing data:', wsData);
           }
@@ -386,7 +401,7 @@ export function useLiveChart({
             connectionStatus: 'error',
             isConnected: false,
             isLive: false,
-            error: 'WebSocket connection error'
+            error: 'Live data not available. Historical data will be used instead.'
           }));
         },
         () => {
@@ -473,13 +488,42 @@ export function useLiveChart({
   }, [loadHistoricalData]);
 
   // Enhanced symbol update
-  const updateSymbol = useCallback((newSymbol: string) => {
-    console.log(`Updating symbol from ${symbol} to ${newSymbol}`);
-    disconnect();
-    symbolRef.current = newSymbol;
-    loadHistoricalData();
-    if (autoConnect) {
-      connect();
+  const updateSymbol = useCallback(async (newSymbol: string) => {
+    console.log(`🔄 Updating symbol from ${symbol} to ${newSymbol}`);
+    
+    // Don't clear data immediately - let the chart show the last data until new data arrives
+    setState(prev => ({
+      ...prev,
+      isLoading: true,
+      error: null,
+      isLive: false,
+      lastTickPrice: undefined,
+      lastTickTime: undefined
+    }));
+    
+    try {
+      // Disconnect current WebSocket
+      disconnect();
+      
+      // Update the symbol reference
+      symbolRef.current = newSymbol;
+      
+      // Load new historical data
+      await loadHistoricalData();
+      
+      // Reconnect WebSocket if autoConnect is enabled
+      if (autoConnect) {
+        await connect();
+      }
+      
+      console.log(`✅ Successfully updated symbol to ${newSymbol}`);
+    } catch (error) {
+      console.error(`❌ Failed to update symbol to ${newSymbol}:`, error);
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: `Failed to update symbol to ${newSymbol}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      }));
     }
   }, [disconnect, loadHistoricalData, autoConnect, connect, symbol]);
 

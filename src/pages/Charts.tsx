@@ -30,6 +30,7 @@ import {
 // Chart Components
 import LiveSimpleChart from '@/components/charts/LiveSimpleChart';
 import { useLiveChart } from '@/hooks/useLiveChart';
+import { DataStatusIndicator } from '@/components/DataStatusIndicator';
 
 // Analysis Components
 import ConsensusSummaryCard from '@/components/analysis/ConsensusSummaryCard';
@@ -52,6 +53,7 @@ import { authService } from '@/services/authService';
 import { apiService } from '@/services/api';
 import { AnalysisData, EnhancedOverlays } from '@/types/analysis';
 import stockList from '@/utils/stockList.json';
+import { StockSelector } from '@/components/ui/stock-selector';
 
 // Types
 interface ChartStats {
@@ -119,7 +121,7 @@ const TIMEFRAMES = [
 
 export default function Charts() {
   // Core State
-  const [stockSymbol, setStockSymbol] = useState<string>('RELIANCE');
+  const [stockSymbol, setStockSymbol] = useState<string>('NIFTY 50');
   const [selectedTimeframe, setSelectedTimeframe] = useState('1d');
   const [activeTab, setActiveTab] = useState('overview');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -482,48 +484,9 @@ export default function Charts() {
             <h1 className="text-4xl font-bold text-slate-800 mb-2">
               {stockSymbol || "Loading..."} Analysis
             </h1>
-            <p className="text-slate-600">Comprehensive technical analysis and insights</p>
           </div>
 
-          {/* Quick Stats Bar */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-slate-200">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-slate-800">
-                  {chartDataLoaded ? "₹0.00" : <Skeleton className="h-8 w-20 mx-auto" />}
-                </div>
-                <div className="text-sm text-slate-600">Current Price</div>
-              </div>
-              <div className="text-center">
-                <div className={`text-2xl font-bold flex items-center justify-center text-red-600`}>
-                  {chartDataLoaded ? "₹0.00" : <Skeleton className="h-8 w-20 mx-auto" />}
-                </div>
-                <div className="text-sm text-slate-600">Change</div>
-              </div>
-              <div className="text-center">
-                <div className={`text-2xl font-bold text-red-600`}>
-                  {chartDataLoaded ? "0.00%" : <Skeleton className="h-8 w-20 mx-auto" />}
-                </div>
-                <div className="text-sm text-slate-600">Change %</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-slate-800">
-                  {consensus?.overall_signal || (analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : 'Neutral')}
-                </div>
-                <div className="text-sm text-slate-600">Signal</div>
-              </div>
-            </div>
-            
-            {/* Analysis Loading Indicator */}
-            {analysisLoading && (
-              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                  <span className="text-sm text-blue-700">Analysis in progress... Charts are ready for viewing</span>
-                </div>
-              </div>
-            )}
-          </div>
+
         </div>
 
         {/* Main Content Tabs */}
@@ -639,18 +602,12 @@ export default function Charts() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                   {/* Stock Symbol */}
                   <div>
-                    <label className="block text-sm font-medium mb-2">Stock Symbol</label>
-                    <select
+                    <StockSelector
                       value={stockSymbol}
-                      onChange={(e) => setStockSymbol(e.target.value)}
-                      className="w-full p-2 border rounded-md"
-                    >
-                      {stockList.slice(0, 50).map((stock: any) => (
-                        <option key={stock.symbol} value={stock.symbol}>
-                          {stock.symbol} - {stock.name}
-                        </option>
-                      ))}
-                    </select>
+                      onValueChange={setStockSymbol}
+                      placeholder="Select a stock"
+                      label="Stock Symbol"
+                    />
                   </div>
 
                   {/* Timeframe */}
@@ -738,11 +695,12 @@ export default function Charts() {
                 <CardTitle className="flex items-center justify-between">
                   <span>{stockSymbol} - {TIMEFRAMES.find(tf => tf.value === selectedTimeframe)?.label}</span>
                   <div className="flex items-center gap-2">
-                    {isLiveConnected && (
-                      <Badge variant="secondary" className="animate-pulse">
-                        🔴 LIVE
-                      </Badge>
-                    )}
+                    <DataStatusIndicator
+                      isConnected={isLiveConnected}
+                      isLive={isLive}
+                      connectionStatus={connectionStatus}
+                      error={liveError}
+                    />
                     <Badge variant="outline">
                       {theme === 'light' ? '☀️ Light' : '🌙 Dark'}
                     </Badge>
