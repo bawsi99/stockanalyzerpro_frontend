@@ -83,7 +83,7 @@ const NewStockAnalysis = () => {
     if (formData.stock) {
       fetchStockSector(formData.stock);
     }
-  }, [formData.stock]);
+  }, [formData.stock, fetchStockSector]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -113,7 +113,7 @@ const NewStockAnalysis = () => {
     }
   };
 
-  const fetchStockSector = async (symbol: string) => {
+  const fetchStockSector = useCallback(async (symbol: string) => {
     setSectorLoading(true);
     try {
       const data = await apiService.getStockSector(symbol);
@@ -133,7 +133,7 @@ const NewStockAnalysis = () => {
     } finally {
       setSectorLoading(false);
     }
-  };
+  }, [formData.sector]);
 
   // Event handlers
   const handleInputChange = (field: string, value: string) => {

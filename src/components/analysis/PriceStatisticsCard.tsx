@@ -39,13 +39,15 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
     distFromMinPct: 0
   };
 
-  const getPerformanceColor = (value: number) => {
+  const getPerformanceColor = (value: number | null | undefined) => {
+    if (value === null || value === undefined || isNaN(value)) return "text-gray-600";
     if (value > 0) return "text-green-600";
     if (value < 0) return "text-red-600";
     return "text-gray-600";
   };
 
-  const getPerformanceIcon = (value: number) => {
+  const getPerformanceIcon = (value: number | null | undefined) => {
+    if (value === null || value === undefined || isNaN(value)) return <BarChart3 className="h-4 w-4 text-gray-600" />;
     if (value > 0) return <TrendingUp className="h-4 w-4 text-green-600" />;
     if (value < 0) return <TrendingDown className="h-4 w-4 text-red-600" />;
     return <BarChart3 className="h-4 w-4 text-gray-600" />;
@@ -54,14 +56,21 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
   const getPositionInRange = () => {
     const range = stats.max - stats.min;
     if (range === 0) return 50; // If max and min are the same
-    return ((stats.current - stats.min) / range) * 100;
+    const position = ((stats.current - stats.min) / range) * 100;
+    return isNaN(position) ? 50 : Math.max(0, Math.min(100, position));
   };
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return '₹0.00';
+    }
     return `₹${value.toFixed(2)}`;
   };
 
-  const formatPercentage = (value: number) => {
+  const formatPercentage = (value: number | null | undefined) => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return '+0.00%';
+    }
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
   };
 

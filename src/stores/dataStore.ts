@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { liveDataService } from '@/services/liveDataService';
+import { liveDataService, RealCandlestickData, ChartDataPoint } from '@/services/liveDataService';
 
 interface DataState {
   // Historical data cache
@@ -17,14 +17,14 @@ interface DataState {
   
   // Actions
   fetchHistoricalData: (params: FetchParams) => Promise<void>;
-  updateLiveData: (symbol: string, data: any) => void;
+  updateLiveData: (symbol: string, data: RealCandlestickData) => void;
   clearCache: (symbol?: string) => void;
   setLoading: (key: string, loading: boolean) => void;
   setError: (key: string, error: string | null) => void;
 }
 
 interface HistoricalDataCache {
-  data: any;
+  data: RealCandlestickData[];
   timestamp: number;
   timeframe: string;
   symbol: string;
@@ -32,7 +32,7 @@ interface HistoricalDataCache {
 }
 
 interface LiveDataCache {
-  data: any[];
+  data: RealCandlestickData[];
   lastUpdate: number;
   isConnected: boolean;
 }

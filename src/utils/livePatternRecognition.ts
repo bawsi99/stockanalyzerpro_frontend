@@ -718,7 +718,13 @@ import { useEffect, useState, useCallback } from 'react';
 
 export function useLivePatterns(token: string, data: ChartData[]) {
   const [patterns, setPatterns] = useState<PatternState | null>(null);
-  const [latestPatterns, setLatestPatterns] = useState<any>(null);
+  const [latestPatterns, setLatestPatterns] = useState<{
+    triangles: TrianglePattern[];
+    flags: FlagPattern[];
+    supportResistance: SupportResistanceLevel[];
+    volumeAnomalies: VolumeAnomaly[];
+    candlestickPatterns: CandlestickPattern[];
+  } | null>(null);
   const [isDetecting, setIsDetecting] = useState(false);
 
   const detectPatterns = useCallback(() => {

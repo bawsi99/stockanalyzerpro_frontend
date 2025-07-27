@@ -1,17 +1,47 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { 
-  initializeChartWithRetry, 
-  createChartTheme, 
-  safeChartCleanup, 
-  toUTCTimestamp,
-  validateChartDataForTradingView,
-  type ChartContainer
-} from '@/utils/chartUtils';
-import { useLiveChart } from '@/hooks/useLiveChart';
-import { Button } from '@/components/ui/button';
+import { createChart, IChartApi, ISeriesApi, CandlestickData, LineData } from 'lightweight-charts';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { RefreshCw, Activity, Settings, TrendingUp, TrendingDown, ZoomIn } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Activity, Wifi, WifiOff, RefreshCw, Settings, ZoomIn, AlertTriangle } from 'lucide-react';
+import { toUTCTimestamp, validateChartDataForTradingView, initializeChartWithRetry, createChartTheme, safeChartCleanup, type ChartContainer } from '@/utils/chartUtils';
+
+interface ChartData {
+  date: string;
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+interface ChartState {
+  timeScale: {
+    rightOffset: number;
+    barSpacing: number;
+    fixLeftEdge: boolean;
+    fixRightEdge: boolean;
+    lockVisibleTimeRangeOnResize: boolean;
+    rightBarStaysOnScroll: boolean;
+    borderVisible: boolean;
+    visible: boolean;
+    timeVisible: boolean;
+    secondsVisible: boolean;
+  };
+  priceScale: {
+    autoScale: boolean;
+    scaleMargins: {
+      top: number;
+      bottom: number;
+    };
+  };
+  visibleRange?: {
+    from: number;
+    to: number;
+  };
+}
 
 interface LiveSimpleChartProps {
   symbol: string;
@@ -28,74 +58,28 @@ interface LiveSimpleChartProps {
   showPatterns?: boolean;
   showVolume?: boolean;
   debug?: boolean;
-  data?: any[]; // Accept data as prop
-  isConnected?: boolean;
+  data?: ChartData[];
   isLive?: boolean;
+  isConnected?: boolean;
   isLoading?: boolean;
   error?: string | null;
   lastUpdate?: number;
-  connectionStatus?: string;
-  refetch?: () => void; // Add refetch function
-  onDataUpdate?: (data: any[]) => void;
+  connectionStatus?: any;
+  refetch?: () => void;
+  onDataUpdate?: (data: ChartData[]) => void;
   onConnectionChange?: (isConnected: boolean) => void;
   onError?: (error: string) => void;
   onValidationResult?: (result: any) => void;
   onStatsCalculated?: (stats: any) => void;
-  onResetScale?: () => void; // Add reset scale callback
-  onRegisterReset?: (resetFn: () => void) => void; // Add reset function registration
-  activeIndicators?: {
-    sma20?: boolean;
-    sma50?: boolean;
-    ema12?: boolean;
-    ema26?: boolean;
-    ema50?: boolean;
-    sma200?: boolean;
-    bollingerBands?: boolean;
-    macd?: boolean;
-    stochastic?: boolean;
-    atr?: boolean;
-    obv?: boolean;
-    rsiDivergence?: boolean;
-    doublePatterns?: boolean;
-    volumeAnomaly?: boolean;
-    peaksLows?: boolean;
-    support?: boolean;
-    resistance?: boolean;
-    trianglesFlags?: boolean;
-  };
-}
-
-// Interface for chart state preservation
-interface ChartState {
-  visibleRange?: {
-    from: number;
-    to: number;
-  };
-  timeScale?: {
-    rightOffset: number;
-    barSpacing: number;
-    fixLeftEdge: boolean;
-    fixRightEdge: boolean;
-    lockVisibleTimeRangeOnResize: boolean;
-    rightBarStaysOnScroll: boolean;
-    borderVisible: boolean;
-    visible: boolean;
-    timeVisible: boolean;
-    secondsVisible: boolean;
-  };
-  priceScale?: {
-    autoScale: boolean;
-    scaleMargins: {
-      top: number;
-      bottom: number;
-    };
-  };
+  onResetScale?: () => void;
+  onRegisterReset?: (resetFn: () => void) => void;
+  activeIndicators?: Record<string, boolean>;
 }
 
 const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({ 
   symbol,
   timeframe,
-  theme = 'light', 
+  theme = 'light',
   height = 400,
   width = 800,
   exchange = 'NSE',
@@ -124,947 +108,663 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
   onRegisterReset,
   activeIndicators = {}
 }) => {
+  // Refs
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const candlestickSeriesRef = useRef<any>(null);
-  
-  // Chart state
+  const chartRef = useRef<IChartApi | null>(null);
+  const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const isMountedRef = useRef(true);
+  const lastSymbolRef = useRef(symbol);
+  const lastTimeframeRef = useRef(timeframe);
+  const lastDataRef = useRef<CandlestickData[]>([]);
+  const isInitializingRef = useRef(false);
+  const isNewSymbolRef = useRef(false);
+  const isInitialLoadRef = useRef(true);
+  const chartStateRef = useRef<ChartState | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const initializationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initializationAttemptsRef = useRef(0);
+
+  // State
   const [isChartReady, setIsChartReady] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
-  const [showControls, setShowControls] = useState(false);
-  const [lastChartUpdate, setLastChartUpdate] = useState<number>(0);
-  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+  const [lastChartUpdate, setLastChartUpdate] = useState(0);
+  const [containerReady, setContainerReady] = useState(false);
 
-  // Chart reset functionality
-  const chartRef = useRef<ChartContainer | null>(null);
-  const chartStateRef = useRef<ChartState | null>(null);
-  const [isInitialState, setIsInitialState] = useState(true);
-  const [hasUserInteracted, setHasUserInteracted] = useState(false);
-
-  // Reset functionality
-  const saveChartState = useCallback(() => {
-    if (chartRef.current) {
-      const timeScale = chartRef.current.timeScale();
-      const priceScale = chartRef.current.priceScale('right');
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      console.log('🧹 Cleaning up LiveSimpleChart component');
+      isMountedRef.current = false;
       
-      chartStateRef.current = {
-        timeScale: {
-          rightOffset: timeScale.options().rightOffset || 0,
-          barSpacing: timeScale.options().barSpacing || 0,
-          fixLeftEdge: timeScale.options().fixLeftEdge || false,
-          fixRightEdge: timeScale.options().fixRightEdge || false,
-          lockVisibleTimeRangeOnResize: timeScale.options().lockVisibleTimeRangeOnResize || false,
-          rightBarStaysOnScroll: timeScale.options().rightBarStaysOnScroll || false,
-          borderVisible: timeScale.options().borderVisible || false,
-          visible: timeScale.options().visible || false,
-          timeVisible: timeScale.options().timeVisible || false,
-          secondsVisible: timeScale.options().secondsVisible || false,
-        },
-        priceScale: {
-          autoScale: priceScale.options().autoScale || false,
-          scaleMargins: {
-            top: priceScale.options().scaleMargins?.top || 0,
-            bottom: priceScale.options().scaleMargins?.bottom || 0,
-          },
-        },
-      };
-    }
-  }, []);
-
-  const restoreChartState = useCallback(() => {
-    if (chartRef.current && chartStateRef.current) {
-      const timeScale = chartRef.current.timeScale();
-      const priceScale = chartRef.current.priceScale('right');
+      // Clear any pending timeouts
+      if (initializationTimeoutRef.current) {
+        clearTimeout(initializationTimeoutRef.current);
+        initializationTimeoutRef.current = null;
+      }
       
-      timeScale.applyOptions(chartStateRef.current.timeScale);
-      priceScale.applyOptions(chartStateRef.current.priceScale);
-    }
-  }, []);
-
-  const resetToInitialState = useCallback(() => {
-    if (chartRef.current) {
-      const timeScale = chartRef.current.timeScale();
-      const priceScale = chartRef.current.priceScale('right');
+      // Cleanup resize observer
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+        resizeObserverRef.current = null;
+      }
       
-      // Reset to default settings
-      timeScale.applyOptions({
-        rightOffset: 0,
-        barSpacing: 6,
-        fixLeftEdge: false,
-        fixRightEdge: false,
-        lockVisibleTimeRangeOnResize: false,
-        rightBarStaysOnScroll: false,
-        borderVisible: false,
-        visible: true,
-        timeVisible: true,
-        secondsVisible: false,
+      // Cleanup chart
+      if (chartRef.current) {
+        try {
+          safeChartCleanup(chartRef);
+        } catch (error) {
+          console.warn('Error during chart cleanup:', error);
+        }
+        chartRef.current = null;
+        candlestickSeriesRef.current = null;
+      }
+    };
+  }, []); // Only run on unmount
+
+  // Improved container readiness detection with better timing
+  useEffect(() => {
+    const container = chartContainerRef.current;
+    if (!container) return;
+
+    const checkContainerReady = () => {
+      console.log('Checking container readiness:', {
+        width: container.clientWidth,
+        height: container.clientHeight,
+        offsetWidth: container.offsetWidth,
+        offsetHeight: container.offsetHeight,
+        isVisible: container.offsetParent !== null
       });
       
-      priceScale.applyOptions({
-        autoScale: true,
-        scaleMargins: { top: 0.1, bottom: 0.1 },
+      // Check if container has dimensions and is visible
+      if (container && container.clientWidth > 0 && container.clientHeight > 0 && container.offsetParent !== null) {
+        console.log('Container is ready, setting containerReady to true');
+        setContainerReady(true);
+        return true;
+      }
+      return false;
+    };
+
+    // Initial check
+    if (checkContainerReady()) return;
+
+    // Use multiple strategies to detect when container is ready
+    const strategies = [
+      // Immediate retry
+      () => setTimeout(checkContainerReady, 50),
+      // After a short delay
+      () => setTimeout(checkContainerReady, 100),
+      // After a longer delay
+      () => setTimeout(checkContainerReady, 200),
+      // Use ResizeObserver to detect when container gets dimensions
+      () => {
+        if (window.ResizeObserver) {
+          const observer = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+              if (entry.target === container && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+                console.log('ResizeObserver detected container ready');
+                setContainerReady(true);
+                observer.disconnect();
+                return;
+              }
+            }
+          });
+          observer.observe(container);
+          return () => observer.disconnect();
+        }
+        return () => {};
+      }
+    ];
+
+    const cleanupFns = strategies.map(strategy => strategy());
+
+    return () => {
+      cleanupFns.forEach(cleanup => {
+        if (typeof cleanup === 'function') cleanup();
       });
-      
-      setIsInitialState(true);
-      setHasUserInteracted(false);
-      
-      if (debug) {
-        console.log('Live chart reset to initial state');
+    };
+  }, []); // Only run once on mount
+
+  // Force container ready when data is available and container exists
+  useEffect(() => {
+    if (data && data.length > 0 && chartContainerRef.current && !containerReady) {
+      const container = chartContainerRef.current;
+      if (container.clientWidth > 0 || container.offsetWidth > 0) {
+        console.log('Data available, forcing container ready state');
+        setContainerReady(true);
       }
     }
-  }, [debug]);
+  }, [data, containerReady]);
 
-  const resetToFitContent = useCallback(() => {
-    if (chartRef.current) {
-      chartRef.current.timeScale().fitContent();
-      if (debug) {
-        console.log('Live chart reset to fit content');
+  // Detect symbol changes
+  useEffect(() => {
+    if (lastSymbolRef.current !== symbol) {
+      console.log('Symbol changed from', lastSymbolRef.current, 'to', symbol);
+      isNewSymbolRef.current = true;
+      lastSymbolRef.current = symbol;
+      
+      // Reset chart state for new symbol
+      setIsChartReady(false);
+      setChartError(null);
+      initializationAttemptsRef.current = 0;
+      lastDataRef.current = []; // Clear stored data
+      
+      // Cleanup existing chart
+      if (chartRef.current) {
+        try {
+          safeChartCleanup(chartRef);
+        } catch (error) {
+          console.warn('Error during symbol change cleanup:', error);
+        }
+        chartRef.current = null;
+        candlestickSeriesRef.current = null;
       }
     }
-  }, [debug]);
+  }, [symbol]);
 
-  const handleUserInteraction = useCallback(() => {
-    setHasUserInteracted(true);
-    setIsInitialState(false);
-  }, []);
-
-  const handleChartUpdate = useCallback(() => {
-    // Handle chart updates
-    if (debug) {
-      console.log('Chart update handled');
-    }
-  }, [debug]);
-
-  // Legacy refs for compatibility
-  const lastSymbolRef = useRef<string>('');
-  const lastTimeframeRef = useRef<string>('');
-  const lastThemeRef = useRef<string>('');
-  const isInitialLoadRef = useRef<boolean>(true);
-  const currentSymbolRef = useRef<string>(symbol);
-  const isNewSymbolRef = useRef<boolean>(false);
-
-  // Live price state with better tracking
-  const [livePrice, setLivePrice] = useState<number | null>(null);
-  const [prevLivePrice, setPrevLivePrice] = useState<number | null>(null);
-  const [priceChange, setPriceChange] = useState<number>(0);
-  const [priceChangePercent, setPriceChangePercent] = useState<number>(0);
-  const [lastTickTime, setLastTickTime] = useState<number>(0);
-
-  // Debouncing for chart updates
-  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastDataRef = useRef<any[]>([]);
-
-  // Memoized price direction for better performance
-  const priceDirection = useMemo(() => {
-    if (prevLivePrice === null || livePrice === null) return 'neutral';
-    if (livePrice > prevLivePrice) return 'up';
-    if (livePrice < prevLivePrice) return 'down';
-    return 'neutral';
-  }, [livePrice, prevLivePrice]);
-
-  // Enhanced price tracking with change calculation
-  const updateLivePrice = useCallback((newPrice: number) => {
-    if (livePrice !== null) {
-      const change = newPrice - livePrice;
-      const changePercent = (change / livePrice) * 100;
+  // Detect timeframe changes
+  useEffect(() => {
+    if (lastTimeframeRef.current !== timeframe) {
+      console.log('Timeframe changed from', lastTimeframeRef.current, 'to', timeframe);
+      lastTimeframeRef.current = timeframe;
       
-      setPrevLivePrice(livePrice);
-      setPriceChange(change);
-      setPriceChangePercent(changePercent);
-      setLastTickTime(Date.now());
+      // Reset chart state for new timeframe
+      setIsChartReady(false);
+      setChartError(null);
+      initializationAttemptsRef.current = 0;
+      lastDataRef.current = []; // Clear stored data
+      
+      // Cleanup existing chart
+      if (chartRef.current) {
+        try {
+          safeChartCleanup(chartRef);
+        } catch (error) {
+          console.warn('Error during timeframe change cleanup:', error);
+        }
+        chartRef.current = null;
+        candlestickSeriesRef.current = null;
+      }
     }
-    setLivePrice(newPrice);
-  }, [livePrice]);
+  }, [timeframe]);
 
-
-
-  // Enhanced chart data update with validation and state preservation
-  const updateChartData = useCallback(() => {
-    if (!chartRef.current || !candlestickSeriesRef.current) {
-      console.log('Chart not ready for data update');
+  // Chart initialization with proper lifecycle management
+  const initializeChart = useCallback(async () => {
+    // Prevent multiple simultaneous initializations
+    if (isInitializingRef.current) {
+      console.log('Chart initialization already in progress, skipping...');
       return;
     }
 
+    // Check if component is still mounted
+    if (!isMountedRef.current) {
+      console.log('Component unmounted, skipping chart initialization');
+      return;
+    }
+
+    // Check if container is ready with better validation
+    if (!chartContainerRef.current) {
+      console.log('Container ref not available, will retry when available');
+      // Don't retry immediately - let the container readiness effect handle this
+      return;
+    }
+
+    const container = chartContainerRef.current;
+    
+    // Check container dimensions with more lenient validation
+    if (container.clientWidth === 0 && container.offsetWidth === 0) {
+      console.log('Container has no dimensions yet, waiting for container to be ready');
+      // Don't retry immediately - let the container readiness effect handle this
+      return;
+    }
+
+    // Use offsetWidth/offsetHeight as fallback if clientWidth/clientHeight are 0
+    const containerWidth = container.clientWidth || container.offsetWidth;
+    const containerHeight = container.clientHeight || container.offsetHeight;
+
+    if (containerWidth === 0 || containerHeight === 0) {
+      console.log('Container dimensions still zero, waiting for container to be ready');
+      return;
+    }
+
+    console.log('🚀 Starting chart initialization for:', symbol, timeframe);
+    console.log('Container dimensions:', {
+      width: containerWidth,
+      height: containerHeight,
+      clientWidth: container.clientWidth,
+      clientHeight: container.clientHeight,
+      offsetWidth: container.offsetWidth,
+      offsetHeight: container.offsetHeight
+    });
+
+    isInitializingRef.current = true;
+    setChartError(null);
+
+    try {
+      // Clear container
+      container.innerHTML = '';
+
+      // Create chart with proper configuration
+      const chart = createChart(container, {
+        width: containerWidth,
+        height: containerHeight,
+        layout: {
+          background: { color: theme === 'dark' ? '#1a1a1a' : '#ffffff' },
+          textColor: theme === 'dark' ? '#ffffff' : '#333333',
+        },
+        grid: {
+          vertLines: { color: theme === 'dark' ? '#2a2a2a' : '#f0f0f0' },
+          horzLines: { color: theme === 'dark' ? '#2a2a2a' : '#f0f0f0' },
+        },
+        timeScale: {
+          timeVisible: true,
+          secondsVisible: false,
+          rightOffset: 12,
+          barSpacing: 3,
+          borderColor: theme === 'dark' ? '#2a2a2a' : '#e1e1e1',
+        },
+        rightPriceScale: {
+          autoScale: true,
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.1,
+          },
+          borderColor: theme === 'dark' ? '#2a2a2a' : '#e1e1e1',
+        },
+        crosshair: {
+          mode: 1,
+          vertLine: {
+            color: theme === 'dark' ? '#ffffff' : '#000000',
+            width: 1,
+            style: 3,
+          },
+          horzLine: {
+            color: theme === 'dark' ? '#ffffff' : '#000000',
+            width: 1,
+            style: 3,
+          },
+        },
+        handleScroll: {
+          mouseWheel: true,
+          pressedMouseMove: true,
+          horzTouchDrag: true,
+          vertTouchDrag: true,
+        },
+        handleScale: {
+          axisPressedMouseMove: true,
+          mouseWheel: true,
+          pinch: true,
+        },
+      });
+
+      // Store chart reference
+      chartRef.current = chart;
+
+      // Create candlestick series
+      const candlestickSeries = chart.addCandlestickSeries({
+        upColor: '#26a69a',
+        downColor: '#ef5350',
+        borderDownColor: '#ef5350',
+        borderUpColor: '#26a69a',
+        wickDownColor: '#ef5350',
+        wickUpColor: '#26a69a',
+      });
+
+      // Store series reference
+      candlestickSeriesRef.current = candlestickSeries;
+
+      console.log('Chart and candlestick series created successfully');
+
+      // Set chart as ready
+      setIsChartReady(true);
+      initializationAttemptsRef.current = 0; // Reset attempts counter
+
+      // Add interaction handlers
+      const handleInteraction = () => {
+        if (chart && candlestickSeries) {
+          // Handle any chart interactions here
+        }
+      };
+
+      // Add resize handler
+      const handleResize = () => {
+        if (chart && container) {
+          const newWidth = container.clientWidth || container.offsetWidth;
+          const newHeight = container.clientHeight || container.offsetHeight;
+          
+          if (newWidth > 0 && newHeight > 0) {
+            chart.applyOptions({
+              width: newWidth,
+              height: newHeight,
+            });
+          }
+        }
+      };
+
+      // Store resize observer reference
+      if (window.ResizeObserver) {
+        resizeObserverRef.current = new ResizeObserver(handleResize);
+        resizeObserverRef.current.observe(container);
+      }
+
+      // Register reset function if callback provided
+      if (onRegisterReset) {
+        onRegisterReset(() => {
+          if (chart) {
+            chart.timeScale().fitContent();
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('Error during chart initialization:', error);
+      setChartError(error instanceof Error ? error.message : 'Chart initialization failed');
+      setIsChartReady(false);
+    } finally {
+      isInitializingRef.current = false;
+    }
+  }, [symbol, timeframe, theme, onRegisterReset]); // Added onRegisterReset to dependencies
+
+  // Trigger chart initialization when ready
+  useEffect(() => {
+    // Clear any pending initialization
+    if (initializationTimeoutRef.current) {
+      clearTimeout(initializationTimeoutRef.current);
+      initializationTimeoutRef.current = null;
+    }
+
+    console.log('Chart initialization trigger check:', {
+      isChartReady,
+      containerReady,
+      hasData: data && data.length > 0,
+      dataLength: data?.length || 0,
+      containerExists: !!chartContainerRef.current,
+      containerDimensions: chartContainerRef.current ? {
+        clientWidth: chartContainerRef.current.clientWidth,
+        clientHeight: chartContainerRef.current.clientHeight,
+        offsetWidth: chartContainerRef.current.offsetWidth,
+        offsetHeight: chartContainerRef.current.offsetHeight
+      } : null
+    });
+
+    // Start initialization if chart is not ready and container is ready
+    if (!isChartReady && containerReady && chartContainerRef.current) {
+      const container = chartContainerRef.current;
+      const hasDimensions = (container.clientWidth > 0 || container.offsetWidth > 0) && 
+                           (container.clientHeight > 0 || container.offsetHeight > 0);
+      
+      if (hasDimensions) {
+        console.log('Starting chart initialization...');
+        initializeChart();
+      } else {
+        console.log('Container ready but no dimensions yet, waiting...');
+      }
+    } else {
+      console.log('Chart initialization conditions not met:', {
+        isChartReady,
+        containerReady,
+        containerExists: !!chartContainerRef.current,
+        hasDimensions: chartContainerRef.current ? 
+          ((chartContainerRef.current.clientWidth > 0 || chartContainerRef.current.offsetWidth > 0) && 
+           (chartContainerRef.current.clientHeight > 0 || chartContainerRef.current.offsetHeight > 0)) : false
+      });
+    }
+  }, [initializeChart, containerReady, isChartReady]);
+
+  // Handle data updates when chart is ready
+  useEffect(() => {
+    if (isChartReady && data && data.length > 0 && chartRef.current && candlestickSeriesRef.current) {
+      console.log('Data received after chart initialization, updating...');
+      // Force a data update
+      const validatedData = validateChartDataForTradingView(data);
+      const candlestickData = validatedData.map(d => ({
+        time: d.time,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      }));
+      
+      candlestickSeriesRef.current.setData(candlestickData);
+      lastDataRef.current = candlestickData;
+      console.log('Initial data set:', candlestickData.length, 'candles');
+      
+      // Fit content for new data
+      if (chartRef.current) {
+        chartRef.current.timeScale().fitContent();
+      }
+    }
+  }, [isChartReady, data]);
+
+  // Fallback initialization trigger - ensure chart initializes even if container detection fails
+  useEffect(() => {
+    if (!isChartReady && data && data.length > 0 && chartContainerRef.current) {
+      const container = chartContainerRef.current;
+      const hasDimensions = (container.clientWidth > 0 || container.offsetWidth > 0) && 
+                           (container.clientHeight > 0 || container.offsetHeight > 0);
+      
+      // If we have data and container exists but chart isn't ready, try to initialize
+      if (hasDimensions && !isInitializingRef.current) {
+        console.log('Fallback: Attempting chart initialization with data available');
+        initializeChart();
+      }
+    }
+  }, [isChartReady, data, initializeChart]);
+
+  // Handle resize events
+  useEffect(() => {
+    if (!chartRef.current || !chartContainerRef.current) return;
+
+    const handleResize = () => {
+      if (chartRef.current && chartContainerRef.current) {
+        const container = chartContainerRef.current;
+        chartRef.current.applyOptions({
+          width: container.clientWidth,
+          height: container.clientHeight,
+        });
+      }
+    };
+
+    // Use ResizeObserver for better performance
+    if (resizeObserverRef.current && chartContainerRef.current) {
+      const observer = new ResizeObserver(handleResize);
+      observer.observe(chartContainerRef.current);
+      
+      return () => observer.disconnect();
+    }
+  }, [isChartReady]);
+
+  // Update chart data when data changes
+  useEffect(() => {
+    if (!isChartReady || !chartRef.current || !candlestickSeriesRef.current) {
+      return;
+    }
+
+    // Handle case when data is cleared (empty array)
     if (!data || data.length === 0) {
-      console.log('No data available for chart update');
+      console.log('Data cleared, resetting chart state');
+      lastDataRef.current = [];
       return;
     }
 
     try {
       const validatedData = validateChartDataForTradingView(data);
       
-      // Convert to candlestick format
+      // Debug timestamp values
+      console.log('Raw data timestamps:', data.slice(0, 5).map(d => ({
+        date: d.date,
+        time: d.time,
+        convertedDate: new Date(d.time * 1000).toISOString()
+      })));
+      
       const candlestickData = validatedData.map(d => ({
-        time: toUTCTimestamp(d.date),
+        time: d.time, // Use time directly since it's already UTC timestamp in seconds
         open: d.open,
         high: d.high,
         low: d.low,
         close: d.close,
       }));
 
-      // Check if this is initial load or update
-      const isInitialLoad = lastDataRef.current.length === 0;
-      
-      // Check if this is a new symbol (force initial load)
-      const isNewSymbol = isNewSymbolRef.current;
-      
-      // Check if this is a symbol change (new data has different time range)
-      const isSymbolChange = !isInitialLoad && lastDataRef.current.length > 0 && candlestickData.length > 0;
-      const lastStoredData = lastDataRef.current;
-      const lastStoredCandle = lastStoredData[lastStoredData.length - 1];
-      const newFirstCandle = candlestickData[0];
-      const newLastCandle = candlestickData[candlestickData.length - 1];
-      
-      // Detect if this is a completely different dataset (symbol change)
-      const isDifferentDataset = isSymbolChange && 
-        (lastStoredCandle.time !== newLastCandle.time || 
-         Math.abs(lastStoredCandle.time - newLastCandle.time) > 86400 || // More than 1 day difference
-         lastStoredData.length !== candlestickData.length || // Different number of candles
-         (lastStoredData.length > 0 && candlestickData.length > 0 && 
-          Math.abs(lastStoredData[0].time - candlestickData[0].time) > 86400) || // Different start times
-         (lastStoredData.length > 0 && candlestickData.length > 0 && 
-          Math.abs(lastStoredData[0].close - candlestickData[0].close) > 1000)); // Different price ranges (different symbols)
-      
-      if (isInitialLoad || isDifferentDataset || isNewSymbol) {
-        // Initial load, symbol change, or new symbol - use setData for full dataset
+      // Debug processed timestamps
+      console.log('Processed candlestick timestamps:', candlestickData.slice(0, 5).map(d => ({
+        time: d.time,
+        date: new Date(d.time * 1000).toISOString(),
+        localTime: new Date(d.time * 1000).toLocaleString()
+      })));
+
+      // Check if this is a new dataset (symbol change or completely different data)
+      const isNewDataset = lastDataRef.current.length === 0 || 
+        (lastDataRef.current.length > 0 && candlestickData.length > 0 &&
+         Math.abs(lastDataRef.current[0].time - candlestickData[0].time) > 86400) ||
+        (lastDataRef.current.length > 0 && candlestickData.length === 0) || // Data was cleared
+        (lastDataRef.current.length === 0 && candlestickData.length > 0); // New data loaded
+
+      // Check if this is just a tick update (same number of candles, same timestamps)
+      const isTickUpdate = lastDataRef.current.length > 0 && 
+        candlestickData.length === lastDataRef.current.length &&
+        candlestickData.length > 0 &&
+        lastDataRef.current[0].time === candlestickData[0].time;
+
+      console.log('Chart data update analysis:', {
+        dataLength: candlestickData.length,
+        lastDataLength: lastDataRef.current.length,
+        isNewDataset,
+        isTickUpdate,
+        isNewSymbol: isNewSymbolRef.current,
+        firstTime: candlestickData[0]?.time,
+        lastDataFirstTime: lastDataRef.current[0]?.time
+      });
+
+      if (isNewDataset || isNewSymbolRef.current) {
+        // Full dataset update
         candlestickSeriesRef.current.setData(candlestickData);
-        console.log(`${isInitialLoad ? 'Initial' : isNewSymbol ? 'New symbol' : 'Symbol change'} chart data loaded:`, candlestickData.length, 'candles');
+        lastDataRef.current = candlestickData;
+        console.log('Full dataset updated:', candlestickData.length, 'candles');
         
-        // Reset the new symbol flag after using it
-        if (isNewSymbol) {
-          isNewSymbolRef.current = false;
-          console.log('Reset isNewSymbolRef to false');
-        }
-        
-        // Fit content to show all data
+        // Fit content for new data
         if (chartRef.current) {
           chartRef.current.timeScale().fitContent();
         }
-      } else {
-        // Live update - check if we have new data
-        // Use hook's chart update handler
-        handleChartUpdate();
-        
-        // Check if user is zoomed in (not at the rightmost edge)
-        const timeScale = chartRef.current.timeScale();
-        const visibleRange = timeScale.getVisibleRange();
-        const isUserZoomedIn = visibleRange && 
-          visibleRange.to < candlestickData[candlestickData.length - 1].time;
-        
-        if (lastStoredCandle && newLastCandle && 
-            lastStoredCandle.time === newLastCandle.time) {
-          // Same candle, update it
-          candlestickSeriesRef.current.update(newLastCandle);
-          console.log('Updated last candle:', newLastCandle);
-        } else if (candlestickData.length > lastStoredData.length) {
-          // New candle added
-          candlestickSeriesRef.current.setData(candlestickData);
-          console.log('New candle added, updated chart');
+      } else if (isTickUpdate) {
+        // Tick update - only update the last candle
+        const lastStoredCandle = lastDataRef.current[lastDataRef.current.length - 1];
+        const newLastCandle = candlestickData[candlestickData.length - 1];
+
+        if (lastStoredCandle && newLastCandle) {
+          // Check if the last candle has been updated (tick data)
+          const hasPriceChange = Math.abs(lastStoredCandle.close - newLastCandle.close) > 0.01;
+          const hasHighChange = Math.abs(lastStoredCandle.high - newLastCandle.high) > 0.01;
+          const hasLowChange = Math.abs(lastStoredCandle.low - newLastCandle.low) > 0.01;
           
-          // If user is zoomed in, don't auto-scroll to keep their view
-          // If user is at the rightmost edge, auto-scroll to show new data
-          if (!isUserZoomedIn) {
-            // Auto-scroll to show the latest data
-            timeScale.scrollToPosition(0, false);
+          if (hasPriceChange || hasHighChange || hasLowChange) {
+            // Update the last candle with new tick data
+            candlestickSeriesRef.current.update(newLastCandle);
+            console.log('Live tick update:', {
+              oldClose: lastStoredCandle.close,
+              newClose: newLastCandle.close,
+              oldHigh: lastStoredCandle.high,
+              newHigh: newLastCandle.high,
+              oldLow: lastStoredCandle.low,
+              newLow: newLastCandle.low
+            });
           }
-        } else {
-          // Full update
-          candlestickSeriesRef.current.setData(candlestickData);
-          console.log('Full chart update');
         }
+        
+        // Update the stored data reference
+        lastDataRef.current = candlestickData;
+      } else {
+        // New candle added or other data change
+        const lastStoredCandle = lastDataRef.current[lastDataRef.current.length - 1];
+        const newLastCandle = candlestickData[candlestickData.length - 1];
+
+        if (lastStoredCandle && newLastCandle && candlestickData.length > lastDataRef.current.length) {
+          // New candle added
+          candlestickSeriesRef.current.update(newLastCandle);
+          console.log('New candle added:', newLastCandle);
+        }
+        
+        // Update the stored data reference
+        lastDataRef.current = candlestickData;
       }
 
-      // Volume data update removed - volume is displayed in separate chart below
-
-      // Store last data for comparison
-      lastDataRef.current = candlestickData;
-      
-      // Update last chart update time
       setLastChartUpdate(Date.now());
-      
-      if (debug) {
-        console.log('📊 Chart data updated:', {
-          candles: candlestickData.length,
-          lastCandle: candlestickData[candlestickData.length - 1],
-          isInitialLoad,
-          isDifferentDataset,
-          isNewSymbol,
-          symbol,
-          lastStoredDataLength: lastStoredData.length,
-          timeDifference: lastStoredData.length > 0 ? Math.abs(lastStoredCandle.time - newLastCandle.time) : 'N/A'
-        });
-      }
-
     } catch (error) {
       console.error('Error updating chart data:', error);
-      setChartError(error instanceof Error ? error.message : 'Error updating chart data');
     }
-  }, [data, showVolume, saveChartState, restoreChartState, debug, symbol]);
+  }, [data, isChartReady]); // Removed lastUpdate dependency to prevent unnecessary re-renders
 
-  // Handle chart re-initialization with state preservation
-  const reinitializeChartWithState = useCallback(async () => {
-    if (!chartContainerRef.current || data === null || data.length === 0) {
-      return;
-    }
-
-    try {
-      console.log('🔄 Re-initializing chart with state preservation');
-      
-      // Save current state before re-initialization
-      saveChartState();
-      
-      // Clean up existing chart
-      if (chartRef.current) {
-        safeChartCleanup(chartRef);
-        candlestickSeriesRef.current = null;
-        setIsChartReady(false);
-      }
-
-      // Re-initialize chart
-      const chart = await initializeChartWithRetry(
-        chartContainerRef as ChartContainer,
-        { width, height, theme, timeframe },
-        { 
-          width, 
-          height, 
-          ...createChartTheme(theme === 'dark', { timeframe }),
-          // Add better zoom and interaction options
-          handleScroll: {
-            mouseWheel: true,
-            pressedMouseMove: true,
-            horzTouchDrag: true,
-            vertTouchDrag: true,
-          },
-          handleScale: {
-            axisPressedMouseMove: true,
-            mouseWheel: true,
-            pinch: true,
-          },
-          // Improve time scale behavior
-          timeScale: {
-            ...createChartTheme(theme === 'dark', { timeframe }).timeScale,
-            rightOffset: 12,
-            barSpacing: 3,
-            fixLeftEdge: false,
-            fixRightEdge: false,
-            lockVisibleTimeRangeOnResize: false,
-            rightBarStaysOnScroll: true,
-            borderVisible: true,
-            visible: true,
-            timeVisible: true,
-            secondsVisible: false,
-          },
-          // Improve price scale behavior
-          rightPriceScale: {
-            ...createChartTheme(theme === 'dark', { timeframe }).rightPriceScale,
-            autoScale: true,
-            scaleMargins: {
-              top: 0.1,
-              bottom: 0.1,
-            },
-          },
-        }
-      );
-
-      if (!chart) {
-        throw new Error('Failed to create chart');
-      }
-
-      chartRef.current = chart;
-      setIsChartReady(true);
-      setChartError(null);
-
-      // Add candlestick series with enhanced styling
-      candlestickSeriesRef.current = chart.addCandlestickSeries({
-        upColor: theme === 'dark' ? '#26a69a' : '#26a69a',
-        downColor: theme === 'dark' ? '#ef5350' : '#ef5350',
-        borderVisible: false,
-        wickUpColor: theme === 'dark' ? '#26a69a' : '#26a69a',
-        wickDownColor: theme === 'dark' ? '#ef5350' : '#ef5350',
-      });
-
-      // Volume series removed from main chart - volume is displayed in separate chart below
-
-      // Add event listeners for chart interactions to save state
-      const timeScale = chart.timeScale();
-      const priceScale = chart.priceScale('right');
-
-      // Save state when user interacts with the chart
-      const saveStateOnInteraction = () => {
-        setTimeout(() => {
-          saveChartState();
-        }, 100); // Small delay to ensure interaction is complete
-      };
-
-      // Listen for time scale changes (zoom, pan, etc.)
-      timeScale.subscribeVisibleTimeRangeChange(saveStateOnInteraction);
-      timeScale.subscribeVisibleLogicalRangeChange(saveStateOnInteraction);
-
-      // Listen for price scale changes
-      priceScale.subscribeVisiblePriceRangeChange(saveStateOnInteraction);
-
-      // Set data and restore state
-      updateChartData();
-      
-      // Restore state after a short delay to ensure chart is ready
-      setTimeout(() => {
-        restoreChartState();
-      }, 100);
-
-      setLastChartUpdate(Date.now());
-      console.log('✅ Chart re-initialized with state preservation');
-
-    } catch (error) {
-      console.error('Error re-initializing chart:', error);
-      setChartError(error instanceof Error ? error.message : 'Error re-initializing chart');
-      setIsChartReady(false);
-    }
-  }, [width, height, theme, timeframe, data, showVolume, saveChartState, restoreChartState]);
-
-  // Notify parent components
-  useEffect(() => {
-    onConnectionChange?.(isConnected || false);
-  }, [isConnected, onConnectionChange]);
-
-  useEffect(() => {
-    if (error) {
-      onError?.(error);
-      setChartError(error);
-    } else {
-      setChartError(null);
-    }
-  }, [error, onError]);
-
-  // Call onDataUpdate whenever data changes OR when live price updates
-  useEffect(() => {
-    if (data && data.length > 0) {
-      onDataUpdate?.(data);
-      
-      // Update live price from latest data
-      const lastClose = data[data.length - 1].close;
-      if (lastClose !== livePrice) {
-        console.log('Updating live price from data:', { old: livePrice, new: lastClose });
-        updateLivePrice(lastClose);
-      }
-    }
-  }, [data, onDataUpdate, livePrice, updateLivePrice]);
-
-  // Additional effect to call onDataUpdate on every tick price change
-  useEffect(() => {
-    if (livePrice !== null && data && data.length > 0) {
-      // Create a copy of data with updated live price for the callback
-      const updatedData = [...data];
-      if (updatedData.length > 0) {
-        updatedData[updatedData.length - 1] = {
-          ...updatedData[updatedData.length - 1],
-          close: livePrice
-        };
-        onDataUpdate?.(updatedData);
-        console.log('Live price update triggered onDataUpdate:', livePrice);
-      }
-    }
-  }, [livePrice, data, onDataUpdate]);
-
-  // Check if chart needs re-initialization
-  const needsReinitialization = useCallback(() => {
-    return (
-      lastSymbolRef.current !== symbol ||
-      lastTimeframeRef.current !== timeframe ||
-      lastThemeRef.current !== theme ||
-      !chartRef.current ||
-      !isChartReady
-    );
-  }, [symbol, timeframe, theme, isChartReady]);
-
-  // Debug effect to track chart container availability
-  useEffect(() => {
-    if (chartContainerRef.current) {
-      const newDimensions = {
-        width: chartContainerRef.current.clientWidth,
-        height: chartContainerRef.current.clientHeight
-      };
-      
-      console.log('Chart container available:', {
-        symbol,
-        timeframe,
-        containerWidth: newDimensions.width,
-        containerHeight: newDimensions.height,
-        hasData: data && data.length > 0,
-        dataLength: data ? data.length : 0
-      });
-
-      // Update container dimensions
-      setContainerDimensions(newDimensions);
-    }
-  }, [chartContainerRef.current, symbol, timeframe, data]);
-
-  // Detect symbol changes and reset data reference
-  useEffect(() => {
-    if (currentSymbolRef.current !== symbol) {
-      console.log(`Symbol changed from ${currentSymbolRef.current} to ${symbol}, resetting data reference`);
-      console.log('Data before reset:', {
-        lastDataLength: lastDataRef.current.length,
-        currentDataLength: data ? data.length : 0,
-        currentData: data ? data.slice(0, 3) : 'No data'
-      });
-      lastDataRef.current = [];
-      currentSymbolRef.current = symbol;
-      isNewSymbolRef.current = true;
-      console.log('Set isNewSymbolRef to true for symbol:', symbol);
-    }
-  }, [symbol, data]);
-
-  // Initialize chart when data is available OR when symbol changes
-  useEffect(() => {
-    // Only re-initialize if necessary
-    if (!needsReinitialization()) {
-      return;
-    }
-
-    // Destroy existing chart if symbol/timeframe/theme changes
-    if (chartRef.current) {
-      console.log('Destroying existing chart for symbol/timeframe/theme change');
-      saveChartState(); // Save state before destroying
-      safeChartCleanup(chartRef);
-      candlestickSeriesRef.current = null;
-      setIsChartReady(false);
-      chartRef.current = null;
-      // Reset last data reference for new symbol
-      lastDataRef.current = [];
-      console.log('Reset lastDataRef for new symbol:', symbol);
-    }
-
-    // Don't require data to be available for initial chart creation
-    // The chart can be created and data can be set later
-    if (!chartContainerRef.current) {
-      console.log('Chart container not ready yet');
-      return;
-    }
-
-    console.log('Chart container ready, dimensions:', {
-      width: chartContainerRef.current.clientWidth,
-      height: chartContainerRef.current.clientHeight,
-      offsetWidth: chartContainerRef.current.offsetWidth,
-      offsetHeight: chartContainerRef.current.offsetHeight
-    });
-
-    // Ensure container has proper dimensions before initializing
-    if (chartContainerRef.current.clientWidth === 0 || chartContainerRef.current.clientHeight === 0) {
-      console.log('Chart container has zero dimensions, waiting for proper sizing...');
-      // Retry after a short delay
-      setTimeout(() => {
-        if (needsReinitialization()) {
-          console.log('Retrying chart initialization after container sizing...');
-          // This will trigger the effect again
-        }
-      }, 200);
-      return;
-    }
-
-    // Ensure container has minimum dimensions
-    if (chartContainerRef.current.clientWidth < 100 || chartContainerRef.current.clientHeight < 100) {
-      console.log('Chart container too small, waiting for proper sizing...', {
-        width: chartContainerRef.current.clientWidth,
-        height: chartContainerRef.current.clientHeight
-      });
-      return;
-    }
-
-    const initializeChart = async () => {
-      try {
-        console.log('Initializing chart for:', symbol, timeframe);
-        
-        // Add a small delay to ensure container is properly sized
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const chart = await initializeChartWithRetry(
-          chartContainerRef as ChartContainer,
-          { width, height, theme, timeframe },
-          { 
-            width, 
-            height, 
-            ...createChartTheme(theme === 'dark', { timeframe }),
-            // Add better zoom and interaction options
-            handleScroll: {
-              mouseWheel: true,
-              pressedMouseMove: true,
-              horzTouchDrag: true,
-              vertTouchDrag: true,
-            },
-            handleScale: {
-              axisPressedMouseMove: true,
-              mouseWheel: true,
-              pinch: true,
-            },
-            // Improve time scale behavior
-            timeScale: {
-              ...createChartTheme(theme === 'dark', { timeframe }).timeScale,
-              rightOffset: 12,
-              barSpacing: 3,
-              fixLeftEdge: false,
-              fixRightEdge: false,
-              lockVisibleTimeRangeOnResize: false,
-              rightBarStaysOnScroll: true,
-              borderVisible: true,
-              visible: true,
-              timeVisible: true,
-              secondsVisible: false,
-            },
-            // Improve price scale behavior
-            rightPriceScale: {
-              ...createChartTheme(theme === 'dark', { timeframe }).rightPriceScale,
-              autoScale: true,
-              scaleMargins: {
-                top: 0.1,
-                bottom: 0.1,
-              },
-            },
-          }
-        );
-
-        if (!chart) {
-          throw new Error('Failed to create chart');
-        }
-
-        chartRef.current = chart;
-        setIsChartReady(true);
-        setChartError(null);
-
-        console.log('Chart created successfully, adding candlestick series');
-
-        // Add candlestick series with enhanced styling
-        candlestickSeriesRef.current = chart.addCandlestickSeries({
-          upColor: theme === 'dark' ? '#26a69a' : '#26a69a',
-          downColor: theme === 'dark' ? '#ef5350' : '#ef5350',
-          borderVisible: false,
-          wickUpColor: theme === 'dark' ? '#26a69a' : '#26a69a',
-          wickDownColor: theme === 'dark' ? '#ef5350' : '#ef5350',
-        });
-
-        console.log('Candlestick series added successfully');
-
-        // Volume series removed from main chart - volume is displayed in separate chart below
-
-        // Add event listeners for chart interactions
-        const timeScale = chart.timeScale();
-        const priceScale = chart.priceScale('right');
-
-        // Handle user interactions
-        const handleInteraction = () => {
-          setTimeout(() => {
-            handleUserInteraction();
-            saveChartState();
-          }, 100); // Small delay to ensure interaction is complete
-        };
-
-        // Listen for time scale changes (zoom, pan, etc.)
-        timeScale.subscribeVisibleTimeRangeChange(handleInteraction);
-        timeScale.subscribeVisibleLogicalRangeChange(handleInteraction);
-
-        // Listen for price scale changes (if method exists)
-        if (priceScale.subscribeVisiblePriceRangeChange) {
-          priceScale.subscribeVisiblePriceRangeChange(handleInteraction);
-        }
-
-        // Set initial data if available
-        if (data && data.length > 0) {
-          console.log('Setting initial data to chart:', data.length, 'candles');
-          console.log('First few candles:', data.slice(0, 3));
-          console.log('Last few candles:', data.slice(-3));
-          updateChartData();
-        } else {
-          console.log('No initial data available, chart will be updated when data arrives');
-        }
-        setLastChartUpdate(Date.now());
-
-        // Update refs
-        lastSymbolRef.current = symbol;
-        lastTimeframeRef.current = timeframe;
-        lastThemeRef.current = theme;
-        isInitialLoadRef.current = false;
-        
-        // Reset new symbol flag after chart initialization
-        if (isNewSymbolRef.current) {
-          console.log('Resetting isNewSymbolRef after chart initialization');
-          isNewSymbolRef.current = false;
-        }
-
-        console.log('Chart initialized successfully');
-
-      } catch (error) {
-        console.error('Error initializing chart:', error);
-        setChartError(error instanceof Error ? error.message : 'Error initializing chart');
-        setIsChartReady(false);
-      }
-    };
-
-    initializeChart();
-  }, [symbol, timeframe, theme, width, height, needsReinitialization, containerDimensions]); // Added containerDimensions dependency
-
-  // Handle setting data when chart becomes ready
-  useEffect(() => {
-    if (isChartReady && data && data.length > 0 && chartRef.current && candlestickSeriesRef.current) {
-      console.log('Chart became ready, setting initial data');
-      updateChartData();
-    }
-  }, [isChartReady, data, updateChartData]);
-
-
-  // Update chart when data changes (immediate for live updates)
-  useEffect(() => {
-    if (data && data.length > 0) {
-      console.log('🔄 LiveSimpleChart received data update:', {
-        dataLength: data.length,
-        lastCandle: data[data.length - 1],
-        isChartReady,
-        hasChartRef: !!chartRef.current,
-        hasCandlestickSeries: !!candlestickSeriesRef.current
-      });
-      
-      // If chart is ready, update immediately
-      if (isChartReady && chartRef.current && candlestickSeriesRef.current) {
-        updateChartData();
-        setLastChartUpdate(Date.now());
-      } else {
-        // If chart is not ready yet, the data will be set when chart initializes
-        console.log('Chart not ready yet, data will be set when chart initializes');
-      }
-    }
-  }, [data, isChartReady, updateChartData]);
-
-  // Handle resize with throttling
-  useEffect(() => {
-    let resizeTimeout: NodeJS.Timeout;
+  // Handle chart reset
+  const handleChartReset = useCallback(() => {
+    console.log('🔄 Manual chart reset triggered');
     
-    const handleResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        if (chartRef.current && chartContainerRef.current) {
-          const rect = chartContainerRef.current.getBoundingClientRect();
-          chartRef.current.applyOptions({
-            width: rect.width,
-            height: rect.height,
-          });
+    // Cleanup existing chart
+    if (chartRef.current) {
+      try {
+        safeChartCleanup(chartRef);
+      } catch (error) {
+        console.warn('Error during manual chart cleanup:', error);
+      }
+    }
+    
+    // Reset state
+    chartRef.current = null;
+    candlestickSeriesRef.current = null;
+    setIsChartReady(false);
+    setChartError(null);
+    initializationAttemptsRef.current = 0;
+    lastDataRef.current = [];
+    
+    // Reset container ready state to force re-detection
+    setContainerReady(false);
+    
+    // Restart initialization with proper timing
+    setTimeout(() => {
+      if (isMountedRef.current && chartContainerRef.current) {
+        const container = chartContainerRef.current;
+        const hasDimensions = (container.clientWidth > 0 || container.offsetWidth > 0) && 
+                             (container.clientHeight > 0 || container.offsetHeight > 0);
+        
+        if (hasDimensions) {
+          console.log('Container ready after reset, initializing chart');
+          setContainerReady(true);
+        } else {
+          console.log('Container not ready after reset, will wait for container detection');
         }
-      }, 250); // Throttle resize updates
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      clearTimeout(resizeTimeout);
-    };
+      }
+    }, 100);
   }, []);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-      if (chartRef.current) {
-        saveChartState(); // Save state before cleanup
-        safeChartCleanup(chartRef);
-        candlestickSeriesRef.current = null;
-        setIsChartReady(false);
-      }
-    };
-  }, [symbol, theme, saveChartState]);
-
-  // Connection status component
-  const ConnectionStatus = () => {
-    if (!showConnectionStatus) return null;
-
-    const getStatusIcon = () => {
-      switch (connectionStatus) {
-        case 'connected':
-          return <div className="w-2 h-2 bg-green-500 rounded-full" title="Connected" />;
-        case 'connecting':
-          return <RefreshCw className="w-3 h-3 text-yellow-500 animate-spin" title="Connecting..." />;
-        case 'error':
-          return <div className="w-2 h-2 bg-red-500 rounded-full" title="Connection Error" />;
-        default:
-          return <div className="w-2 h-2 bg-gray-500 rounded-full" title="Disconnected" />;
-      }
-    };
-
-    const getStatusText = () => {
-      switch (connectionStatus) {
-        case 'connected':
-          return isLive ? 'Live' : 'Connected';
-        case 'connecting':
-          return 'Connecting...';
-        case 'error':
-          return 'Error';
-        default:
-          return 'Disconnected';
-      }
-    };
-
-    return (
-      <div className="absolute top-2 right-2 z-10">
-        <Badge variant="outline" className="flex items-center gap-1 text-xs">
-          {getStatusIcon()}
-          {getStatusText()}
-        </Badge>
-      </div>
-    );
-  };
-
-  // Enhanced live indicator component
-  const LiveIndicator = () => {
-    if (!showLiveIndicator || !isLive) return null;
-
-    return (
-      <div className="absolute top-2 left-2 z-10">
-        <Badge variant="destructive" className="flex items-center gap-1 animate-pulse text-xs">
-          <Activity className="w-3 h-3" />
-          LIVE
-        </Badge>
-      </div>
-    );
-  };
-
-  // Enhanced live price display
-  const LivePriceDisplay = () => {
-    if (livePrice === null) return null;
-
-    const getPriceColor = () => {
-      switch (priceDirection) {
-        case 'up':
-          return 'bg-green-100 text-green-700 border-green-400';
-        case 'down':
-          return 'bg-red-100 text-red-700 border-red-400';
-        default:
-          return 'bg-gray-200 text-gray-800 border-gray-400';
-      }
-    };
-
-    const getPriceIcon = () => {
-      switch (priceDirection) {
-        case 'up':
-          return <TrendingUp className="w-4 h-4 text-green-600" />;
-        case 'down':
-          return <TrendingDown className="w-4 h-4 text-red-600" />;
-        default:
-          return null;
-      }
-    };
-
-    return (
-      <div
-        className={`absolute top-2 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-lg shadow-lg border transition-all duration-300 ${getPriceColor()}`}
-        style={{ minWidth: 140, textAlign: 'center' }}
-      >
-        <div className="flex items-center justify-center gap-2">
-          {getPriceIcon()}
-          <span className="text-lg font-bold">₹{livePrice.toFixed(2)}</span>
-        </div>
-        {priceChange !== 0 && (
-          <div className={`text-sm font-semibold ${priceChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePercent > 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%)
-          </div>
-        )}
-        {lastTickTime > 0 && (
-          <div className="text-xs text-gray-500 mt-1">
-            {new Date(lastTickTime).toLocaleTimeString()}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Reset scale function - use hook's resetToInitialState
-  const resetScale = useCallback(() => {
-    resetToInitialState();
-    // Call parent callback if provided
-    onResetScale?.();
-  }, [resetToInitialState, onResetScale]);
-
-  // Register reset function with parent component
+  // Register reset function
   useEffect(() => {
     if (onRegisterReset) {
-      onRegisterReset(resetScale);
+      onRegisterReset(handleChartReset);
     }
-  }, [onRegisterReset, resetScale]);
+  }, [handleChartReset, onRegisterReset]);
 
-  // Control buttons component
-  const ControlButtons = () => (
-    <div className="absolute bottom-2 right-2 z-10 flex flex-col gap-2">
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setShowControls(!showControls)}
-          className="h-8 px-2"
-        >
-          <Settings className="w-3 h-3" />
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            refetch?.();
-          }}
-          disabled={isLoading}
-          className="h-8 px-2"
-        >
-          <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={resetScale}
-          className="h-8 px-2"
-          title="Reset chart scale to fit all data"
-        >
-          <ZoomIn className="w-3 h-3" />
-        </Button>
-        {debug && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              reinitializeChartWithState();
-            }}
-            className="h-8 px-2"
-            title="Re-initialize chart with state preservation"
-          >
-            🔄
-          </Button>
-        )}
-      </div>
-      {debug && (
-        <div className="text-xs text-gray-500 bg-white/80 p-2 rounded max-w-xs">
-          <div>Last Update: {new Date(lastChartUpdate).toLocaleTimeString()}</div>
-          <div>Data Points: {data ? data.length : 0}</div>
-          <div>Connection: {connectionStatus}</div>
-          <div>Chart Ready: {isChartReady ? '✅' : '❌'}</div>
-          {chartRef.current && (
-            <div>
-              <div>Zoom State: {chartStateRef.current.visibleRange ? 'Saved' : 'Not saved'}</div>
-              {chartStateRef.current.visibleRange && (
-                <div className="text-xs">
-                  Range: {new Date(chartStateRef.current.visibleRange.from * 1000).toLocaleTimeString()} - {new Date(chartStateRef.current.visibleRange.to * 1000).toLocaleTimeString()}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
-  // Error display
-  if (chartError) {
+  // Loading state
+  if (isLoading) {
     return (
       <div className="relative w-full h-full">
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+            <p className="text-gray-600">Loading chart data...</p>
+            <p className="text-sm text-gray-500">{symbol} - {timeframe}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="relative w-full h-full">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-red-500" />
             <p className="text-red-600 mb-2">Chart Error</p>
-            <p className="text-sm text-gray-500">{chartError}</p>
+            <p className="text-sm text-gray-500">{error}</p>
             <Button 
               onClick={() => {
-                setChartError(null);
                 refetch?.();
               }} 
               className="mt-4"
@@ -1074,23 +774,6 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
             </Button>
           </div>
         </div>
-        <ControlButtons />
-      </div>
-    );
-  }
-
-  // Loading state
-  if (isLoading && data === null || data === undefined || data.length === 0) {
-    return (
-      <div className="relative w-full h-full">
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-            <p className="text-gray-600 text-sm">Loading chart data...</p>
-            <p className="text-xs text-gray-500">{symbol} - {timeframe}</p>
-          </div>
-        </div>
-        <ControlButtons />
       </div>
     );
   }
@@ -1114,29 +797,159 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
             </Button>
           </div>
         </div>
-        <ControlButtons />
       </div>
     );
   }
 
   return (
     <div className="relative w-full h-full">
-      <LivePriceDisplay />
-      <ConnectionStatus />
-      <LiveIndicator />
-      
-      {/* Chart container */}
+      {/* Live Price Display */}
+      {isLive && data && data.length > 0 && (
+        <div className="absolute top-2 left-2 z-10 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg">
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-medium">{symbol}</div>
+            <div className={`text-lg font-bold ${data[data.length - 1].close > data[data.length - 2]?.close ? 'text-green-600' : 'text-red-600'}`}>
+              ₹{data[data.length - 1].close.toFixed(2)}
+            </div>
+            {isLive && (
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-gray-600">LIVE</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Connection Status */}
+      {showConnectionStatus && (
+        <div className="absolute top-2 right-2 z-10 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-xs text-gray-600">{isConnected ? 'Connected' : 'Disconnected'}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Chart Container - Fixed height to ensure proper sizing */}
       <div 
-        ref={chartContainerRef} 
-        className="w-full h-full" 
+        className="w-full bg-white border border-gray-200 relative" 
         style={{ 
-          minHeight: `${height}px`,
-          minWidth: `${width}px`
+          height: `${height}px`,
+          width: `${width}px`
         }}
-      />
+      >
+        {/* Debug Info */}
+        {debug && (
+          <div className="absolute top-2 left-2 z-10 bg-black/75 text-white text-xs p-2 rounded">
+            <div>Chart Ready: {isChartReady ? 'Yes' : 'No'}</div>
+            <div>Container Ready: {containerReady ? 'Yes' : 'No'}</div>
+            <div>Has Chart: {chartRef.current ? 'Yes' : 'No'}</div>
+            <div>Has Series: {candlestickSeriesRef.current ? 'Yes' : 'No'}</div>
+            <div>Data Points: {data ? data.length : 0}</div>
+            <div>Init Attempts: {initializationAttemptsRef.current}</div>
+            <div>Container Size: {chartContainerRef.current ? `${chartContainerRef.current.clientWidth}x${chartContainerRef.current.clientHeight}` : 'N/A'}</div>
+            <div>Is Initializing: {isInitializingRef.current ? 'Yes' : 'No'}</div>
+            <div>Last Update: {new Date(lastChartUpdate).toLocaleTimeString()}</div>
+            <div>Live Data: {isLive ? 'Yes' : 'No'}</div>
+            <div>Connected: {isConnected ? 'Yes' : 'No'}</div>
+            {data && data.length > 0 && (
+              <div>Last Price: ₹{data[data.length - 1].close.toFixed(2)}</div>
+            )}
+          </div>
+        )}
+        
+        {/* Chart Container */}
+        <div 
+          ref={chartContainerRef} 
+          className="w-full h-full"
+          style={{ 
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            pointerEvents: 'auto',
+            isolation: 'isolate',
+            backgroundColor: debug ? 'rgba(255, 0, 0, 0.1)' : 'transparent'
+          }}
+          data-chart-container="true"
+          data-symbol={symbol}
+          data-timeframe={timeframe}
+        />
+        
+        {/* Loading Overlay */}
+        {!isChartReady && data && data.length > 0 && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/90 z-10">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+              <p className="text-gray-600 text-sm">Initializing chart...</p>
+              <p className="text-xs text-gray-500">{data.length} data points available</p>
+              {initializationAttemptsRef.current > 0 && (
+                <p className="text-xs text-orange-500 mt-1">Attempt {initializationAttemptsRef.current}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Chart Error Overlay */}
+        {chartError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/90 z-10">
+            <div className="text-center">
+              <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-red-500" />
+              <p className="text-red-600 mb-2">Chart Error</p>
+              <p className="text-sm text-gray-500 mb-4">{chartError}</p>
+              <Button 
+                onClick={handleChartReset}
+                className="mr-2"
+                variant="outline"
+                size="sm"
+              >
+                Retry
+              </Button>
+              <Button 
+                onClick={() => setChartError(null)}
+                variant="outline"
+                size="sm"
+              >
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Debug Controls */}
+        {debug && isChartReady && (
+          <div className="absolute bottom-2 right-2 z-10 bg-blue-100 border border-blue-300 rounded p-2 text-xs">
+            <div>Last Update: {new Date(lastChartUpdate).toLocaleTimeString()}</div>
+            <Button 
+              onClick={handleChartReset}
+              className="mt-1"
+              variant="outline"
+              size="sm"
+            >
+              🔧 Reset Chart
+            </Button>
+          </div>
+        )}
+      </div>
       
-      <ControlButtons />
+      {/* Control Buttons */}
+      <div className="absolute bottom-2 left-2 z-10 flex gap-2">
+        {onResetScale && (
+          <Button 
+            onClick={onResetScale}
+            variant="outline"
+            size="sm"
+            className="bg-white/90 backdrop-blur-sm"
+          >
+            <ZoomIn className="h-4 w-4 mr-1" />
+            Reset Scale
+          </Button>
+        )}
+      </div>
       
+      {/* Error Alert */}
       {error && (
         <Alert variant="destructive" className="absolute bottom-16 left-2 right-2 z-10">
           <AlertDescription>{error}</AlertDescription>

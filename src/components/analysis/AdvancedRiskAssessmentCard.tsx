@@ -94,7 +94,7 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
     return value.toFixed(decimals);
   };
 
-  const renderMetricCard = (title: string, metrics: Record<string, any>, icon: React.ReactNode) => (
+  const renderMetricCard = (title: string, metrics: Record<string, number | string>, icon: React.ReactNode) => (
     <div className="border rounded-lg p-4 bg-white">
       <div className="flex items-center space-x-2 mb-3">
         {icon}

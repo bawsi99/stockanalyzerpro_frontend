@@ -3,23 +3,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Info, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { AdvancedPatterns } from '@/types/analysis';
 
 interface ComplexPattern {
   type: string;
   quality_score: number;
   completion_status: string;
   target?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface ComplexPatternAnalysisCardProps {
-  patterns: {
-    triple_tops?: ComplexPattern[];
-    triple_bottoms?: ComplexPattern[];
-    wedge_patterns?: ComplexPattern[];
-    channel_patterns?: ComplexPattern[];
-  };
+  patterns: AdvancedPatterns;
 }
 
 const ComplexPatternAnalysisCard: React.FC<ComplexPatternAnalysisCardProps> = ({ patterns }) => {
@@ -41,9 +37,9 @@ const ComplexPatternAnalysisCard: React.FC<ComplexPatternAnalysisCardProps> = ({
       case 'ascending_channel':
         return <TrendingUp className="h-4 w-4 text-green-500" />;
       case 'horizontal_channel':
-        return <Minus className="h-4 w-4 text-gray-500" />;
+        return <AlertTriangle className="h-4 w-4 text-gray-500" />;
       default:
-        return <Info className="h-4 w-4 text-blue-500" />;
+        return <Clock className="h-4 w-4 text-blue-500" />;
     }
   };
 
@@ -96,7 +92,7 @@ const ComplexPatternAnalysisCard: React.FC<ComplexPatternAnalysisCardProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Info className="h-5 w-5" />
+            <Clock className="h-5 w-5" />
             Complex Pattern Analysis
           </CardTitle>
           <CardDescription>
@@ -118,7 +114,7 @@ const ComplexPatternAnalysisCard: React.FC<ComplexPatternAnalysisCardProps> = ({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Info className="h-5 w-5" />
+          <Clock className="h-5 w-5" />
           Complex Pattern Analysis
         </CardTitle>
         <CardDescription>

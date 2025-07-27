@@ -1,61 +1,58 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-
-// Icons
-import { 
-  TrendingUp, 
-  BarChart3, 
-  AlertTriangle, 
-  ArrowUpRight, 
-  ArrowDownRight,
-  Minus,
-  Settings,
-  Loader2,
-  Eye,
-  Activity,
-  Wifi,
-  WifiOff,
-  RefreshCw,
-  ZoomIn
-} from 'lucide-react';
-
-// Chart Components
-import LiveSimpleChart from '@/components/charts/LiveSimpleChart';
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, Loader2, ArrowUpRight, ArrowDownRight, Eye, BarChart3, Settings } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { analysisService } from '@/services/analysisService';
+import { authService } from '@/services/authService';
+import { apiService } from '@/services/api';
 import { useLiveChart } from '@/hooks/useLiveChart';
-import { DataStatusIndicator } from '@/components/DataStatusIndicator';
+import { useStockAnalyses } from '@/hooks/useStockAnalyses';
+import { useDataStore } from '@/stores/dataStore';
+import LiveSimpleChart from '@/components/charts/LiveSimpleChart';
 
 // Analysis Components
 import ConsensusSummaryCard from '@/components/analysis/ConsensusSummaryCard';
 import AITradingAnalysisOverviewCard from '@/components/analysis/AITradingAnalysisOverviewCard';
+import PriceStatisticsCard from '@/components/analysis/PriceStatisticsCard';
+import SectorBenchmarkingCard from '@/components/analysis/SectorBenchmarkingCard';
 import TechnicalAnalysisCard from '@/components/analysis/TechnicalAnalysisCard';
+import EnhancedPatternRecognitionCard from '@/components/analysis/EnhancedPatternRecognitionCard';
 import AdvancedPatternAnalysisCard from '@/components/analysis/AdvancedPatternAnalysisCard';
 import MultiTimeframeAnalysisCard from '@/components/analysis/MultiTimeframeAnalysisCard';
 import AdvancedRiskAssessmentCard from '@/components/analysis/AdvancedRiskAssessmentCard';
 import ComplexPatternAnalysisCard from '@/components/analysis/ComplexPatternAnalysisCard';
 import AdvancedRiskMetricsCard from '@/components/analysis/AdvancedRiskMetricsCard';
-import SectorAnalysisCard from '@/components/analysis/SectorAnalysisCard';
-import SectorBenchmarkingCard from '@/components/analysis/SectorBenchmarkingCard';
-import EnhancedPatternRecognitionCard from '@/components/analysis/EnhancedPatternRecognitionCard';
-import PriceStatisticsCard from '@/components/analysis/PriceStatisticsCard';
-import ActionButtonsSection from '@/components/analysis/ActionButtonsSection';
-import DisclaimerCard from '@/components/analysis/DisclaimerCard';
 
-// Services and Utils
-import { authService } from '@/services/authService';
-import { apiService } from '@/services/api';
-import { AnalysisData, EnhancedOverlays } from '@/types/analysis';
-import stockList from '@/utils/stockList.json';
+// UI Components
 import { StockSelector } from '@/components/ui/stock-selector';
+import { 
+  AnalysisResponse, 
+  EnhancedOverlays, 
+  AdvancedPatterns,
+  MultiTimeframeAnalysis,
+  AdvancedRiskMetrics,
+  StressTestingData,
+  ScenarioAnalysisData
+} from '@/types/analysis';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { DataStatusIndicator } from '@/components/DataStatusIndicator';
 
-// Types
+interface ChartData {
+  date: string;
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 interface ChartStats {
   dateRange: { start: string; end: string; days: number };
   price: { min: number; max: number; current: number };
@@ -63,33 +60,79 @@ interface ChartStats {
   returns: { avg: number; volatility: number };
 }
 
-// Price Statistics calculation function
-const calculatePriceStatistics = (data: any[] | null) => {
+interface ExtendedIndicators {
+  advanced_patterns?: AdvancedPatterns;
+  multi_timeframe?: MultiTimeframeAnalysis;
+  advanced_risk?: AdvancedRiskMetrics;
+  stress_testing?: StressTestingData;
+  scenario_analysis?: ScenarioAnalysisData;
+}
+
+const calculatePriceStatistics = (data: ChartData[] | null): ChartStats => {
   if (!data || data.length === 0) {
-    return null;
+    return {
+      dateRange: { start: '', end: '', days: 0 },
+      price: { min: 0, max: 0, current: 0 },
+      volume: { avg: 0, total: 0 },
+      returns: { avg: 0, volatility: 0 }
+    };
   }
 
-  const prices = data.map(d => d.close || d.price || 0).filter(p => p > 0);
-  if (prices.length === 0) return null;
+  const prices = data.map(d => d.close);
+  const volumes = data.map(d => d.volume);
+  const returns = data.slice(1).map((d, i) => (d.close - data[i].close) / data[i].close);
 
-  const current = prices[prices.length - 1];
-  const max = Math.max(...prices);
-  const min = Math.min(...prices);
-  const mean = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const currentPrice = prices[prices.length - 1];
+  const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length;
+  const totalVolume = volumes.reduce((a, b) => a + b, 0);
+  const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+  const volatility = Math.sqrt(returns.reduce((a, b) => a + Math.pow(b - avgReturn, 2), 0) / returns.length);
 
-  const distFromMean = current - mean;
-  const distFromMax = current - max;
-  const distFromMin = current - min;
+  const startDate = new Date(data[0].time * 1000).toLocaleDateString();
+  const endDate = new Date(data[data.length - 1].time * 1000).toLocaleDateString();
+  const days = Math.ceil((data[data.length - 1].time - data[0].time) / (24 * 60 * 60));
 
-  const distFromMeanPct = (distFromMean / mean) * 100;
-  const distFromMaxPct = (distFromMax / max) * 100;
-  const distFromMinPct = (distFromMin / min) * 100;
+  return {
+    dateRange: { start: startDate, end: endDate, days },
+    price: { min: minPrice, max: maxPrice, current: currentPrice },
+    volume: { avg: avgVolume, total: totalVolume },
+    returns: { avg: avgReturn, volatility }
+  };
+};
+
+// Transform ChartStats to PriceStatisticsCard format
+const transformChartStatsForPriceCard = (chartStats: ChartStats | null) => {
+  if (!chartStats) {
+    return {
+      mean: 0,
+      max: 0,
+      min: 0,
+      current: 0,
+      distFromMean: 0,
+      distFromMax: 0,
+      distFromMin: 0,
+      distFromMeanPct: 0,
+      distFromMaxPct: 0,
+      distFromMinPct: 0
+    };
+  }
+
+  const { price } = chartStats;
+  const mean = (price.max + price.min) / 2;
+  const distFromMean = price.current - mean;
+  const distFromMax = price.current - price.max;
+  const distFromMin = price.current - price.min;
+  const distFromMeanPct = mean !== 0 ? (distFromMean / mean) * 100 : 0;
+  const distFromMaxPct = price.max !== 0 ? (distFromMax / price.max) * 100 : 0;
+  const distFromMinPct = price.min !== 0 ? (distFromMin / price.min) * 100 : 0;
 
   return {
     mean,
-    max,
-    min,
-    current,
+    max: price.max,
+    min: price.min,
+    current: price.current,
     distFromMean,
     distFromMax,
     distFromMin,
@@ -119,19 +162,18 @@ const TIMEFRAMES = [
   { label: '1 Day', value: '1d' }
 ];
 
-export default function Charts() {
+const Charts = React.memo(function Charts() {
   // Core State
   const [stockSymbol, setStockSymbol] = useState<string>('NIFTY 50');
   const [selectedTimeframe, setSelectedTimeframe] = useState('1d');
   const [activeTab, setActiveTab] = useState('overview');
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   
   // Authentication
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'error'>('loading');
   const [authError, setAuthError] = useState<string>('');
   
   // Analysis State
-  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
+  const [analysisData, setAnalysisData] = useState<AnalysisResponse | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -139,8 +181,9 @@ export default function Charts() {
   const [showIndicators, setShowIndicators] = useState(true);
   const [showPatterns, setShowPatterns] = useState(true);
   const [showVolume, setShowVolume] = useState(true);
-  const [debugMode, setDebugMode] = useState(false);
+  const [debugMode, setDebugMode] = useState(true);
   const [chartDataLoaded, setChartDataLoaded] = useState(false);
+  const [chartData, setChartData] = useState<ChartData[] | null>(null);
   
   // Live chart hook for real-time data
   // This hook provides real-time WebSocket data streaming with auto-reconnection
@@ -321,25 +364,35 @@ export default function Charts() {
 
   // Update live chart when stock symbol changes
   useEffect(() => {
-    if (stockSymbol && updateSymbol) {
-      console.log('🔄 Updating symbol in useLiveChart hook:', stockSymbol);
-      updateSymbol(stockSymbol);
+    if (stockSymbol) {
+      console.log('🔄 Stock symbol changed to:', stockSymbol, 'at', new Date().toISOString());
+      // Set loading state immediately when symbol changes
+      setChartDataLoaded(false);
+      // Clear any existing data immediately
+      setChartData(null);
+      // The useLiveChart hook will handle the symbol change automatically
     }
-  }, [stockSymbol, updateSymbol]);
+  }, [stockSymbol]);
 
   // Update live chart when timeframe changes
   useEffect(() => {
-    if (selectedTimeframe && updateTimeframe) {
-      console.log('🔄 Updating timeframe in useLiveChart hook:', selectedTimeframe);
-      updateTimeframe(selectedTimeframe);
+    if (selectedTimeframe) {
+      console.log('🔄 Timeframe changed to:', selectedTimeframe, 'at', new Date().toISOString());
+      // Set loading state immediately when timeframe changes
+      setChartDataLoaded(false);
+      // Clear any existing data immediately
+      setChartData(null);
+      // The useLiveChart hook will handle the timeframe change automatically
     }
-  }, [selectedTimeframe, updateTimeframe]);
+  }, [selectedTimeframe]);
 
   // Handle chart data loaded
-  const handleChartDataLoaded = (data: any[]) => {
-    setChartDataLoaded(true);
-    console.log('Chart data loaded:', data.length, 'candles');
-  };
+  const handleChartDataLoaded = useCallback((data: ChartData[]) => {
+    console.log('Chart data loaded:', data.length, 'points');
+    setChartData(data);
+    
+    // Chart stats will be calculated automatically by the memoized function
+  }, []);
 
   // Handle live chart data updates
   useEffect(() => {
@@ -351,13 +404,13 @@ export default function Charts() {
         lastUpdate: new Date(lastUpdate).toLocaleTimeString()
       });
     }
-  }, [liveData, lastUpdate]);
+  }, [liveData?.length, lastUpdate]); // Only depend on length and lastUpdate, not the entire liveData array
 
   // Handle chart error
-  const handleChartError = (error: string) => {
+  const handleChartError = useCallback((error: string) => {
     console.error('Chart error:', error);
     setError(error);
-  };
+  }, []);
 
   // Handle live chart errors
   useEffect(() => {
@@ -367,8 +420,36 @@ export default function Charts() {
     }
   }, [liveError]);
 
+  // Handle connection status change
+  const handleConnectionChange = useCallback((isConnected: boolean) => {
+    console.log('Connection status changed:', isConnected);
+  }, []);
+
+  // Handle validation result
+  const handleValidationResult = useCallback((result: any) => {
+    console.log('Chart validation result:', result);
+  }, []);
+
+  // Handle stats calculated
+  const handleStatsCalculated = useCallback((stats: any) => {
+    console.log('Chart stats calculated:', stats);
+  }, []);
+
   // Show charts immediately when stock symbol is available, regardless of analysis loading
-  const canShowCharts = stockSymbol && !error;
+  const canShowCharts = useMemo(() => stockSymbol && !error, [stockSymbol, error]);
+  
+  // Check if chart is loading due to symbol change
+  const isChartLoading = useMemo(() => {
+    return isLiveLoading;
+  }, [isLiveLoading]);
+
+  // Memoize chart stats calculation
+  const memoizedChartStats = useMemo(() => {
+    if (chartData) {
+      return calculatePriceStatistics(chartData);
+    }
+    return null;
+  }, [chartData]);
 
   // Loading and error states
   if (authStatus === 'loading') {
@@ -553,18 +634,7 @@ export default function Charts() {
                   />
                 ) : (
                   <PriceStatisticsCard 
-                    summaryStats={calculatePriceStatistics(liveData) || {
-                      mean: 0,
-                      max: 0,
-                      min: 0,
-                      current: 0,
-                      distFromMean: 0,
-                      distFromMax: 0,
-                      distFromMin: 0,
-                      distFromMeanPct: 0,
-                      distFromMaxPct: 0,
-                      distFromMinPct: 0
-                    }}
+                    summaryStats={transformChartStatsForPriceCard(memoizedChartStats)}
                     latestPrice={liveData && liveData.length > 0 ? liveData[liveData.length - 1].close || liveData[liveData.length - 1].price : null}
                     timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
                   />
@@ -626,17 +696,7 @@ export default function Charts() {
                     </select>
                   </div>
 
-                  {/* Theme */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Theme</label>
-                    <Button
-                      onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-                    </Button>
-                  </div>
+
 
                   {/* Connection Status */}
                   <div>
@@ -648,44 +708,7 @@ export default function Charts() {
                   </div>
                 </div>
 
-                {/* Feature Toggles */}
-                <div className="flex flex-wrap gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="show-indicators"
-                      checked={showIndicators}
-                      onCheckedChange={setShowIndicators}
-                    />
-                    <Label htmlFor="show-indicators">Technical Indicators</Label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="show-patterns"
-                      checked={showPatterns}
-                      onCheckedChange={setShowPatterns}
-                    />
-                    <Label htmlFor="show-patterns">Pattern Recognition</Label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="show-volume"
-                      checked={showVolume}
-                      onCheckedChange={setShowVolume}
-                    />
-                    <Label htmlFor="show-volume">Volume</Label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="debug-mode"
-                      checked={debugMode}
-                      onCheckedChange={setDebugMode}
-                    />
-                    <Label htmlFor="debug-mode">Debug Mode</Label>
-                  </div>
-                </div>
+
               </CardContent>
             </Card>
 
@@ -701,9 +724,7 @@ export default function Charts() {
                       connectionStatus={connectionStatus}
                       error={liveError}
                     />
-                    <Badge variant="outline">
-                      {theme === 'light' ? '☀️ Light' : '🌙 Dark'}
-                    </Badge>
+
                   </div>
                 </CardTitle>
                 <CardDescription>
@@ -715,7 +736,7 @@ export default function Charts() {
                   <LiveSimpleChart
                     symbol={stockSymbol}
                     timeframe={selectedTimeframe}
-                    theme={theme}
+                    theme="light"
                     height={800}
                     width={800}
                     exchange="NSE"
@@ -736,16 +757,10 @@ export default function Charts() {
                     connectionStatus={connectionStatus}
                     refetch={refetch}
                     onDataUpdate={handleChartDataLoaded}
-                    onConnectionChange={(isConnected) => {
-                      console.log('Connection status changed:', isConnected);
-                    }}
+                    onConnectionChange={handleConnectionChange}
                     onError={handleChartError}
-                    onValidationResult={(result) => {
-                      console.log('Chart validation result:', result);
-                    }}
-                    onStatsCalculated={(stats) => {
-                      console.log('Chart stats calculated:', stats);
-                    }}
+                    onValidationResult={handleValidationResult}
+                    onStatsCalculated={handleStatsCalculated}
                   />
                 ) : (
                   <div className="text-center py-16 text-slate-500">
@@ -803,16 +818,16 @@ export default function Charts() {
                 </>
               ) : (
                 <>
-                  {(indicators as any)?.advanced_patterns && (
+                  {(indicators as ExtendedIndicators)?.advanced_patterns && (
                     <AdvancedPatternAnalysisCard 
-                      patterns={(indicators as any).advanced_patterns} 
+                      patterns={(indicators as ExtendedIndicators).advanced_patterns!} 
                       symbol={stockSymbol}
                     />
                   )}
 
-                  {(indicators as any)?.multi_timeframe && !(indicators as any).multi_timeframe.error && (
+                  {(indicators as ExtendedIndicators)?.multi_timeframe && !(indicators as ExtendedIndicators).multi_timeframe?.error && (
                     <MultiTimeframeAnalysisCard 
-                      analysis={(indicators as any).multi_timeframe} 
+                      analysis={(indicators as ExtendedIndicators).multi_timeframe!} 
                       symbol={stockSymbol}
                     />
                   )}
@@ -840,23 +855,23 @@ export default function Charts() {
               </>
             ) : (
               <>
-                {(indicators as any)?.advanced_risk && !(indicators as any).advanced_risk.error && (
+                {(indicators as ExtendedIndicators)?.advanced_risk && !(indicators as ExtendedIndicators).advanced_risk?.error && (
                   <AdvancedRiskAssessmentCard 
-                    riskMetrics={(indicators as any).advanced_risk}
+                    riskMetrics={(indicators as ExtendedIndicators).advanced_risk!}
                     symbol={stockSymbol}
                   />
                 )}
 
-                {(indicators as any)?.advanced_patterns && (
+                {(indicators as ExtendedIndicators)?.advanced_patterns && (
                   <ComplexPatternAnalysisCard 
-                    patterns={(indicators as any).advanced_patterns}
+                    patterns={(indicators as ExtendedIndicators).advanced_patterns!}
                   />
                 )}
 
-                {((indicators as any)?.stress_testing || (indicators as any)?.scenario_analysis) && (
+                {((indicators as ExtendedIndicators)?.stress_testing || (indicators as ExtendedIndicators)?.scenario_analysis) && (
                   <AdvancedRiskMetricsCard 
-                    stress_testing={(indicators as any)?.stress_testing}
-                    scenario_analysis={(indicators as any)?.scenario_analysis}
+                    stress_testing={(indicators as ExtendedIndicators)?.stress_testing}
+                    scenario_analysis={(indicators as ExtendedIndicators)?.scenario_analysis}
                   />
                 )}
               </>
@@ -866,4 +881,6 @@ export default function Charts() {
       </div>
     </div>
   );
-}
+});
+
+export default Charts;

@@ -1,13 +1,35 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 
+interface VolumeData {
+  volume: number;
+  price: number;
+  date: string;
+  volume_ratio: number;
+  price_change: number;
+  is_anomaly: boolean;
+}
+
+interface VolumeAnalysis {
+  average_volume: number;
+  volume_trend: string;
+  price_volume_correlation: number;
+  volume_anomalies: VolumeData[];
+  volume_patterns: {
+    accumulation: boolean;
+    distribution: boolean;
+    climax: boolean;
+  };
+  key_insights: string[];
+}
+
 interface VolumeAnalysisCardProps {
-  volumeData: any;
-  className?: string;
+  volumeData: VolumeAnalysis;
+  symbol: string;
 }
 
 const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, className = '' }) => {
@@ -226,7 +248,7 @@ const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, cla
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-gray-600">Recent Volume Anomalies</h4>
             <div className="space-y-2">
-              {analysis.volume_anomalies.anomaly_list.slice(0, 3).map((anomaly: any, index: number) => (
+              {analysis.volume_anomalies.anomaly_list.slice(0, 3).map((anomaly: Record<string, unknown>, index: number) => (
                 <div key={index} className="flex items-center justify-between p-2 bg-yellow-50 rounded border border-yellow-200">
                   <div>
                     <p className="text-sm font-medium">{anomaly.date}</p>

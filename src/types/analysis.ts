@@ -453,18 +453,17 @@ export interface ErrorResponse {
 export type ApiResponse = AnalysisResponse | ErrorResponse;
 
 // Helper functions for type checking
-// 'any' is required here for runtime type guards; do not replace with a stricter type
-// This is intentional and safe because runtime type guards must accept unknown input
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isAnalysisResponse(response: any): response is AnalysisResponse {
-  return response.success === true && 'results' in response;
+export function isAnalysisResponse(response: unknown): response is AnalysisResponse {
+  return typeof response === 'object' && response !== null && 
+         'success' in response && response.success === true && 
+         'results' in response;
 }
 
-// 'any' is required here for runtime type guards; do not replace with a stricter type
-// This is intentional and safe because runtime type guards must accept unknown input
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isErrorResponse(response: any): response is ErrorResponse {
-  return response.success === false && 'error' in response;
+// Type guard for error responses
+export function isErrorResponse(response: unknown): response is ErrorResponse {
+  return typeof response === 'object' && response !== null && 
+         'success' in response && response.success === false && 
+         'error' in response;
 }
 
 export function isChartDataValid(chartData: ChartData): boolean {
@@ -688,14 +687,24 @@ export interface SectorBenchmarking {
 }
 
 // Enhanced Pattern Recognition Types
+export interface PatternData {
+  start_date: string;
+  end_date: string;
+  start_price: number;
+  end_price: number;
+  confidence: number;
+  type: string;
+  description: string;
+}
+
 export interface AdvancedPatterns {
-  head_and_shoulders: any[];
-  inverse_head_and_shoulders: any[];
-  cup_and_handle: any[];
-  triple_tops: any[];
-  triple_bottoms: any[];
-  wedge_patterns: any[];
-  channel_patterns: any[];
+  head_and_shoulders: PatternData[];
+  inverse_head_and_shoulders: PatternData[];
+  cup_and_handle: PatternData[];
+  triple_tops: PatternData[];
+  triple_bottoms: PatternData[];
+  wedge_patterns: PatternData[];
+  channel_patterns: PatternData[];
 }
 
 // Enhanced Overlays with Advanced Patterns
@@ -704,13 +713,21 @@ export interface EnhancedOverlays extends Overlays {
 }
 
 // Sector Context for AI Analysis
+export interface SectorRecommendation {
+  type: string;
+  action: string;
+  reason: string;
+  confidence: number;
+  timeframe: string;
+}
+
 export interface SectorRotationInsights {
   sector_rank: number | null;
   sector_performance: number | null;
   rotation_strength: string;
   leading_sectors: string[];
   lagging_sectors: string[];
-  recommendations: any[];
+  recommendations: SectorRecommendation[];
 }
 
 export interface SectorCorrelationInsights {

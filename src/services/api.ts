@@ -8,7 +8,8 @@ import {
   SectorComparisonResponse,
   StockSectorResponse,
   isAnalysisResponse,
-  isErrorResponse
+  isErrorResponse,
+  SectorBenchmarking
 } from '@/types/analysis';
 import { ENDPOINTS } from '../config';
 
@@ -69,22 +70,168 @@ export interface IndicatorsResponse {
   timestamp: string;
 }
 
+export interface PatternData {
+  start_date: string;
+  end_date: string;
+  start_price: number;
+  end_price: number;
+  confidence: number;
+  type: string;
+  description: string;
+}
+
 export interface PatternsResponse {
   success: boolean;
   symbol: string;
   interval: string;
-  patterns: any;
+  patterns: {
+    candlestick_patterns?: PatternData[];
+    double_tops?: PatternData[];
+    double_bottoms?: PatternData[];
+    head_shoulders?: PatternData[];
+    triangles?: PatternData[];
+  };
   timestamps: number[];
   count: number;
   timestamp: string;
+}
+
+export interface ChartData {
+  data?: string; // base64 encoded image
+  filename?: string;
+  type?: string;
+  error?: string;
 }
 
 export interface ChartsResponse {
   success: boolean;
   symbol: string;
   interval: string;
-  charts: any;
+  charts: Record<string, ChartData>;
   chart_count: number;
+  timestamp: string;
+}
+
+export interface StockInfoResponse {
+  success: boolean;
+  symbol: string;
+  exchange: string;
+  info: {
+    name: string;
+    sector?: string;
+    industry?: string;
+    market_cap?: number;
+    pe_ratio?: number;
+    dividend_yield?: number;
+  };
+  timestamp: string;
+}
+
+export interface MarketStatusResponse {
+  success: boolean;
+  status: string;
+  message: string;
+  timestamp: string;
+}
+
+export interface TokenSymbolResponse {
+  success: boolean;
+  token: number;
+  symbol: string;
+  exchange: string;
+  timestamp: string;
+}
+
+export interface SymbolTokenResponse {
+  success: boolean;
+  symbol: string;
+  token: number;
+  exchange: string;
+  timestamp: string;
+}
+
+export interface OptimizedDataResponse {
+  success: boolean;
+  symbol: string;
+  exchange: string;
+  interval: string;
+  data: CandleData[];
+  count: number;
+  timestamp: string;
+}
+
+export interface JwtTokenResponse {
+  success: boolean;
+  token: string;
+  expires_in: number;
+  timestamp: string;
+}
+
+export interface TokenVerificationResponse {
+  success: boolean;
+  valid: boolean;
+  user_id?: string;
+  message: string;
+  timestamp: string;
+}
+
+export interface WebSocketHealthResponse {
+  success: boolean;
+  status: string;
+  connections: number;
+  uptime: number;
+  timestamp: string;
+}
+
+export interface WebSocketTestResponse {
+  success: boolean;
+  message: string;
+  timestamp: string;
+}
+
+export interface WebSocketConnectionsResponse {
+  success: boolean;
+  connections: Array<{
+    id: string;
+    symbol: string;
+    connected_at: string;
+    last_activity: string;
+  }>;
+  count: number;
+  timestamp: string;
+}
+
+export interface ServiceHealthResponse {
+  success: boolean;
+  status: string;
+  version?: string;
+  uptime?: number;
+  timestamp: string;
+}
+
+export interface RealtimeAnalysisResponse {
+  success: boolean;
+  symbol: string;
+  timeframe: string;
+  analysis: {
+    signal: string;
+    confidence: number;
+    indicators: Record<string, number>;
+    timestamp: string;
+  };
+}
+
+export interface AnalysisHistoryResponse {
+  success: boolean;
+  symbol: string;
+  timeframe: string;
+  history: Array<{
+    signal: string;
+    confidence: number;
+    indicators: Record<string, number>;
+    timestamp: string;
+  }>;
+  count: number;
   timestamp: string;
 }
 
@@ -177,39 +324,40 @@ class ApiService {
   }
 
   // GET /sector/list - Sector information
-  async getSectors(): Promise<any> {
+  async getSectors(): Promise<SectorListResponse> {
     const resp = await fetch(ENDPOINTS.ANALYSIS.SECTOR_LIST);
     if (!resp.ok) throw new Error('Failed to fetch sectors');
     return await resp.json();
   }
 
   // POST /sector/benchmark - Sector benchmarking
-  async getSectorBenchmark(request: AnalysisRequest): Promise<any> {
+  async getSectorBenchmark(request: AnalysisRequest): Promise<SectorBenchmarking> {
     const resp = await fetch(ENDPOINTS.ANALYSIS.SECTOR_BENCHMARK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request)
     });
     if (!resp.ok) throw new Error('Failed to fetch sector benchmark');
-    return await resp.json();
+    const data = await resp.json();
+    return data.results;
   }
 
   // GET /sector/{sector_name}/stocks - Sector stocks
-  async getSectorStocks(sectorName: string): Promise<any> {
+  async getSectorStocks(sectorName: string): Promise<SectorStocksResponse> {
     const resp = await fetch(`${ENDPOINTS.ANALYSIS.SECTOR_STOCKS}/${sectorName}/stocks`);
     if (!resp.ok) throw new Error('Failed to fetch sector stocks');
     return await resp.json();
   }
 
   // GET /sector/{sector_name}/performance - Sector performance
-  async getSectorPerformance(sectorName: string, period: number = 365): Promise<any> {
+  async getSectorPerformance(sectorName: string, period: number = 365): Promise<SectorPerformanceResponse> {
     const resp = await fetch(`${ENDPOINTS.ANALYSIS.SECTOR_PERFORMANCE}/${sectorName}/performance?period=${period}`);
     if (!resp.ok) throw new Error('Failed to fetch sector performance');
     return await resp.json();
   }
 
   // POST /sector/compare - Sector comparison
-  async compareSectors(sectors: string[], period: number = 365): Promise<any> {
+  async compareSectors(sectors: string[], period: number = 365): Promise<SectorComparisonResponse> {
     const resp = await fetch(ENDPOINTS.ANALYSIS.SECTOR_COMPARE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -220,7 +368,7 @@ class ApiService {
   }
 
   // GET /stock/{symbol}/sector - Stock sector information
-  async getStockSector(symbol: string): Promise<any> {
+  async getStockSector(symbol: string): Promise<StockSectorResponse> {
     const resp = await fetch(`${ENDPOINTS.ANALYSIS.STOCK_SECTOR}/${symbol}/sector`);
     if (!resp.ok) throw new Error('Failed to fetch stock sector');
     return await resp.json();
@@ -267,28 +415,28 @@ class ApiService {
   }
 
   // GET /stock/{symbol}/info - Stock information
-  async getStockInfo(symbol: string, exchange: string = 'NSE'): Promise<any> {
+  async getStockInfo(symbol: string, exchange: string = 'NSE'): Promise<StockInfoResponse> {
     const resp = await fetch(`${ENDPOINTS.DATA.STOCK_INFO}/${symbol}/info?exchange=${exchange}`);
     if (!resp.ok) throw new Error('Failed to fetch stock info');
     return await resp.json();
   }
 
   // GET /market/status - Market status
-  async getMarketStatus(): Promise<any> {
+  async getMarketStatus(): Promise<MarketStatusResponse> {
     const resp = await fetch(ENDPOINTS.DATA.MARKET_STATUS);
     if (!resp.ok) throw new Error('Failed to fetch market status');
     return await resp.json();
   }
 
   // GET /mapping/token-to-symbol - Token to symbol mapping
-  async getTokenToSymbol(token: number, exchange: string = 'NSE'): Promise<any> {
+  async getTokenToSymbol(token: number, exchange: string = 'NSE'): Promise<TokenSymbolResponse> {
     const resp = await fetch(`${ENDPOINTS.DATA.MAPPING_TOKEN_TO_SYMBOL}?token=${token}&exchange=${exchange}`);
     if (!resp.ok) throw new Error('Failed to fetch token to symbol mapping');
     return await resp.json();
   }
 
   // GET /mapping/symbol-to-token - Symbol to token mapping
-  async getSymbolToToken(symbol: string, exchange: string = 'NSE'): Promise<any> {
+  async getSymbolToToken(symbol: string, exchange: string = 'NSE'): Promise<SymbolTokenResponse> {
     const resp = await fetch(`${ENDPOINTS.DATA.MAPPING_SYMBOL_TO_TOKEN}?symbol=${symbol}&exchange=${exchange}`);
     if (!resp.ok) throw new Error('Failed to fetch symbol to token mapping');
     return await resp.json();
@@ -301,7 +449,7 @@ class ApiService {
     interval?: string;
     period?: number;
     force_live?: boolean;
-  }): Promise<any> {
+  }): Promise<OptimizedDataResponse> {
     const resp = await fetch(ENDPOINTS.DATA.OPTIMIZED_DATA, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -314,7 +462,7 @@ class ApiService {
   // ===== AUTHENTICATION ENDPOINTS (Port 8000) =====
 
   // POST /auth/token - Get JWT token
-  async getJwtToken(userId: string): Promise<any> {
+  async getJwtToken(userId: string): Promise<JwtTokenResponse> {
     const resp = await fetch(`${ENDPOINTS.DATA.AUTH_TOKEN}?user_id=${encodeURIComponent(userId)}`, { 
       method: 'POST' 
     });
@@ -323,7 +471,7 @@ class ApiService {
   }
 
   // GET /auth/verify - Verify JWT token
-  async verifyToken(token: string): Promise<any> {
+  async verifyToken(token: string): Promise<TokenVerificationResponse> {
     const resp = await fetch(`${ENDPOINTS.DATA.AUTH_VERIFY}?token=${encodeURIComponent(token)}`);
     if (!resp.ok) throw new Error('Failed to verify token');
     return await resp.json();
@@ -332,21 +480,21 @@ class ApiService {
   // ===== WEBSOCKET ENDPOINTS (Port 8000) =====
 
   // GET /ws/health - WebSocket health
-  async getWebSocketHealth(): Promise<any> {
+  async getWebSocketHealth(): Promise<WebSocketHealthResponse> {
     const resp = await fetch(ENDPOINTS.DATA.WEBSOCKET_HEALTH);
     if (!resp.ok) throw new Error('Failed to fetch WebSocket health');
     return await resp.json();
   }
 
   // GET /ws/test - WebSocket test
-  async getWebSocketTest(): Promise<any> {
+  async getWebSocketTest(): Promise<WebSocketTestResponse> {
     const resp = await fetch(ENDPOINTS.DATA.WEBSOCKET_TEST);
     if (!resp.ok) throw new Error('Failed to fetch WebSocket test');
     return await resp.json();
   }
 
   // GET /ws/connections - WebSocket connections
-  async getWebSocketConnections(): Promise<any> {
+  async getWebSocketConnections(): Promise<WebSocketConnectionsResponse> {
     const resp = await fetch(ENDPOINTS.DATA.WEBSOCKET_CONNECTIONS);
     if (!resp.ok) throw new Error('Failed to fetch WebSocket connections');
     return await resp.json();
@@ -355,14 +503,14 @@ class ApiService {
   // ===== HEALTH CHECKS =====
 
   // GET /health - Data service health
-  async getDataServiceHealth(): Promise<any> {
+  async getDataServiceHealth(): Promise<ServiceHealthResponse> {
     const resp = await fetch(ENDPOINTS.DATA.HEALTH);
     if (!resp.ok) throw new Error('Data service health check failed');
     return await resp.json();
   }
 
   // GET /health - Analysis service health
-  async getAnalysisServiceHealth(): Promise<any> {
+  async getAnalysisServiceHealth(): Promise<ServiceHealthResponse> {
     const resp = await fetch(ENDPOINTS.ANALYSIS.HEALTH);
     if (!resp.ok) throw new Error('Analysis service health check failed');
     return await resp.json();
@@ -371,12 +519,12 @@ class ApiService {
   // ===== LEGACY SUPPORT =====
 
   // Legacy method for backward compatibility
-  async getRealtimeAnalysis(token: string, timeframe: string): Promise<any> {
+  async getRealtimeAnalysis(token: string, timeframe: string): Promise<RealtimeAnalysisResponse> {
     console.warn('getRealtimeAnalysis is deprecated. Use getHistoricalData instead.');
     return this.getHistoricalData('RELIANCE', timeframe);
   }
 
-  async getAnalysisHistory(token: string, timeframe: string, limit: number = 10): Promise<any> {
+  async getAnalysisHistory(token: string, timeframe: string, limit: number = 10): Promise<AnalysisHistoryResponse> {
     console.warn('getAnalysisHistory is deprecated. Use getHistoricalData instead.');
     return this.getHistoricalData('RELIANCE', timeframe);
   }

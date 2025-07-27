@@ -66,7 +66,7 @@ export interface UseChartResetOptions {
 
 export interface UseChartResetReturn {
   // Chart references
-  chartRef: React.MutableRefObject<any | null>;
+  chartRef: React.MutableRefObject<IChartApi | null>;
   chartStateRef: React.MutableRefObject<ChartState>;
   
   // State management
@@ -88,7 +88,7 @@ export function useChartReset(options: UseChartResetOptions = {}): UseChartReset
   const { debug = false, onReset } = options;
   
   // Chart references
-  const chartRef = useRef<any | null>(null);
+  const chartRef = useRef<IChartApi | null>(null);
   const chartStateRef = useRef<ChartState>({});
   const initialChartStateRef = useRef<ChartState>({});
   const hasUserInteractedRef = useRef<boolean>(false);

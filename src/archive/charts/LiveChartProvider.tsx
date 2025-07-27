@@ -7,21 +7,22 @@
  * Reason: Consolidated into unified chart system
  */
 
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { ChartData } from '@/types/analysis';
 import { useLiveData } from '@/services/liveDataService';
 import { useLiveIndicators } from '@/utils/liveIndicators';
 import { useLivePatterns } from '@/utils/livePatternRecognition';
+import { useLiveChart } from './live-chart-hooks';
 
 // ===== TYPES & INTERFACES =====
 
 export interface LiveChartContextValue {
   // Data
   chartData: ChartData[];
-  indicators: any;
-  patterns: any;
-  latestValues: any;
-  latestPatterns: any;
+  indicators: Record<string, number | null>;
+  patterns: Record<string, unknown[]>;
+  latestValues: Record<string, number>;
+  latestPatterns: Record<string, unknown[]>;
   
   // State
   isLive: boolean;
@@ -54,14 +55,6 @@ export interface LiveChartProviderProps {
 // ===== CONTEXT =====
 
 const LiveChartContext = createContext<LiveChartContextValue | null>(null);
-
-function useLiveChart() {
-  const context = useContext(LiveChartContext);
-  if (!context) {
-    throw new Error('useLiveChart must be used within a LiveChartProvider');
-  }
-  return context;
-}
 
 // ===== PROVIDER COMPONENT =====
 
@@ -267,25 +260,10 @@ function LiveChartControls({ className = '' }: LiveChartControlsProps) {
   );
 }
 
-// ===== HIGHER-ORDER COMPONENT =====
-
-function withLiveChart<P extends object>(
-  WrappedComponent: React.ComponentType<P & LiveChartContextValue>
-) {
-  return function WithLiveChartComponent(props: P) {
-    return (
-      <LiveChartProvider token="" timeframe="">
-        <WrappedComponent {...props} />
-      </LiveChartProvider>
-    );
-  };
-}
-
 // ===== EXPORT ALL =====
 
 export {
   LiveChartProvider as default,
-  useLiveChart,
   LiveChartStatus,
   LiveChartControls
 }; 

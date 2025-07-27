@@ -61,7 +61,7 @@ interface EnhancedSimpleChartProps {
   showPatterns?: boolean;
   showVolume?: boolean;
   onValidationResult?: (result: ChartValidationResult) => void;
-  onStatsCalculated?: (stats: any) => void;
+  onStatsCalculated?: (stats: Record<string, unknown>) => void;
   onResetScale?: () => void; // Add reset scale callback
   onRegisterReset?: (resetFn: () => void) => void; // Add reset function registration
   activeIndicators?: {
@@ -137,11 +137,11 @@ function identifyPeaksLows(prices: number[], order = 5) {
   return { peaks, lows };
 }
 
-function detectDivergence(prices: number[], indicator: number[], order = 5) {
+function detectDivergence(prices: number[], indicator: number[], order = 5): Divergence[] {
   const { peaks, lows } = identifyPeaksLows(prices, order);
   const { peaks: indicatorPeaks, lows: indicatorLows } = identifyPeaksLows(indicator, order);
   
-  const divergences: any[] = [];
+  const divergences: Divergence[] = [];
   
   // Bullish divergence: price makes lower lows, indicator makes higher lows
   for (let i = 0; i < lows.length - 1; i++) {
@@ -205,7 +205,7 @@ const EnhancedSimpleChart: React.FC<EnhancedSimpleChartProps> = ({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
-  const patternSeriesRef = useRef<{ [key: string]: ISeriesApi<any> }>({});
+  const patternSeriesRef = useRef<{ [key: string]: ISeriesApi<LineData | CandlestickData | HistogramData | AreaSeries> }>({});
 
   // Chart reset functionality
   const {
@@ -228,7 +228,7 @@ const EnhancedSimpleChart: React.FC<EnhancedSimpleChartProps> = ({
   
   const [isChartReady, setIsChartReady] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
-  const [chartStats, setChartStats] = useState<any>(null);
+  const [chartStats, setChartStats] = useState<Record<string, unknown> | null>(null);
 
   // Validate and process data
   const validationResult = useMemo(() => {
@@ -296,11 +296,11 @@ const EnhancedSimpleChart: React.FC<EnhancedSimpleChartProps> = ({
     return { peaks, lows };
   }
 
-  function detectDivergence(prices: number[], indicator: number[], order = 5) {
+  function detectDivergence(prices: number[], indicator: number[], order = 5): Divergence[] {
     const { peaks, lows } = identifyPeaksLows(prices, order);
     const { peaks: indicatorPeaks, lows: indicatorLows } = identifyPeaksLows(indicator, order);
     
-    const divergences: any[] = [];
+    const divergences: Divergence[] = [];
     
     // Bullish divergence: price makes lower lows, indicator makes higher lows
     for (let i = 0; i < lows.length - 1; i++) {
@@ -608,14 +608,6 @@ const EnhancedSimpleChart: React.FC<EnhancedSimpleChartProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  if (chartError) {
-    return (
-      <div className="flex items-center justify-center h-full text-red-500">
-        Error: {chartError}
-      </div>
-    );
-  }
-
   // Reset scale function - use hook's resetToInitialState
   const resetScale = useCallback(() => {
     resetToInitialState();
@@ -629,6 +621,14 @@ const EnhancedSimpleChart: React.FC<EnhancedSimpleChartProps> = ({
       onRegisterReset(resetScale);
     }
   }, [onRegisterReset, resetScale]);
+
+  if (chartError) {
+    return (
+      <div className="flex items-center justify-center h-full text-red-500">
+        Error: {chartError}
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full relative">

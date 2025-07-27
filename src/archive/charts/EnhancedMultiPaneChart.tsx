@@ -56,7 +56,7 @@ interface EnhancedMultiPaneChartProps {
   onShowAll?: () => void;
   onToggleShortcuts?: () => void;
   showShortcuts?: boolean;
-  onActiveIndicatorsChange?: (indicators: any) => void;
+  onActiveIndicatorsChange?: (indicators: Record<string, boolean>) => void;
   timeframe?: string;
 }
 
@@ -415,7 +415,7 @@ function cleanupSupportResistanceOverlays(patternSeriesRef, chartInstance, debug
 }
 
 // ---- Component ---- //
-const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps>(({ 
+const EnhancedMultiPaneChart = React.forwardRef<HTMLDivElement, EnhancedMultiPaneChartProps>(({ 
   data, 
   theme = "light",
   height = 600,
@@ -450,7 +450,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [chartDimensions, setChartDimensions] = useState({ width: 0, height: 0 });
-  const validationResult = useMemo(() => validateChartData(data), [data, debug]);
+  const validationResult = useMemo(() => validateChartData(data), [data]);
   const chartStats = useMemo(() => calculateChartStats(validationResult.data), [validationResult.data]);
 
   // Add responsive design hook
@@ -770,7 +770,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
     const closes = validatedData.map(d => d.close);
     const rsi = indicators.rsi14.map(v => (v == null ? NaN : v));
     return detectDivergence(closes, rsi, 5);
-  }, [validatedData, indicators.rsi14]);
+  }, [validatedData, indicators.rsi14, detectDivergence]);
 
   // Calculate new patterns
   const supportResistanceLevels = useMemo(() => {
@@ -1255,11 +1255,14 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
     return () => {
       cleanupSupportResistanceOverlays(patternSeriesRef, chartInstance, debug);
     };
-  }, [activeIndicators.support, activeIndicators.resistance, supportResistanceLevels, validatedData, chartInstance]);
+  }, [activeIndicators.support, activeIndicators.resistance, supportResistanceLevels, validatedData, chartInstance, debug]);
 
   // --- Drawing Triangle Patterns ---
   useEffect(() => {
-    if (!activeIndicators.trianglesFlags || !chartInstance.current) return;
+    const patternSeries = patternSeriesRef.current;
+    const chart = chartInstance.current;
+    
+    if (!activeIndicators.trianglesFlags || !chart) return;
     
     if (trianglePatterns.length > 0) {
       drawTrianglePatterns({
@@ -1273,22 +1276,25 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
 
     // Cleanup
     return () => {
-      Object.keys(patternSeriesRef.current).forEach(key => {
-        if (key.startsWith('triangle_') && chartInstance.current) {
+      Object.keys(patternSeries).forEach(key => {
+        if (key.startsWith('triangle_') && chart) {
           try {
-            chartInstance.current.removeSeries(patternSeriesRef.current[key]);
+            chart.removeSeries(patternSeries[key]);
           } catch (err) {
             if (debug) console.warn('Failed to remove triangle series (cleanup)', key, err);
           }
-          delete patternSeriesRef.current[key];
+          delete patternSeries[key];
         }
       });
     };
-  }, [activeIndicators.trianglesFlags, trianglePatterns, validatedData, chartInstance]);
+  }, [activeIndicators.trianglesFlags, trianglePatterns, validatedData, chartInstance, debug]);
 
   // --- Drawing Flag Patterns ---
   useEffect(() => {
-    if (!activeIndicators.trianglesFlags || !chartInstance.current) return;
+    const patternSeries = patternSeriesRef.current;
+    const chart = chartInstance.current;
+    
+    if (!activeIndicators.trianglesFlags || !chart) return;
     
     if (flagPatterns.length > 0) {
       drawFlagPatterns({
@@ -1302,41 +1308,46 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
 
     // Cleanup
     return () => {
-      Object.keys(patternSeriesRef.current).forEach(key => {
-        if (key.startsWith('flag_') && chartInstance.current) {
+      Object.keys(patternSeries).forEach(key => {
+        if (key.startsWith('flag_') && chart) {
           try {
-            chartInstance.current.removeSeries(patternSeriesRef.current[key]);
+            chart.removeSeries(patternSeries[key]);
           } catch (err) {
             if (debug) console.warn('Failed to remove flag series (cleanup)', key, err);
           }
-          delete patternSeriesRef.current[key];
+          delete patternSeries[key];
         }
       });
     };
-  }, [activeIndicators.trianglesFlags, flagPatterns, validatedData, chartInstance]);
+  }, [activeIndicators.trianglesFlags, flagPatterns, validatedData, chartInstance, debug]);
 
   // --- Peaks/Lows Marker Effect (like other overlays) ---
   useEffect(() => {
-    if (!chartReady || !chartInstance.current) return;
+    const indicatorSeries = indicatorSeriesRef.current;
+    const chart = chartInstance.current;
+    
+    if (!chartReady || !chart) return;
     // Remove previous marker overlays if they exist
-    const peaksMarker = indicatorSeriesRef.current['peaksMarker'];
+    const peaksMarker = indicatorSeries['peaksMarker'];
     if (peaksMarker && typeof peaksMarker.remove === 'function') {
       try {
-        chartInstance.current && chartInstance.current.removeSeries(peaksMarker);
+        if (chart) {
+          chart.removeSeries(peaksMarker);
+        }
       } catch (e) {
         if (debug) console.warn('Failed to remove peaksMarker (cleanup)', e);
       }
     }
-    delete indicatorSeriesRef.current['peaksMarker'];
-    const lowsMarker = indicatorSeriesRef.current['lowsMarker'];
+    const lowsMarker = indicatorSeries['lowsMarker'];
     if (lowsMarker && typeof lowsMarker.remove === 'function') {
       try {
-        chartInstance.current && chartInstance.current.removeSeries(lowsMarker);
+        if (chart) {
+          chart.removeSeries(lowsMarker);
+        }
       } catch (e) {
         if (debug) console.warn('Failed to remove lowsMarker (cleanup)', e);
       }
     }
-    delete indicatorSeriesRef.current['lowsMarker'];
     if (activeIndicators.swingPoints && chartInstance.current) {
       // Peaks
       const peaksData = peaksLows.peaks
@@ -1389,24 +1400,28 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
     }
     // Cleanup on unmount or dependency change
     return () => {
-      const peaksMarker = indicatorSeriesRef.current['peaksMarker'];
+      const indicatorSeries = indicatorSeriesRef.current;
+      const chart = chartInstance.current;
+      const peaksMarker = indicatorSeries['peaksMarker'];
       if (peaksMarker && typeof peaksMarker.remove === 'function') {
         try {
-          chartInstance.current && chartInstance.current.removeSeries(peaksMarker);
+          if (chart) {
+            chart.removeSeries(peaksMarker);
+          }
         } catch (e) {
           if (debug) console.warn('Failed to remove peaksMarker (cleanup)', e);
         }
       }
-      delete indicatorSeriesRef.current['peaksMarker'];
-      const lowsMarker = indicatorSeriesRef.current['lowsMarker'];
+      const lowsMarker = indicatorSeries['lowsMarker'];
       if (lowsMarker && typeof lowsMarker.remove === 'function') {
         try {
-          chartInstance.current && chartInstance.current.removeSeries(lowsMarker);
+          if (chart) {
+            chart.removeSeries(lowsMarker);
+          }
         } catch (e) {
           if (debug) console.warn('Failed to remove lowsMarker (cleanup)', e);
         }
       }
-      delete indicatorSeriesRef.current['lowsMarker'];
     };
   }, [activeIndicators.swingPoints, validatedData, peaksLows, chartInstance, priceChartType, chartDimensions.width, debug, chartReady]);
 
@@ -1460,7 +1475,7 @@ const EnhancedMultiPaneChart = React.forwardRef<any, EnhancedMultiPaneChartProps
         }
       }, 100);
     };
-  }, [height, debug]);
+  }, [debug]);
 
   // Indicator toggle handler
   const toggleIndicator = useCallback((indicator: keyof typeof activeIndicators) => {

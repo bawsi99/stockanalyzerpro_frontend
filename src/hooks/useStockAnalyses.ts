@@ -1,8 +1,9 @@
 
-import { useState, useEffect } from 'react';
-import { apiService } from '@/services/api';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import type { ApiResponse } from '@/types/analysis';
+import { apiService } from '@/services/api';
+import { ApiResponse, AnalysisResponse } from '@/types/analysis';
+import { RealCandlestickData } from '@/services/liveDataService';
 
 export interface StoredAnalysis {
   id: string;
@@ -22,8 +23,8 @@ export interface StoredAnalysis {
   interval: string | null;
   analysis_quality: string | null;
   mathematical_validation: boolean | null;
-  chart_paths: any | null;
-  metadata: any | null;
+  chart_paths: Record<string, string> | null;
+  metadata: Record<string, unknown> | null;
 }
 
 export interface AnalysisSummary {
@@ -73,18 +74,257 @@ export const useStockAnalyses = () => {
       const result = await apiService.getHistoricalData(stockSymbol, timeframe);
       if (result && result.candles) {
         // Transform historical data to match expected analysis format
-        return result.candles.map((candle: any, index: number) => ({
+        return result.candles.map((candle: RealCandlestickData, index: number) => ({
           id: `analysis_${index}`,
           stock_symbol: stockSymbol,
           analysis_data: {
+            success: true,
+            stock_symbol: stockSymbol,
+            exchange: 'NSE',
+            analysis_period: timeframe,
+            interval: timeframe,
+            timestamp: new Date(candle.time * 1000).toISOString(),
             results: {
               ai_analysis: {
-                trend: 'neutral' // Default trend since this is historical data
+                meta: {
+                  symbol: stockSymbol,
+                  analysis_date: new Date(candle.time * 1000).toISOString(),
+                  timeframe: timeframe,
+                  overall_confidence: 0,
+                  data_quality_score: 0
+                },
+                market_outlook: {
+                  primary_trend: {
+                    direction: 'neutral',
+                    strength: 'weak',
+                    duration: 'short',
+                    confidence: 0,
+                    rationale: 'Historical data analysis'
+                  },
+                  secondary_trend: {
+                    direction: 'neutral',
+                    strength: 'weak',
+                    duration: 'short',
+                    confidence: 0,
+                    rationale: 'Historical data analysis'
+                  },
+                  key_drivers: []
+                },
+                trading_strategy: {
+                  short_term: {
+                    horizon_days: 1,
+                    bias: 'neutral',
+                    entry_strategy: {
+                      type: 'historical',
+                      entry_range: [null, null],
+                      entry_conditions: [],
+                      confidence: 0
+                    },
+                    exit_strategy: {
+                      stop_loss: 0,
+                      stop_loss_type: 'historical',
+                      targets: [],
+                      trailing_stop: { enabled: false, method: null }
+                    },
+                    position_sizing: {
+                      risk_per_trade: '0%',
+                      max_position_size: '0%',
+                      atr_multiplier: null
+                    },
+                    rationale: 'Historical data analysis'
+                  },
+                  medium_term: {
+                    horizon_days: 7,
+                    bias: 'neutral',
+                    entry_strategy: {
+                      type: 'historical',
+                      entry_range: [null, null],
+                      entry_conditions: [],
+                      confidence: 0
+                    },
+                    exit_strategy: {
+                      stop_loss: 0,
+                      stop_loss_type: 'historical',
+                      targets: [],
+                      trailing_stop: { enabled: false, method: null }
+                    },
+                    position_sizing: {
+                      risk_per_trade: '0%',
+                      max_position_size: '0%',
+                      atr_multiplier: null
+                    },
+                    rationale: 'Historical data analysis'
+                  },
+                  long_term: {
+                    horizon_days: 30,
+                    investment_rating: 'hold',
+                    fair_value_range: [0, 0],
+                    key_levels: {
+                      accumulation_zone: [0, 0],
+                      distribution_zone: [0, 0]
+                    },
+                    rationale: 'Historical data analysis'
+                  }
+                },
+                risk_management: {
+                  key_risks: [],
+                  stop_loss_levels: [],
+                  position_management: {
+                    scaling_in: false,
+                    scaling_out: false,
+                    max_correlation: 0
+                  }
+                },
+                critical_levels: {
+                  must_watch: [],
+                  confirmation_levels: []
+                },
+                monitoring_plan: {
+                  daily_checks: [],
+                  weekly_reviews: [],
+                  exit_triggers: []
+                },
+                data_quality_assessment: {
+                  issues: [],
+                  confidence_adjustments: {
+                    reason: 'Historical data',
+                    adjustment: 'none'
+                  }
+                },
+                key_takeaways: ['Historical data analysis'],
+                indicator_summary_md: 'Historical data analysis',
+                chart_insights: 'Historical data analysis'
               },
               consensus: {
-                overall_signal: 'neutral'
+                overall_signal: 'neutral',
+                signal_strength: 'weak',
+                bullish_percentage: 0,
+                bearish_percentage: 0,
+                neutral_percentage: 100,
+                bullish_score: 0,
+                bearish_score: 0,
+                neutral_score: 0,
+                total_weight: 0,
+                confidence: 0,
+                signal_details: [],
+                data_quality_flags: [],
+                warnings: [],
+                bullish_count: 0,
+                bearish_count: 0,
+                neutral_count: 1
+              },
+              indicators: {
+                moving_averages: {
+                  sma_20: 0,
+                  sma_50: 0,
+                  sma_200: 0,
+                  ema_20: 0,
+                  ema_50: 0,
+                  price_to_sma_200: 0,
+                  sma_20_to_sma_50: 0,
+                  golden_cross: false,
+                  death_cross: false
+                },
+                rsi: {
+                  rsi_14: 0,
+                  trend: 'neutral',
+                  status: 'neutral'
+                },
+                macd: {
+                  macd_line: 0,
+                  signal_line: 0,
+                  histogram: 0
+                },
+                bollinger_bands: {
+                  upper_band: 0,
+                  middle_band: 0,
+                  lower_band: 0,
+                  percent_b: 0,
+                  bandwidth: 0
+                },
+                volume: {
+                  volume_ratio: 0,
+                  obv: 0,
+                  obv_trend: 'neutral'
+                },
+                adx: {
+                  adx: 0,
+                  plus_di: 0,
+                  minus_di: 0,
+                  trend_direction: 'neutral'
+                },
+                trend_data: {
+                  direction: 'neutral',
+                  strength: 'weak',
+                  adx: 0,
+                  plus_di: 0,
+                  minus_di: 0
+                },
+                raw_data: {
+                  open: [],
+                  high: [],
+                  low: [],
+                  close: [],
+                  volume: []
+                },
+                metadata: {
+                  start: new Date(candle.time * 1000).toISOString(),
+                  end: new Date(candle.time * 1000).toISOString(),
+                  period: 1,
+                  last_price: candle.close,
+                  last_volume: candle.volume,
+                  data_quality: {
+                    is_valid: true,
+                    warnings: [],
+                    data_quality_issues: [],
+                    missing_data: [],
+                    suspicious_patterns: []
+                  },
+                  indicator_availability: {
+                    sma_20: false,
+                    sma_50: false,
+                    sma_200: false,
+                    ema_20: false,
+                    ema_50: false,
+                    macd: false,
+                    rsi: false,
+                    bollinger_bands: false,
+                    stochastic: false,
+                    adx: false,
+                    obv: false,
+                    volume_ratio: false,
+                    atr: false
+                  }
+                }
+              },
+              charts: {
+                comparison_chart: { data: '', filename: '', type: '', error: '' },
+                divergence: { data: '', filename: '', type: '', error: '' },
+                double_tops_bottoms: { data: '', filename: '', type: '', error: '' },
+                support_resistance: { data: '', filename: '', type: '', error: '' },
+                triangles_flags: { data: '', filename: '', type: '', error: '' },
+                volume_anomalies: { data: '', filename: '', type: '', error: '' }
+              },
+              indicator_summary_md: 'Historical data analysis',
+              chart_insights: 'Historical data analysis',
+              summary: {
+                overall_signal: 'neutral',
+                signal_strength: 'weak',
+                bullish_percentage: 0,
+                bearish_percentage: 0,
+                neutral_percentage: 100
+              },
+              overlays: {
+                triangles: [],
+                flags: [],
+                support_resistance: { support: [], resistance: [] },
+                double_tops: [],
+                double_bottoms: [],
+                divergences: [],
+                volume_anomalies: []
               }
-            }
+            },
+            data: []
           },
           created_at: new Date(candle.time * 1000).toISOString(),
           overall_signal: null,
@@ -121,50 +361,33 @@ export const useStockAnalyses = () => {
   };
 
   // Example: Save a new analysis (replace with new API call)
-  const saveAnalysis = async (stockSymbol: string, analysisData: any) => {
-    // TODO: Use new backend endpoint to save analysis
-    // Example: await apiService.saveAnalysis(stockSymbol, analysisData)
-    return true; // Stubbed for now
+  const saveAnalysis = async (stockSymbol: string, analysisData: AnalysisResponse) => {
+    // TODO: Implement analysis saving using new backend endpoint
+    console.log('Saving analysis for:', stockSymbol, analysisData);
   };
 
   const getAnalysisById = async (analysisId: string): Promise<StoredAnalysis | null> => {
-    try {
-      // TODO: Implement getAnalysisById using new backend endpoint
-      return null; // Stubbed for now
-    } catch (err) {
-      console.error('Error fetching analysis by ID:', err);
-      return null;
-    }
+    // TODO: Implement analysis retrieval by ID using new backend endpoint
+    console.log('Getting analysis by ID:', analysisId);
+    return null;
   };
 
   const getAnalysesBySignal = async (signal: string): Promise<StoredAnalysis[]> => {
-    try {
-      // TODO: Implement getAnalysesBySignal using new backend endpoint
-      return []; // Stubbed for now
-    } catch (err) {
-      console.error('Error fetching analyses by signal:', err);
-      return [];
-    }
+    // TODO: Implement analysis filtering by signal using new backend endpoint
+    console.log('Getting analyses by signal:', signal);
+    return [];
   };
 
   const getAnalysesBySector = async (sector: string): Promise<StoredAnalysis[]> => {
-    try {
-      // TODO: Implement getAnalysesBySector using new backend endpoint
-      return []; // Stubbed for now
-    } catch (err) {
-      console.error('Error fetching analyses by sector:', err);
-      return [];
-    }
+    // TODO: Implement analysis filtering by sector using new backend endpoint
+    console.log('Getting analyses by sector:', sector);
+    return [];
   };
 
   const getHighConfidenceAnalyses = async (minConfidence: number = 80): Promise<StoredAnalysis[]> => {
-    try {
-      // TODO: Implement getHighConfidenceAnalyses using new backend endpoint
-      return []; // Stubbed for now
-    } catch (err) {
-      console.error('Error fetching high confidence analyses:', err);
-      return [];
-    }
+    // TODO: Implement high confidence analysis filtering using new backend endpoint
+    console.log('Getting high confidence analyses:', minConfidence);
+    return [];
   };
 
   useEffect(() => {

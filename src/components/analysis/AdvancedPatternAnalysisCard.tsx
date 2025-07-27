@@ -1,20 +1,26 @@
-import React from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { TrendingUp, TrendingDown, Target, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import React from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { TrendingUp, TrendingDown, Target, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+
+interface PatternComponent {
+  price?: number;
+  level?: number;
+  date?: string;
+  volume?: number;
+}
 
 interface AdvancedPattern {
   type: string;
   quality_score: number;
   completion_status: string;
   target?: number;
-  left_shoulder?: any;
-  head?: any;
-  right_shoulder?: any;
-  neckline?: any;
-  cup?: any;
-  handle?: any;
+  left_shoulder?: PatternComponent;
+  head?: PatternComponent;
+  right_shoulder?: PatternComponent;
+  neckline?: PatternComponent;
+  cup?: PatternComponent;
+  handle?: PatternComponent;
   breakout_level?: number;
 }
 

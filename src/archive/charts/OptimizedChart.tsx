@@ -40,8 +40,8 @@ export function OptimizedChart({
 }: OptimizedChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<IChartApi | null>(null);
-  const candleSeriesRef = useRef<any>(null);
-  const volumeSeriesRef = useRef<any>(null);
+  const candleSeriesRef = useRef<ISeriesApi<CandlestickData> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<HistogramData> | null>(null);
   const [chartError, setChartError] = useState<string | null>(null);
   
   const [data, setData] = useState<CandleData[]>([]);

@@ -120,7 +120,7 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
     }
   };
 
-  const formatPatternData = (patterns: any[], patternType: string) => {
+  const formatPatternData = (patterns: unknown[], patternType: string) => {
     if (!patterns || patterns.length === 0) return null;
 
     return patterns.map((pattern, index) => {
@@ -160,6 +160,45 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
   const supportResistance = {
     support: support_resistance.support.length,
     resistance: support_resistance.resistance.length
+  };
+
+  const renderPatternDetails = (pattern: PatternData) => {
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <span className="font-medium">Start Date:</span>
+            <div className="text-xs text-gray-600">
+              {new Date(pattern.start_date).toLocaleDateString()}
+            </div>
+          </div>
+          <div>
+            <span className="font-medium">End Date:</span>
+            <div className="text-xs text-gray-600">
+              {new Date(pattern.end_date).toLocaleDateString()}
+            </div>
+          </div>
+          <div>
+            <span className="font-medium">Start Price:</span>
+            <div className="text-xs text-gray-600">
+              ₹{pattern.start_price?.toFixed(2)}
+            </div>
+          </div>
+          <div>
+            <span className="font-medium">End Price:</span>
+            <div className="text-xs text-gray-600">
+              ₹{pattern.end_price?.toFixed(2)}
+            </div>
+          </div>
+        </div>
+        <div className="text-sm">
+          <span className="font-medium">Confidence:</span> {pattern.confidence?.toFixed(1)}%
+        </div>
+        <div className="text-sm">
+          <span className="font-medium">Description:</span> {pattern.description}
+        </div>
+      </div>
+    );
   };
 
   return (

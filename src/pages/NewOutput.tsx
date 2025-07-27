@@ -45,11 +45,29 @@ import DisclaimerCard from "@/components/analysis/DisclaimerCard";
 
 // Services and Utils
 import { apiService } from "@/services/api";
-import { AnalysisData, EnhancedOverlays } from "@/types/analysis";
+import { AnalysisData, EnhancedOverlays, AdvancedPatterns, MultiTimeframeAnalysis, AdvancedRiskMetrics, StressTestingData, ScenarioAnalysisData } from "@/types/analysis";
 import Header from "@/components/Header";
 
+interface ChartData {
+  date: string;
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+interface ExtendedIndicators {
+  advanced_patterns?: AdvancedPatterns;
+  multi_timeframe?: MultiTimeframeAnalysis;
+  advanced_risk?: AdvancedRiskMetrics;
+  stress_testing?: StressTestingData;
+  scenario_analysis?: ScenarioAnalysisData;
+}
+
 // Price Statistics calculation function
-const calculatePriceStatistics = (data: any[] | null) => {
+const calculatePriceStatistics = (data: ChartData[] | null) => {
   if (!data || data.length === 0) {
     return null;
   }
@@ -529,16 +547,16 @@ const NewOutput: React.FC = () => {
                 </>
               ) : (
                 <>
-                  {(indicators as any)?.advanced_patterns && (
+                  {(indicators as ExtendedIndicators)?.advanced_patterns && (
                     <AdvancedPatternAnalysisCard 
-                      patterns={(indicators as any).advanced_patterns} 
+                      patterns={(indicators as ExtendedIndicators).advanced_patterns} 
                       symbol={stockSymbol}
                     />
                   )}
 
-                  {(indicators as any)?.multi_timeframe && !(indicators as any).multi_timeframe.error && (
+                  {(indicators as ExtendedIndicators)?.multi_timeframe && !(indicators as ExtendedIndicators).multi_timeframe.error && (
                     <MultiTimeframeAnalysisCard 
-                      analysis={(indicators as any).multi_timeframe} 
+                      analysis={(indicators as ExtendedIndicators).multi_timeframe} 
                       symbol={stockSymbol}
                     />
                   )}
@@ -566,23 +584,23 @@ const NewOutput: React.FC = () => {
               </>
             ) : (
               <>
-                {(indicators as any)?.advanced_risk && !(indicators as any).advanced_risk.error && (
+                {(indicators as ExtendedIndicators)?.advanced_risk && !(indicators as ExtendedIndicators).advanced_risk.error && (
                   <AdvancedRiskAssessmentCard 
-                    riskMetrics={(indicators as any).advanced_risk}
+                    riskMetrics={(indicators as ExtendedIndicators).advanced_risk}
                     symbol={stockSymbol}
                   />
                 )}
 
-                {(indicators as any)?.advanced_patterns && (
+                {(indicators as ExtendedIndicators)?.advanced_patterns && (
                   <ComplexPatternAnalysisCard 
-                    patterns={(indicators as any).advanced_patterns}
+                    patterns={(indicators as ExtendedIndicators).advanced_patterns}
                   />
                 )}
 
-                {((indicators as any)?.stress_testing || (indicators as any)?.scenario_analysis) && (
+                {((indicators as ExtendedIndicators)?.stress_testing || (indicators as ExtendedIndicators)?.scenario_analysis) && (
                   <AdvancedRiskMetricsCard 
-                    stress_testing={(indicators as any)?.stress_testing}
-                    scenario_analysis={(indicators as any)?.scenario_analysis}
+                    stress_testing={(indicators as ExtendedIndicators)?.stress_testing}
+                    scenario_analysis={(indicators as ExtendedIndicators)?.scenario_analysis}
                   />
                 )}
               </>

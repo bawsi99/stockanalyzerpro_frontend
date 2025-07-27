@@ -81,7 +81,7 @@ interface EnhancedChartsMultiPaneChartProps {
     trianglesFlags?: boolean;
   };
   onValidationResult?: (result: ChartValidationResult) => void;
-  onStatsCalculated?: (stats: any) => void;
+  onStatsCalculated?: (stats: Record<string, unknown>) => void;
   onResetScale?: () => void;
   onRegisterReset?: (resetFn: () => void) => void;
 }
@@ -193,7 +193,7 @@ const EnhancedChartsMultiPaneChart: React.FC<EnhancedChartsMultiPaneChartProps> 
 
   // State
   const [error, setError] = useState<string | null>(null);
-  const [chartStats, setChartStats] = useState<any>(null);
+  const [chartStats, setChartStats] = useState<Record<string, unknown> | null>(null);
   const [chartDimensions, setChartDimensions] = useState({ width: 0, height: 0 });
 
   // Calculate chart heights based on active indicators
@@ -530,10 +530,10 @@ const EnhancedChartsMultiPaneChart: React.FC<EnhancedChartsMultiPaneChartProps> 
     // Add series to charts
     addSeriesToCharts(colors);
 
-  }, [validatedData, chartDimensions, width, height, theme, chartHeights, showVolume, activeIndicators, indicators]);
+  }, [validatedData, chartDimensions, width, height, theme, chartHeights, showVolume, activeIndicators, addSeriesToCharts, isLiveMode]);
 
   // Add series to charts
-  const addSeriesToCharts = useCallback((colors: any) => {
+  const addSeriesToCharts = useCallback((colors: Record<string, string>) => {
     if (!chartInstance.current || !validatedData || validatedData.length === 0) return;
 
     // Convert data to chart format

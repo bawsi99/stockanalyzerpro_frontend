@@ -4,6 +4,13 @@ import { ChartData } from '@/types/analysis';
 import { toUTCTimestamp } from '@/utils/chartUtils';
 import { ENDPOINTS } from '../config';
 import { performanceMonitor } from '@/utils/performanceMonitor';
+import { 
+  MarketStatusResponse, 
+  OptimizedDataResponse, 
+  WebSocketHealthResponse, 
+  WebSocketTestResponse,
+  ServiceHealthResponse 
+} from './api';
 
 // Types for real data
 export interface RealCandlestickData {
@@ -51,6 +58,16 @@ export const INTERVAL_MAPPING = {
 
 // ===== TYPES & INTERFACES =====
 
+export interface ChartDataPoint {
+  date: string;
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 class LiveDataService {
   private wsConnection: WebSocket | null = null;
   private reconnectAttempts = 0;
@@ -80,15 +97,22 @@ class LiveDataService {
 
         const backendInterval = INTERVAL_MAPPING[interval as keyof typeof INTERVAL_MAPPING] || '1day';
         
-        const response = await fetch(
-          `${ENDPOINTS.DATA.STOCK_HISTORY}/${symbol}/history?interval=${backendInterval}&exchange=${exchange}&limit=${limit}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+        const url = `${ENDPOINTS.DATA.STOCK_HISTORY}/${symbol}/history?interval=${backendInterval}&exchange=${exchange}&limit=${limit}`;
+        console.log('🔗 Calling historical data API:', {
+          symbol,
+          interval,
+          backendInterval,
+          exchange,
+          limit,
+          url
+        });
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
         if (!response.ok) {
           if (response.status === 401) {
@@ -164,7 +188,7 @@ class LiveDataService {
   }
 
   // Get market status (Data Service - Port 8000)
-  async getMarketStatus(): Promise<any> {
+  async getMarketStatus(): Promise<MarketStatusResponse> {
     try {
       const token = await authService.ensureAuthenticated();
       
@@ -193,7 +217,7 @@ class LiveDataService {
     interval?: string;
     period?: number;
     force_live?: boolean;
-  }): Promise<any> {
+  }): Promise<OptimizedDataResponse> {
     try {
       const token = await authService.ensureAuthenticated();
       
@@ -220,8 +244,8 @@ class LiveDataService {
   // Connect to WebSocket for real-time data (Data Service - Port 8000)
   async connectWebSocket(
     symbols: string[], // Changed from tokens to symbols
-    onData: (data: any) => void,
-    onError?: (error: any) => void,
+    onData: (data: RealCandlestickData) => void,
+    onError?: (error: Error) => void,
     onClose?: () => void,
     timeframes: string[] = ['1d'] // Default to daily timeframe
   ): Promise<WebSocket> {
@@ -276,7 +300,7 @@ class LiveDataService {
             this.wsConnection.send(JSON.stringify(subscriptionMessage));
           } catch (error) {
             console.error('Error sending subscription message:', error);
-            onError?.(error);
+            onError?.(error as Error);
           }
         }
       };
@@ -309,14 +333,14 @@ class LiveDataService {
           
         } catch (error) {
           console.error('Error parsing WebSocket message:', error, 'Raw data:', event.data);
-          onError?.(error);
+          onError?.(error as Error);
         }
       };
 
       this.wsConnection.onerror = (error) => {
         console.error('WebSocket error:', error);
         clearTimeout(connectionTimeout);
-        onError?.(error);
+        onError?.(error as Error);
       };
 
       this.wsConnection.onclose = (event) => {
@@ -340,7 +364,7 @@ class LiveDataService {
             this.connectWebSocket(symbols, onData, onError, onClose, timeframes)
               .catch(error => {
                 console.error('Reconnection failed:', error);
-                onError?.(error);
+                onError?.(error as Error);
               });
           }, delay);
         } else {
@@ -379,7 +403,7 @@ class LiveDataService {
   }
 
   // Get WebSocket health status (Data Service - Port 8000)
-  async getWebSocketHealth(): Promise<any> {
+  async getWebSocketHealth(): Promise<WebSocketHealthResponse> {
     try {
       const token = await authService.ensureAuthenticated();
       
@@ -402,7 +426,7 @@ class LiveDataService {
   }
 
   // Get WebSocket test status (Data Service - Port 8000)
-  async getWebSocketTest(): Promise<any> {
+  async getWebSocketTest(): Promise<WebSocketTestResponse> {
     try {
       const token = await authService.ensureAuthenticated();
       
@@ -459,7 +483,7 @@ class LiveDataService {
       };
       
       // Convert the stock list to StockInfo format with tokens
-      const availableStocks: StockInfo[] = stockList.map((stock: any) => ({
+      const availableStocks: StockInfo[] = stockList.map((stock: { symbol: string; name: string; exchange?: string; sector?: string }) => ({
         symbol: stock.symbol,
         name: stock.name,
         token: tokenMapping[stock.symbol] || '256265', // Default to RELIANCE token
@@ -502,7 +526,7 @@ class LiveDataService {
   }
 
   // Convert backend data format to frontend format
-  convertToChartData(backendData: RealCandlestickData[]): any[] {
+  convertToChartData(backendData: RealCandlestickData[]): ChartDataPoint[] {
     return backendData.map(candle => {
       // Validate that time is a valid number
       if (typeof candle.time !== 'number' || isNaN(candle.time) || candle.time <= 0) {
@@ -523,7 +547,7 @@ class LiveDataService {
   }
 
   // Get real-time status (Data Service - Port 8000)
-  async getRealTimeStatus(): Promise<any> {
+  async getRealTimeStatus(): Promise<ServiceHealthResponse> {
     try {
       const token = await authService.ensureAuthenticated();
       

@@ -473,7 +473,21 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 
 export function useLiveIndicators(token: string, data: ChartData[]) {
   const [indicators, setIndicators] = useState<IndicatorState | null>(null);
-  const [latestValues, setLatestValues] = useState<any>(null);
+  const [latestValues, setLatestValues] = useState<{
+    sma20: number;
+    sma50: number;
+    sma200: number;
+    ema12: number;
+    ema26: number;
+    ema50: number;
+    rsi: number;
+    macd: { line: number; signal: number; histogram: number };
+    bollingerBands: { upper: number; middle: number; lower: number };
+    stochastic: { k: number; d: number };
+    atr: number;
+    obv: number;
+    volumeSma: number;
+  } | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
 
   const calculateIndicators = useCallback(() => {

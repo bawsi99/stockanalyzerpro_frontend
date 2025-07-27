@@ -1,44 +1,27 @@
-import React from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { TrendingUp, TrendingDown, Minus, BarChart3, Target, AlertTriangle } from "lucide-react";
+import React from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { TrendingUp, TrendingDown, Minus, Clock, Target, AlertTriangle } from 'lucide-react';
 
-interface TimeframeConsensus {
-  direction: string;
-  strength: number;
-  bullish_periods: number;
-  bearish_periods: number;
-  total_periods: number;
+interface TimeframeAnalysis {
+  timeframe: string;
+  signal: string;
+  confidence: number;
+  support_level?: number;
+  resistance_level?: number;
+  trend_strength: number;
+  key_levels: number[];
+  analysis_summary: string;
 }
 
 interface MultiTimeframeAnalysis {
-  short_term?: {
-    name: string;
-    consensus: TimeframeConsensus;
-    periods: Record<string, any>;
-  };
-  medium_term?: {
-    name: string;
-    consensus: TimeframeConsensus;
-    periods: Record<string, any>;
-  };
-  long_term?: {
-    name: string;
-    consensus: TimeframeConsensus;
-    periods: Record<string, any>;
-  };
-  overall_consensus?: {
-    direction: string;
-    strength: number;
-    score: number;
-    timeframe_alignment: {
-      short_term: string;
-      medium_term: string;
-      long_term: string;
-    };
-  };
+  short_term: TimeframeAnalysis;
+  medium_term: TimeframeAnalysis;
+  long_term: TimeframeAnalysis;
+  consensus_signal: string;
+  overall_confidence: number;
+  timeframe_alignment: string;
+  key_insights: string[];
 }
 
 interface MultiTimeframeAnalysisCardProps {
@@ -76,7 +59,7 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
     return 'bg-red-500';
   };
 
-  const renderTimeframeCard = (timeframe: string, data: any) => {
+  const renderTimeframeCard = (timeframe: string, data: Record<string, unknown>) => {
     if (!data) return null;
 
     const consensus = data.consensus;

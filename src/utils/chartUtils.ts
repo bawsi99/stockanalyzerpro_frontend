@@ -679,13 +679,47 @@ export interface ChartInitOptions {
   debug?: boolean;
 }
 
+export interface ChartConfig {
+  width?: number;
+  height?: number;
+  layout?: {
+    background?: { color: string };
+    textColor?: string;
+  };
+  grid?: {
+    vertLines?: { color: string };
+    horzLines?: { color: string };
+  };
+  timeScale?: {
+    timeVisible?: boolean;
+    secondsVisible?: boolean;
+    rightOffset?: number;
+    barSpacing?: number;
+  };
+  rightPriceScale?: {
+    autoScale?: boolean;
+    scaleMargins?: { top: number; bottom: number };
+  };
+  crosshair?: {
+    mode?: number;
+  };
+  watermark?: {
+    visible?: boolean;
+    fontSize?: number;
+    text?: string;
+    color?: string;
+    horzAlign?: string;
+    vertAlign?: string;
+  };
+}
+
 /**
  * Robust chart initialization with retry mechanism and proper error handling
  */
 export const initializeChartWithRetry = async (
   containerRef: ChartContainer,
   options: ChartInitOptions,
-  chartConfig: any,
+  chartConfig: ChartConfig,
   maxRetries: number = 5
 ): Promise<IChartApi | null> => {
   const { debug = false } = options;
@@ -717,13 +751,16 @@ export const initializeChartWithRetry = async (
         }
       }
 
-      // Clear container content
-      container.innerHTML = '';
-
       // Import the library dynamically
       const { createChart } = await import('lightweight-charts');
       
       if (debug) console.log('Library imported successfully');
+
+      // Ensure container is clean before creating chart
+      if (container.children.length > 0) {
+        if (debug) console.log('Cleaning container before chart creation');
+        container.innerHTML = '';
+      }
 
       // Create chart with actual container dimensions
       const finalConfig = {
@@ -790,41 +827,39 @@ export const createChartTheme = (isDark: boolean, options: ChartInitOptions = {}
 };
 
 /**
- * Safe chart cleanup function
+ * Safely cleanup chart instance
  */
 export const safeChartCleanup = (chartRef: React.MutableRefObject<IChartApi | null>) => {
-  try {
-    if (chartRef.current) {
-      chartRef.current.remove();
+  if (chartRef.current) {
+    try {
+      const chart = chartRef.current;
+      
+      // Lightweight Charts automatically removes all series when the chart is removed
+      // Just remove the chart instance
+      chart.remove();
+      chartRef.current = null;
+    } catch (error) {
+      console.warn('Error during chart cleanup:', error);
+      // Force null even if cleanup fails
       chartRef.current = null;
     }
-  } catch (error) {
-    console.warn('Error during chart cleanup:', error);
   }
 };
 
 /**
- * Check if chart container is ready
+ * Check if chart container is ready for initialization
  */
 export const isChartContainerReady = (containerRef: ChartContainer): boolean => {
+  if (!containerRef.current) {
+    return false;
+  }
+  
   const container = containerRef.current;
-  
-  // Basic container existence check
-  if (!container) {
-    return false;
-  }
-  
-  // Check if container is in DOM
-  if (!document.contains(container)) {
-    return false;
-  }
-  
-  // Check dimensions - container must have both width and height
   const hasDimensions = container.clientWidth > 0 && container.clientHeight > 0;
+  const hasMinimumSize = container.clientWidth >= 100 && container.clientHeight >= 100;
   
-  // Container is ready only if it has proper dimensions
-  return hasDimensions;
-}; 
+  return hasDimensions && hasMinimumSize;
+};
 
 // ===== TIMESTAMP UTILITIES =====
 
@@ -891,10 +926,11 @@ export function fromUTCTimestamp(utcTimestamp: number): string {
  * Sort chart data by timestamp in ascending order (oldest first)
  * This is required by TradingView Lightweight Charts library
  */
-export function sortChartDataByTime<T extends { date: string }>(data: T[]): T[] {
+export function sortChartDataByTime<T extends { date: string; time?: number }>(data: T[]): T[] {
   return [...data].sort((a, b) => {
-    const timeA = new Date(a.date).getTime();
-    const timeB = new Date(b.date).getTime();
+    // Use time field if available, otherwise fall back to date
+    const timeA = (a as any).time || new Date(a.date).getTime() / 1000;
+    const timeB = (b as any).time || new Date(b.date).getTime() / 1000;
     return timeA - timeB;
   });
 }
@@ -927,8 +963,9 @@ export function validateChartDataForTradingView<T extends { date: string; open: 
   // Remove duplicates based on timestamp
   const uniqueData = sortedData.filter((item, index, array) => {
     if (index === 0) return true;
-    const currentTime = new Date(item.date).getTime();
-    const previousTime = new Date(array[index - 1].date).getTime();
+    // Use time field for comparison instead of date field
+    const currentTime = (item as any).time || new Date(item.date).getTime() / 1000;
+    const previousTime = (array[index - 1] as any).time || new Date(array[index - 1].date).getTime() / 1000;
     return currentTime !== previousTime;
   });
 
@@ -1249,10 +1286,19 @@ export function calcOBV(closes: number[], volumes: number[]): (number | null)[] 
   return obv;
 }
 
-export function detectDivergence(prices: number[], indicator: number[], order = 5) {
+export interface DivergenceData {
+  type: 'bullish' | 'bearish';
+  priceIndices: [number, number];
+  indicatorIndices: [number, number];
+  priceValues: [number, number];
+  indicatorValues: [number, number];
+}
+
+export function detectDivergence(prices: number[], indicator: number[], order = 5): DivergenceData[] {
   const { peaks, lows } = identifyPeaksLows(prices, order);
   const { peaks: indicatorPeaks, lows: indicatorLows } = identifyPeaksLows(indicator, order);
-  const divergences: any[] = [];
+  const divergences: DivergenceData[] = [];
+  
   // Bullish divergence: price makes lower lows, indicator makes higher lows
   for (let i = 0; i < lows.length - 1; i++) {
     for (let j = i + 1; j < lows.length; j++) {
@@ -1271,6 +1317,7 @@ export function detectDivergence(prices: number[], indicator: number[], order = 
       }
     }
   }
+  
   // Bearish divergence: price makes higher highs, indicator makes lower highs
   for (let i = 0; i < peaks.length - 1; i++) {
     for (let j = i + 1; j < peaks.length; j++) {
@@ -1289,5 +1336,6 @@ export function detectDivergence(prices: number[], indicator: number[], order = 
       }
     }
   }
+  
   return divergences;
 } 

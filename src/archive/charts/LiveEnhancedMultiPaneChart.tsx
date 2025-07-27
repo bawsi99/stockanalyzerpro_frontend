@@ -35,7 +35,7 @@ interface LiveEnhancedMultiPaneChartProps {
   height?: number;
   debug?: boolean;
   onValidationResult?: (result: ChartValidationResult) => void;
-  onStatsCalculated?: (stats: any) => void;
+  onStatsCalculated?: (stats: Record<string, unknown>) => void;
   overlays?: {
     showRsiDivergence: boolean;
   };
@@ -45,7 +45,7 @@ interface LiveEnhancedMultiPaneChartProps {
   onShowAll?: () => void;
   onToggleShortcuts?: () => void;
   showShortcuts?: boolean;
-  onActiveIndicatorsChange?: (indicators: any) => void;
+  onActiveIndicatorsChange?: (indicators: Record<string, boolean>) => void;
   autoConnect?: boolean;
   maxDataPoints?: number;
   updateInterval?: number;
@@ -78,7 +78,7 @@ const toTimestamp = (iso: string): UTCTimestamp => {
 
 // ===== CHART COMPONENT =====
 
-const LiveChartComponent = React.forwardRef<any, LiveEnhancedMultiPaneChartProps>(({ 
+const LiveChartComponent = React.forwardRef<HTMLDivElement, LiveEnhancedMultiPaneChartProps>(({ 
   token,
   timeframe,
   theme = "light",
@@ -149,7 +149,7 @@ const LiveChartComponent = React.forwardRef<any, LiveEnhancedMultiPaneChartProps
   });
 
   // Validation result
-  const validationResult = useMemo(() => validateChartData(chartData), [chartData, debug]);
+  const validationResult = useMemo(() => validateChartData(chartData), [chartData]);
   const validatedData = validationResult.data;
 
   // Chart statistics
@@ -957,7 +957,7 @@ const LiveChartComponent = React.forwardRef<any, LiveEnhancedMultiPaneChartProps
 
 // ===== WRAPPER COMPONENT =====
 
-const LiveEnhancedMultiPaneChart = React.forwardRef<any, LiveEnhancedMultiPaneChartProps>((props, ref) => {
+const LiveEnhancedMultiPaneChart = React.forwardRef<HTMLDivElement, LiveEnhancedMultiPaneChartProps>((props, ref) => {
   return (
     <LiveChartProvider
       token={props.token}

@@ -492,6 +492,7 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
             }
           },
         },
+      }
       );
       volumeInstance.current = volumeChart;
 
@@ -506,24 +507,25 @@ const MultiPaneChart: React.FC<MultiPaneChartProps> = ({
           debug: true
         },
         {
-        ...commonOptions,
-        width: chartDimensions.width || rsiChartRef.current.clientWidth,
-        height: chartHeights.rsi,
-        layout: {
-          ...commonOptions.layout,
-          textColor: isDark ? "#94a3b8" : "#64748b",
-        },
-        rightPriceScale: {
-          ...commonOptions.rightPriceScale,
-          scaleMargins: { top: 0.1, bottom: 0.1 },
-        },
-        localization: {
-          priceFormatter: (price: number) => {
-            // Format to exactly 7 characters total (e.g., "100.00")
-            const formatted = price.toFixed(2);
-            return formatted.padStart(7, ' ');
+          ...commonOptions,
+          width: chartDimensions.width || rsiChartRef.current.clientWidth,
+          height: chartHeights.rsi,
+          layout: {
+            ...commonOptions.layout,
+            textColor: isDark ? "#94a3b8" : "#64748b",
           },
-        },
+          rightPriceScale: {
+            ...commonOptions.rightPriceScale,
+            scaleMargins: { top: 0.1, bottom: 0.1 },
+          },
+          localization: {
+            priceFormatter: (price: number) => {
+              // Format to exactly 7 characters total (e.g., "100.00")
+              const formatted = price.toFixed(2);
+              return formatted.padStart(7, ' ');
+            },
+          },
+        }
       );
       rsiInstance.current = rsiChart;
 

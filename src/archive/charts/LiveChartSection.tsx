@@ -64,7 +64,7 @@ const TIMEFRAME_OPTIONS = [
   { value: '1day', label: '1D', description: '1 Day' },
 ];
 
-const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
+const LiveChartSection = React.forwardRef<HTMLDivElement, LiveChartSectionProps>(({
   symbol,
   theme = "light",
   height = 600,
@@ -619,7 +619,7 @@ const LiveChartSection = React.forwardRef<any, LiveChartSectionProps>(({
   }, [chartData, theme, showVolume, showIndicators, activeIndicators, indicators]);
 
   // Fix tick data handling
-  const handleTickUpdate = useCallback((tickData: any) => {
+  const handleTickUpdate = useCallback((tickData: { price: number }) => {
     if (!chartInstance.current || !candleSeriesRef.current) return;
 
     // Update the last candle with tick data

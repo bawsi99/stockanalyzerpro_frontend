@@ -9,7 +9,8 @@ import {
   SectorComparisonResponse,
   StockSectorResponse,
   isAnalysisResponse,
-  isErrorResponse
+  isErrorResponse,
+  SectorBenchmarking
 } from '@/types/analysis';
 import { ENDPOINTS } from '../config';
 
@@ -46,16 +47,26 @@ export interface IndicatorsResponse {
   timestamp: string;
 }
 
+export interface PatternData {
+  start_date: string;
+  end_date: string;
+  start_price: number;
+  end_price: number;
+  confidence: number;
+  type: string;
+  description: string;
+}
+
 export interface PatternsResponse {
   success: boolean;
   symbol: string;
   interval: string;
   patterns: {
-    candlestick_patterns?: any[];
-    double_tops?: any[];
-    double_bottoms?: any[];
-    head_shoulders?: any[];
-    triangles?: any[];
+    candlestick_patterns?: PatternData[];
+    double_tops?: PatternData[];
+    double_bottoms?: PatternData[];
+    head_shoulders?: PatternData[];
+    triangles?: PatternData[];
   };
   timestamps: number[];
   count: number;
@@ -76,6 +87,14 @@ export interface ChartsResponse {
   };
   chart_count: number;
   timestamp: string;
+}
+
+export interface HealthResponse {
+  status: string;
+  timestamp: string;
+  version?: string;
+  uptime?: number;
+  services?: Record<string, { status: string; message?: string }>;
 }
 
 class AnalysisService {
@@ -347,7 +366,7 @@ class AnalysisService {
   }
 
   // POST /sector/benchmark - Sector benchmarking
-  async getSectorBenchmark(request: AnalysisRequest): Promise<any> {
+  async getSectorBenchmark(request: AnalysisRequest): Promise<SectorBenchmarking> {
     try {
       const token = await authService.ensureAuthenticated();
       if (!token) {
@@ -377,7 +396,7 @@ class AnalysisService {
         throw new Error(data.error || 'Failed to fetch sector benchmark');
       }
 
-      return data;
+      return data.results;
     } catch (error) {
       console.error('Error fetching sector benchmark:', error);
       throw error;
@@ -539,7 +558,7 @@ class AnalysisService {
   // ===== HEALTH CHECKS =====
 
   // GET /health - Analysis service health
-  async getHealth(): Promise<any> {
+  async getHealth(): Promise<HealthResponse> {
     try {
       const token = await authService.ensureAuthenticated();
       if (!token) {

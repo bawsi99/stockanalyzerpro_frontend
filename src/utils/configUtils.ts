@@ -78,10 +78,28 @@ export const validateConfiguration = (): { isValid: boolean; errors: string[] } 
   };
 };
 
+export interface ConfigurationSummary {
+  environment: {
+    mode: string;
+    isProduction: boolean;
+    isDevelopment: boolean;
+  };
+  urls: {
+    dataService: string;
+    analysisService: string;
+    websocket: string;
+    apiBase: string;
+  };
+  validation: {
+    isValid: boolean;
+    errors: string[];
+  };
+}
+
 /**
  * Get configuration summary for debugging
  */
-export const getConfigurationSummary = (): Record<string, any> => {
+export const getConfigurationSummary = (): ConfigurationSummary => {
   const validation = validateConfiguration();
   
   return {

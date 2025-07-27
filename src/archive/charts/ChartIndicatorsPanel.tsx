@@ -25,9 +25,63 @@ import {
   Minus
 } from 'lucide-react';
 
+interface Indicators {
+  sma20?: number;
+  sma50?: number;
+  ema12?: number;
+  ema26?: number;
+  rsi14?: number;
+  macd?: number;
+  macdSignal?: number;
+  macdHistogram?: number;
+  bollingerBands?: {
+    upper: number;
+    middle: number;
+    lower: number;
+  };
+  stochastic?: {
+    k: number;
+    d: number;
+  };
+  atr?: number;
+  obv?: number;
+}
+
+interface Patterns {
+  doubleTops?: Array<{
+    type: 'double_top';
+    price: number;
+    date: string;
+  }>;
+  doubleBottoms?: Array<{
+    type: 'double_bottom';
+    price: number;
+    date: string;
+  }>;
+  triangles?: Array<{
+    type: 'ascending' | 'descending' | 'symmetrical';
+    breakout: 'up' | 'down';
+    price: number;
+    date: string;
+  }>;
+  flags?: Array<{
+    type: 'bull_flag' | 'bear_flag';
+    price: number;
+    date: string;
+  }>;
+  support?: Array<{
+    level: number;
+    strength: number;
+  }>;
+  resistance?: Array<{
+    level: number;
+    strength: number;
+  }>;
+}
+
 interface ChartIndicatorsPanelProps {
-  indicators: any;
-  patterns: any;
+  indicators: Indicators;
+  patterns: Patterns;
   symbol: string;
   currentPrice: number;
   theme?: 'light' | 'dark';
@@ -417,7 +471,7 @@ const ChartIndicatorsPanel: React.FC<ChartIndicatorsPanelProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-green-800">Support Levels</span>
                   <Badge variant="outline" className="text-green-600 border-green-200">
-                    {patterns.supportResistance.filter((s: any) => s.type === 'support').length}
+                    {patterns.supportResistance.filter((s: { type: string }) => s.type === 'support').length}
                   </Badge>
                 </div>
                 <div className="mt-1 text-xs text-gray-600">
@@ -432,7 +486,7 @@ const ChartIndicatorsPanel: React.FC<ChartIndicatorsPanelProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-red-800">Resistance Levels</span>
                   <Badge variant="outline" className="text-red-600 border-red-200">
-                    {patterns.supportResistance.filter((s: any) => s.type === 'resistance').length}
+                    {patterns.supportResistance.filter((s: { type: string }) => s.type === 'resistance').length}
                   </Badge>
                 </div>
                 <div className="mt-1 text-xs text-gray-600">

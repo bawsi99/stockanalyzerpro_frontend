@@ -50,7 +50,7 @@ interface ChartsMultiPaneChartProps {
     stochastic?: boolean;
   };
   onValidationResult?: (result: ChartValidationResult) => void;
-  onStatsCalculated?: (stats: any) => void;
+  onStatsCalculated?: (stats: Record<string, unknown>) => void;
   onResetScale?: () => void;
   onRegisterReset?: (resetFn: () => void) => void;
 }
@@ -149,7 +149,7 @@ const ChartsMultiPaneChart: React.FC<ChartsMultiPaneChartProps> = ({
   });
 
   // Validation and stats
-  const validationResult = useMemo(() => validateChartData(data), [data, debug]);
+  const validationResult = useMemo(() => validateChartData(data), [data]);
   const validatedData = useMemo(() => {
     if (!validationResult.data || validationResult.data.length === 0) {
       return [];
@@ -498,7 +498,7 @@ const ChartsMultiPaneChart: React.FC<ChartsMultiPaneChartProps> = ({
     }
 
     setIsLoading(false);
-  }, [validatedData, theme, chartDimensions, width, chartHeights, showVolume, activeIndicators]);
+  }, [validatedData, theme, chartDimensions, width, chartHeights, showVolume, activeIndicators, height, isLiveMode]);
 
   // Set loading to false when we have data and dimensions
   useEffect(() => {
@@ -871,7 +871,7 @@ const ChartsMultiPaneChart: React.FC<ChartsMultiPaneChartProps> = ({
       
       return () => clearTimeout(timer);
     }
-  }, [initializeCharts, chartDimensions]);
+  }, [initializeCharts, chartDimensions, validatedData?.length]);
 
   // Handle resize
   useEffect(() => {
@@ -975,7 +975,7 @@ const ChartsMultiPaneChart: React.FC<ChartsMultiPaneChartProps> = ({
         }
       }
     }
-  }, [chartDimensions, chartHeights, showVolume, activeIndicators]);
+  }, [chartDimensions, chartHeights, showVolume, activeIndicators, isLiveMode]);
 
   // Register reset function
   useEffect(() => {
