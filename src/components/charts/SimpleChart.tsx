@@ -39,7 +39,7 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
   symbol,
   timeframe,
   height = 400,
-  width = 800,
+  width = 1200,
   data,
   isLive,
   isConnected,
@@ -101,10 +101,21 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
       return;
     }
 
-    // Check if container has dimensions
+    // Check if container has dimensions with comprehensive validation
     const container = chartContainerRef.current;
-    if (container.clientWidth === 0 || container.clientHeight === 0) {
-      console.log('❌ Container has no dimensions, retrying in 100ms');
+    const rect = container.getBoundingClientRect();
+    const hasWidth = container.clientWidth > 0 || container.offsetWidth > 0 || rect.width > 0;
+    const hasHeight = container.clientHeight > 0 || container.offsetHeight > 0 || rect.height > 0;
+    
+    if (!hasWidth || !hasHeight) {
+      console.log('❌ Container has no dimensions, retrying in 100ms', {
+        clientWidth: container.clientWidth,
+        clientHeight: container.clientHeight,
+        offsetWidth: container.offsetWidth,
+        offsetHeight: container.offsetHeight,
+        rectWidth: rect.width,
+        rectHeight: rect.height
+      });
       setTimeout(() => {
         if (isMountedRef.current) {
           initializeChart();
@@ -122,10 +133,10 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
       // Clear container
       chartContainerRef.current.innerHTML = '';
       
-      // Create chart
+      // Create chart with actual container dimensions
       const chart = createChart(chartContainerRef.current, {
-        width: chartContainerRef.current.clientWidth,
-        height: chartContainerRef.current.clientHeight,
+        width: chartContainerRef.current.clientWidth || chartContainerRef.current.offsetWidth || chartContainerRef.current.getBoundingClientRect().width,
+        height: chartContainerRef.current.clientHeight || chartContainerRef.current.offsetHeight || chartContainerRef.current.getBoundingClientRect().height,
         layout: {
           background: { color: '#ffffff' },
           textColor: '#333',
@@ -407,10 +418,10 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
       
       {/* Chart container */}
       <div 
-        className="w-full h-full bg-white border border-gray-200 relative" 
+        className="chart-container-responsive bg-white border border-gray-200 relative" 
         style={{ 
           minHeight: `${height}px`,
-          minWidth: `${width}px`
+          maxWidth: `${width}px`
         }}
       >
         {/* Debug info */}
@@ -420,7 +431,10 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
             <div>Has Chart: {chartRef.current ? 'Yes' : 'No'}</div>
             <div>Has Series: {candlestickSeriesRef.current ? 'Yes' : 'No'}</div>
             <div>Data Points: {data ? data.length : 0}</div>
-            <div>Container Size: {chartContainerRef.current ? `${chartContainerRef.current.clientWidth}x${chartContainerRef.current.clientHeight}` : 'N/A'}</div>
+            <div>Container Size: {chartContainerRef.current ? (() => {
+              const rect = chartContainerRef.current!.getBoundingClientRect();
+              return `${rect.width}x${rect.height} (client: ${chartContainerRef.current!.clientWidth}x${chartContainerRef.current!.clientHeight})`;
+            })() : 'N/A'}</div>
             <div>Last Update: {new Date(lastChartUpdate).toLocaleTimeString()}</div>
           </div>
         )}

@@ -167,16 +167,22 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     if (!container) return;
 
     const checkContainerReady = () => {
+      const rect = container.getBoundingClientRect();
       console.log('Checking container readiness:', {
-        width: container.clientWidth,
-        height: container.clientHeight,
+        clientWidth: container.clientWidth,
+        clientHeight: container.clientHeight,
         offsetWidth: container.offsetWidth,
         offsetHeight: container.offsetHeight,
+        rectWidth: rect.width,
+        rectHeight: rect.height,
         isVisible: container.offsetParent !== null
       });
       
-      // Check if container has dimensions and is visible
-      if (container && container.clientWidth > 0 && container.clientHeight > 0 && container.offsetParent !== null) {
+      // Check if container has dimensions and is visible - use multiple dimension sources
+      const hasWidth = container.clientWidth > 0 || container.offsetWidth > 0 || rect.width > 0;
+      const hasHeight = container.clientHeight > 0 || container.offsetHeight > 0 || rect.height > 0;
+      
+      if (container && hasWidth && hasHeight && container.offsetParent !== null) {
         console.log('Container is ready, setting containerReady to true');
         setContainerReady(true);
         return true;
@@ -309,19 +315,21 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
     const container = chartContainerRef.current;
     
-    // Check container dimensions with more lenient validation
-    if (container.clientWidth === 0 && container.offsetWidth === 0) {
-      console.log('Container has no dimensions yet, waiting for container to be ready');
-      // Don't retry immediately - let the container readiness effect handle this
-      return;
-    }
-
-    // Use offsetWidth/offsetHeight as fallback if clientWidth/clientHeight are 0
-    const containerWidth = container.clientWidth || container.offsetWidth;
-    const containerHeight = container.clientHeight || container.offsetHeight;
-
+    // Check container dimensions with comprehensive validation
+    const rect = container.getBoundingClientRect();
+    const containerWidth = container.clientWidth || container.offsetWidth || rect.width;
+    const containerHeight = container.clientHeight || container.offsetHeight || rect.height;
+    
     if (containerWidth === 0 || containerHeight === 0) {
-      console.log('Container dimensions still zero, waiting for container to be ready');
+      console.log('Container has no dimensions yet, waiting for container to be ready', {
+        clientWidth: container.clientWidth,
+        clientHeight: container.clientHeight,
+        offsetWidth: container.offsetWidth,
+        offsetHeight: container.offsetHeight,
+        rectWidth: rect.width,
+        rectHeight: rect.height
+      });
+      // Don't retry immediately - let the container readiness effect handle this
       return;
     }
 
@@ -332,7 +340,9 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       clientWidth: container.clientWidth,
       clientHeight: container.clientHeight,
       offsetWidth: container.offsetWidth,
-      offsetHeight: container.offsetHeight
+      offsetHeight: container.offsetHeight,
+      rectWidth: rect.width,
+      rectHeight: rect.height
     });
 
     isInitializingRef.current = true;
@@ -342,10 +352,10 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       // Clear container
       container.innerHTML = '';
 
-      // Create chart with proper configuration
+      // Create chart with proper configuration - use actual container dimensions
       const chart = createChart(container, {
-        width: containerWidth,
-        height: containerHeight,
+        width: container.clientWidth || containerWidth,
+        height: container.clientHeight || containerHeight,
         layout: {
           background: { color: theme === 'dark' ? '#1a1a1a' : '#ffffff' },
           textColor: theme === 'dark' ? '#ffffff' : '#333333',
@@ -424,13 +434,14 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         }
       };
 
-      // Add resize handler
+      // Add resize handler with better dimension detection
       const handleResize = () => {
         if (chart && container) {
-          const newWidth = container.clientWidth || container.offsetWidth;
-          const newHeight = container.clientHeight || container.offsetHeight;
+          const newWidth = container.clientWidth || container.offsetWidth || container.getBoundingClientRect().width;
+          const newHeight = container.clientHeight || container.offsetHeight || container.getBoundingClientRect().height;
           
           if (newWidth > 0 && newHeight > 0) {
+            console.log('Resizing chart to:', { width: newWidth, height: newHeight });
             chart.applyOptions({
               width: newWidth,
               height: newHeight,
@@ -488,11 +499,19 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     // Start initialization if chart is not ready and container is ready
     if (!isChartReady && containerReady && chartContainerRef.current) {
       const container = chartContainerRef.current;
-      const hasDimensions = (container.clientWidth > 0 || container.offsetWidth > 0) && 
-                           (container.clientHeight > 0 || container.offsetHeight > 0);
+      const rect = container.getBoundingClientRect();
+      const hasDimensions = (container.clientWidth > 0 || container.offsetWidth > 0 || rect.width > 0) && 
+                           (container.clientHeight > 0 || container.offsetHeight > 0 || rect.height > 0);
       
       if (hasDimensions) {
-        console.log('Starting chart initialization...');
+        console.log('Starting chart initialization with dimensions:', {
+          clientWidth: container.clientWidth,
+          clientHeight: container.clientHeight,
+          offsetWidth: container.offsetWidth,
+          offsetHeight: container.offsetHeight,
+          rectWidth: rect.width,
+          rectHeight: rect.height
+        });
         initializeChart();
       } else {
         console.log('Container ready but no dimensions yet, waiting...');
@@ -503,8 +522,8 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         containerReady,
         containerExists: !!chartContainerRef.current,
         hasDimensions: chartContainerRef.current ? 
-          ((chartContainerRef.current.clientWidth > 0 || chartContainerRef.current.offsetWidth > 0) && 
-           (chartContainerRef.current.clientHeight > 0 || chartContainerRef.current.offsetHeight > 0)) : false
+          ((chartContainerRef.current.clientWidth > 0 || chartContainerRef.current.offsetWidth > 0 || chartContainerRef.current.getBoundingClientRect().width > 0) && 
+           (chartContainerRef.current.clientHeight > 0 || chartContainerRef.current.offsetHeight > 0 || chartContainerRef.current.getBoundingClientRect().height > 0)) : false
       });
     }
   }, [initializeChart, containerReady, isChartReady]);
@@ -549,17 +568,23 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     }
   }, [isChartReady, data, initializeChart]);
 
-  // Handle resize events
+  // Handle resize events with better dimension detection
   useEffect(() => {
     if (!chartRef.current || !chartContainerRef.current) return;
 
     const handleResize = () => {
       if (chartRef.current && chartContainerRef.current) {
         const container = chartContainerRef.current;
-        chartRef.current.applyOptions({
-          width: container.clientWidth,
-          height: container.clientHeight,
-        });
+        const newWidth = container.clientWidth || container.offsetWidth || container.getBoundingClientRect().width;
+        const newHeight = container.clientHeight || container.offsetHeight || container.getBoundingClientRect().height;
+        
+        if (newWidth > 0 && newHeight > 0) {
+          console.log('Resize effect - updating chart dimensions:', { width: newWidth, height: newHeight });
+          chartRef.current.applyOptions({
+            width: newWidth,
+            height: newHeight,
+          });
+        }
       }
     };
 
@@ -613,6 +638,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       // Check if this is a new dataset (symbol change or completely different data)
       const isNewDataset = lastDataRef.current.length === 0 || 
         (lastDataRef.current.length > 0 && candlestickData.length > 0 &&
+         lastDataRef.current[0]?.time && candlestickData[0]?.time &&
          Math.abs(lastDataRef.current[0].time - candlestickData[0].time) > 86400) ||
         (lastDataRef.current.length > 0 && candlestickData.length === 0) || // Data was cleared
         (lastDataRef.current.length === 0 && candlestickData.length > 0); // New data loaded
@@ -621,6 +647,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       const isTickUpdate = lastDataRef.current.length > 0 && 
         candlestickData.length === lastDataRef.current.length &&
         candlestickData.length > 0 &&
+        lastDataRef.current[0]?.time && candlestickData[0]?.time &&
         lastDataRef.current[0].time === candlestickData[0].time;
 
       console.log('Chart data update analysis:', {
@@ -831,12 +858,12 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         </div>
       )}
 
-      {/* Chart Container - Fixed height to ensure proper sizing */}
+      {/* Chart Container - Responsive sizing with max-width constraint */}
       <div 
-        className="w-full bg-white border border-gray-200 relative" 
+        className="chart-container-responsive bg-white border border-gray-200" 
         style={{ 
           height: `${height}px`,
-          width: `${width}px`
+          maxWidth: `${width}px`
         }}
       >
         {/* Debug Info */}
@@ -848,7 +875,10 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
             <div>Has Series: {candlestickSeriesRef.current ? 'Yes' : 'No'}</div>
             <div>Data Points: {data ? data.length : 0}</div>
             <div>Init Attempts: {initializationAttemptsRef.current}</div>
-            <div>Container Size: {chartContainerRef.current ? `${chartContainerRef.current.clientWidth}x${chartContainerRef.current.clientHeight}` : 'N/A'}</div>
+            <div>Container Size: {chartContainerRef.current ? (() => {
+              const rect = chartContainerRef.current!.getBoundingClientRect();
+              return `${rect.width}x${rect.height} (client: ${chartContainerRef.current!.clientWidth}x${chartContainerRef.current!.clientHeight})`;
+            })() : 'N/A'}</div>
             <div>Is Initializing: {isInitializingRef.current ? 'Yes' : 'No'}</div>
             <div>Last Update: {new Date(lastChartUpdate).toLocaleTimeString()}</div>
             <div>Live Data: {isLive ? 'Yes' : 'No'}</div>
@@ -871,7 +901,9 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
             bottom: 0,
             pointerEvents: 'auto',
             isolation: 'isolate',
-            backgroundColor: debug ? 'rgba(255, 0, 0, 0.1)' : 'transparent'
+            backgroundColor: debug ? 'rgba(255, 0, 0, 0.1)' : 'transparent',
+            width: '100%',
+            height: '100%'
           }}
           data-chart-container="true"
           data-symbol={symbol}
