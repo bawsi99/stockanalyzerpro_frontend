@@ -58,10 +58,7 @@ export const DataStatusIndicator: React.FC<DataStatusIndicatorProps> = ({
 
   return (
     <div className="flex items-center gap-2">
-      <Badge variant={statusInfo.variant} className="flex items-center gap-1">
-        <span className={statusInfo.color}>{statusInfo.icon}</span>
-        {statusInfo.text}
-      </Badge>
+
       
       {error && (
         <div className="text-xs text-muted-foreground max-w-xs">

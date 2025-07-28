@@ -1002,18 +1002,9 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
   return (
     <div className="relative w-full h-full">
-      {/* Live Price Display */}
-      <LivePriceDisplay />
 
-      {/* Connection Status */}
-      {showConnectionStatus && (
-        <div className="absolute top-2 right-2 z-10 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg">
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span className="text-xs text-gray-600">{isConnected ? 'Connected' : 'Disconnected'}</span>
-          </div>
-        </div>
-      )}
+
+
 
       {/* Chart Container - Responsive sizing with max-width constraint */}
       <div 
@@ -1023,28 +1014,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           maxWidth: `${width}px`
         }}
       >
-        {/* Debug Info */}
-        {debug && (
-          <div className="absolute top-2 left-2 z-10 bg-black/75 text-white text-xs p-2 rounded">
-            <div>Chart Ready: {isChartReady ? 'Yes' : 'No'}</div>
-            <div>Container Ready: {containerReady ? 'Yes' : 'No'}</div>
-            <div>Has Chart: {chartRef.current ? 'Yes' : 'No'}</div>
-            <div>Has Series: {candlestickSeriesRef.current ? 'Yes' : 'No'}</div>
-            <div>Data Points: {data ? data.length : 0}</div>
-            <div>Init Attempts: {initializationAttemptsRef.current}</div>
-            <div>Container Size: {chartContainerRef.current ? (() => {
-              const rect = chartContainerRef.current!.getBoundingClientRect();
-              return `${rect.width}x${rect.height} (client: ${chartContainerRef.current!.clientWidth}x${chartContainerRef.current!.clientHeight})`;
-            })() : 'N/A'}</div>
-            <div>Is Initializing: {isInitializingRef.current ? 'Yes' : 'No'}</div>
-            <div>Last Update: {new Date(lastChartUpdate).toLocaleTimeString()}</div>
-            <div>Live Data: {isLive ? 'Yes' : 'No'}</div>
-            <div>Connected: {isConnected ? 'Yes' : 'No'}</div>
-            {data && data.length > 0 && (
-              <div>Last Price: ₹{data[data.length - 1].close.toFixed(2)}</div>
-            )}
-          </div>
-        )}
+
         
         {/* Chart Container */}
         <div 
