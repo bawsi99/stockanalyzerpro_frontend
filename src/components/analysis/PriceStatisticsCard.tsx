@@ -77,7 +77,7 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
   // If no valid data, show loading state
   if (!summaryStats || stats.current === 0) {
     return (
-      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-full">
         <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
           <div className="flex items-center space-x-2">
             <Target className="h-6 w-6" />
@@ -98,7 +98,7 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
   }
 
   return (
-    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-full">
       <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
         <div className="flex items-center space-x-2">
           <Target className="h-6 w-6" />
@@ -225,40 +225,7 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
           </div>
         </div>
 
-        {/* Quick Insights */}
-        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <h4 className="font-semibold text-amber-800 mb-2">Quick Insights</h4>
-          <div className="space-y-2 text-sm text-amber-700">
-            {stats.current > stats.mean ? (
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4" />
-                <span>Price is above the mean, indicating bullish momentum</span>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <TrendingDown className="h-4 w-4" />
-                <span>Price is below the mean, indicating bearish pressure</span>
-              </div>
-            )}
-            
-            {getPositionInRange() > 80 ? (
-              <div className="flex items-center space-x-2">
-                <Target className="h-4 w-4" />
-                <span>Near all-time high - consider profit booking</span>
-              </div>
-            ) : getPositionInRange() < 20 ? (
-              <div className="flex items-center space-x-2">
-                <Target className="h-4 w-4" />
-                <span>Near all-time low - potential accumulation zone</span>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <BarChart3 className="h-4 w-4" />
-                <span>Mid-range position - monitor for breakout/breakdown</span>
-              </div>
-            )}
-          </div>
-        </div>
+
       </CardContent>
     </Card>
   );

@@ -27,6 +27,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { DataStatusIndicator } from '@/components/DataStatusIndicator';
+import Header from '@/components/Header';
 
 interface ChartData {
   date: string;
@@ -763,15 +764,9 @@ const Charts = React.memo(function Charts() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <Header />
       <div className="container mx-auto px-2 py-8 max-w-[1920px]">
-        {/* Stock Header */}
-        <div className="mb-8">
-          <div className="text-center mb-6">
-            <h1 className="text-4xl font-bold text-slate-800 mb-2">
-              {stockSymbol || "Loading..."}
-            </h1>
-          </div>
-        </div>
+
 
         {/* Main Content */}
         <div className="space-y-6">
@@ -896,14 +891,14 @@ const Charts = React.memo(function Charts() {
             </div>
 
             {/* Price Statistics Card - Takes 1/4 of the width */}
-            <div className="xl:col-span-1">
+            <div className="xl:col-span-1 h-full">
               {!liveData || liveData.length === 0 ? (
                 <AnalysisCardSkeleton 
                   title="Price Statistics" 
                   description="Waiting for live data..." 
                 />
               ) : (
-                <div className={`transition-all duration-300 ${isPriceStatsUpdating ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}>
+                <div className={`h-full transition-all duration-300 ${isPriceStatsUpdating ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}>
                   <PriceStatisticsCard 
                     summaryStats={transformChartStatsForPriceCard(memoizedLiveChartStats)}
                     latestPrice={liveData[liveData.length - 1].close || liveData[liveData.length - 1].price}
