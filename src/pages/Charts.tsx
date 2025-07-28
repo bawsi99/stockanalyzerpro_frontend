@@ -763,7 +763,7 @@ const Charts = React.memo(function Charts() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-2 py-8 max-w-[1920px]">
         {/* Stock Header */}
         <div className="mb-8">
           <div className="text-center mb-6">
@@ -771,163 +771,156 @@ const Charts = React.memo(function Charts() {
               {stockSymbol || "Loading..."}
             </h1>
           </div>
-
-
         </div>
 
         {/* Main Content */}
         <div className="space-y-6">
-
-
-
-
-            {/* Price Statistics Card */}
-            <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-              <div className="lg:col-span-1">
-                {!liveData || liveData.length === 0 ? (
-                  <AnalysisCardSkeleton 
-                    title="Price Statistics" 
-                    description="Waiting for live data..." 
+          {/* Chart Controls */}
+          <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Chart Controls
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                {/* Stock Symbol */}
+                <div>
+                  <StockSelector
+                    value={stockSymbol}
+                    onValueChange={setStockSymbol}
+                    placeholder="Select a stock"
+                    label="Stock Symbol"
                   />
-                ) : (
-                  <div className={`transition-all duration-300 ${isPriceStatsUpdating ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}>
-                    <PriceStatisticsCard 
-                      summaryStats={transformChartStatsForPriceCard(memoizedLiveChartStats)}
-                      latestPrice={liveData[liveData.length - 1].close || liveData[liveData.length - 1].price}
-                      timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
-                    />
-                    {isPriceStatsUpdating && (
-                      <div className="absolute top-2 right-2 z-10">
-                        <Badge variant="secondary" className="bg-blue-500 text-white animate-pulse">
-                          <Activity className="h-3 w-3 mr-1" />
-                          New Candle
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Chart Controls */}
-            <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Chart Controls
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                  {/* Stock Symbol */}
-                  <div>
-                    <StockSelector
-                      value={stockSymbol}
-                      onValueChange={setStockSymbol}
-                      placeholder="Select a stock"
-                      label="Stock Symbol"
-                    />
-                  </div>
-
-                  {/* Timeframe */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Timeframe</label>
-                    <select
-                      value={selectedTimeframe}
-                      onChange={(e) => setSelectedTimeframe(e.target.value)}
-                      className="w-full p-2 border rounded-md"
-                    >
-                      {TIMEFRAMES.map((tf) => (
-                        <option key={tf.value} value={tf.value}>
-                          {tf.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-
-
-                  {/* Connection Status */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Connection</label>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${isLiveConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                      <span className="text-sm">{isLiveConnected ? 'Connected' : 'Disconnected'}</span>
-                    </div>
-                  </div>
                 </div>
 
+                {/* Timeframe */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Timeframe</label>
+                  <select
+                    value={selectedTimeframe}
+                    onChange={(e) => setSelectedTimeframe(e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    {TIMEFRAMES.map((tf) => (
+                      <option key={tf.value} value={tf.value}>
+                        {tf.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              </CardContent>
-            </Card>
-
-            {/* Enhanced Live Chart Section */}
-            <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>{stockSymbol} - {TIMEFRAMES.find(tf => tf.value === selectedTimeframe)?.label}</span>
+                {/* Connection Status */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Connection</label>
                   <div className="flex items-center gap-2">
-                    <DataStatusIndicator
+                    <div className={`w-2 h-2 rounded-full ${isLiveConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <span className="text-sm">{isLiveConnected ? 'Connected' : 'Disconnected'}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Chart and Price Statistics Side by Side */}
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+            {/* Enhanced Live Chart Section - Takes 3/4 of the width */}
+            <div className="xl:col-span-3">
+              <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>{stockSymbol} - {TIMEFRAMES.find(tf => tf.value === selectedTimeframe)?.label}</span>
+                    <div className="flex items-center gap-2">
+                      <DataStatusIndicator
+                        isConnected={isLiveConnected}
+                        isLive={isLive}
+                        connectionStatus={connectionStatus}
+                        error={liveError}
+                      />
+                      <LivePriceLabel
+                        price={lastTickPrice}
+                        isConnected={isLiveConnected}
+                        isLive={isLive}
+                        liveData={liveData}
+                        lastTickTime={lastTickTime}
+                      />
+                    </div>
+                  </CardTitle>
+                  <CardDescription>
+                    Real-time market data with advanced technical analysis
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {canShowCharts ? (
+                    <LiveSimpleChart
+                      symbol={stockSymbol}
+                      timeframe={selectedTimeframe}
+                      theme="light"
+                      height={800}
+                      width={1200}
+                      exchange="NSE"
+                      maxDataPoints={1000}
+                      autoConnect={true}
+                      showConnectionStatus={true}
+                      showLiveIndicator={true}
+                      showIndicators={showIndicators}
+                      showPatterns={showPatterns}
+                      showVolume={showVolume}
+                      debug={debugMode}
+                      data={liveData}
                       isConnected={isLiveConnected}
                       isLive={isLive}
-                      connectionStatus={connectionStatus}
+                      isLoading={isLiveLoading}
                       error={liveError}
+                      lastUpdate={lastUpdate}
+                      connectionStatus={connectionStatus}
+                      refetch={refetch}
+                      onDataUpdate={handleChartDataLoaded}
+                      onConnectionChange={handleConnectionChange}
+                      onError={handleChartError}
+                      onValidationResult={handleValidationResult}
+                      onStatsCalculated={handleStatsCalculated}
                     />
-                    <LivePriceLabel
-                      price={lastTickPrice}
-                      isConnected={isLiveConnected}
-                      isLive={isLive}
-                      liveData={liveData}
-                      lastTickTime={lastTickTime}
-                    />
-                  </div>
-                </CardTitle>
-                <CardDescription>
-                  Real-time market data with advanced technical analysis
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                {canShowCharts ? (
-                  <LiveSimpleChart
-                    symbol={stockSymbol}
-                    timeframe={selectedTimeframe}
-                    theme="light"
-                    height={800}
-                    width={1200}
-                    exchange="NSE"
-                    maxDataPoints={1000}
-                    autoConnect={true}
-                    showConnectionStatus={true}
-                    showLiveIndicator={true}
-                    showIndicators={showIndicators}
-                    showPatterns={showPatterns}
-                    showVolume={showVolume}
-                    debug={debugMode}
-                    data={liveData}
-                    isConnected={isLiveConnected}
-                    isLive={isLive}
-                    isLoading={isLiveLoading}
-                    error={liveError}
-                    lastUpdate={lastUpdate}
-                    connectionStatus={connectionStatus}
-                    refetch={refetch}
-                    onDataUpdate={handleChartDataLoaded}
-                    onConnectionChange={handleConnectionChange}
-                    onError={handleChartError}
-                    onValidationResult={handleValidationResult}
-                    onStatsCalculated={handleStatsCalculated}
+                  ) : (
+                    <div className="text-center py-16 text-slate-500">
+                      <BarChart3 className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                      <p>{stockSymbol ? 'Initializing chart...' : 'Loading stock data...'}</p>
+                      {stockSymbol && (
+                        <p className="text-sm text-slate-400 mt-2">Chart will be available shortly</p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Price Statistics Card - Takes 1/4 of the width */}
+            <div className="xl:col-span-1">
+              {!liveData || liveData.length === 0 ? (
+                <AnalysisCardSkeleton 
+                  title="Price Statistics" 
+                  description="Waiting for live data..." 
+                />
+              ) : (
+                <div className={`transition-all duration-300 ${isPriceStatsUpdating ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}>
+                  <PriceStatisticsCard 
+                    summaryStats={transformChartStatsForPriceCard(memoizedLiveChartStats)}
+                    latestPrice={liveData[liveData.length - 1].close || liveData[liveData.length - 1].price}
+                    timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
                   />
-                ) : (
-                  <div className="text-center py-16 text-slate-500">
-                    <BarChart3 className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-                    <p>{stockSymbol ? 'Initializing chart...' : 'Loading stock data...'}</p>
-                    {stockSymbol && (
-                      <p className="text-sm text-slate-400 mt-2">Chart will be available shortly</p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  {isPriceStatsUpdating && (
+                    <div className="absolute top-2 right-2 z-10">
+                      <Badge variant="secondary" className="bg-blue-500 text-white animate-pulse">
+                        <Activity className="h-3 w-3 mr-1" />
+                        New Candle
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
