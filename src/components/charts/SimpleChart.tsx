@@ -150,6 +150,39 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
           secondsVisible: false,
           rightOffset: 12,
           barSpacing: 3,
+          tickMarkFormatter: (time: number) => {
+            const date = new Date(time * 1000);
+            
+            // For 1-day interval, show only date
+            if (timeframe === '1d' || timeframe === '1day') {
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                year: 'numeric'
+              });
+            } else if (timeframe === '1h' || timeframe === '60min' || timeframe === '60minute') {
+              // For hourly intervals, show date and full time
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            } else {
+              // For minute intervals, show date and time
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
+          },
         },
         rightPriceScale: {
           autoScale: true,
@@ -160,6 +193,43 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
         },
         crosshair: {
           mode: 1,
+        },
+        localization: {
+          timeFormatter: (time: number) => {
+            // Convert UTC time to IST for display
+            const utcDate = new Date(time * 1000);
+            
+            // For 1-day interval, show only date
+            if (timeframe === '1d' || timeframe === '1day') {
+              return utcDate.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+            } else if (timeframe === '1h' || timeframe === '60min' || timeframe === '60minute') {
+              // For hourly intervals, show date and full time
+              return utcDate.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            } else {
+              // For other intervals, show time
+              return utcDate.toLocaleTimeString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
+          },
+          priceFormatter: (price: number) => {
+            return price >= 1 ? price.toFixed(2) : price.toPrecision(4);
+          },
         },
       });
 
@@ -315,8 +385,69 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
     );
   };
 
-  // Live Price Display
-  const LivePriceDisplay = () => {
+  // Live Price Display - Optimized to reduce flickering
+  const LivePriceDisplay = React.memo(() => {
+    const [stablePrice, setStablePrice] = useState<number | null>(null);
+    const [stableColorState, setStableColorState] = useState<'positive' | 'negative' | 'neutral'>('neutral');
+    const [isUpdating, setIsUpdating] = useState(false);
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const lastPriceRef = useRef<number | null>(null);
+
+    // Debounced price update to reduce flickering
+    useEffect(() => {
+      if (!data || data.length === 0) return;
+
+      const lastCandle = data[data.length - 1];
+      const previousCandle = data[data.length - 2];
+      
+      if (!lastCandle || !previousCandle) return;
+
+      const currentPrice = lastCandle.close;
+      const previousPrice = previousCandle.close;
+
+      // Clear existing timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      // Set a new timer for debounced update
+      debounceTimerRef.current = setTimeout(() => {
+        if (lastPriceRef.current === null) {
+          // First price - just store it
+          lastPriceRef.current = currentPrice;
+          setStablePrice(currentPrice);
+          setStableColorState('neutral');
+        } else if (lastPriceRef.current !== currentPrice) {
+          // Price changed - update with stable state
+          const priceChange = currentPrice - lastPriceRef.current;
+          const newColorState = priceChange > 0 ? 'positive' : priceChange < 0 ? 'negative' : 'neutral';
+          
+          setStablePrice(currentPrice);
+          setStableColorState(newColorState);
+          lastPriceRef.current = currentPrice;
+          
+          // Trigger update animation
+          setIsUpdating(true);
+          setTimeout(() => setIsUpdating(false), 300);
+        }
+      }, 100); // 100ms debounce
+
+      return () => {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+      };
+    }, [data]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+      return () => {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+      };
+    }, []);
+
     if (!data || data.length === 0) return null;
 
     const lastCandle = data[data.length - 1];
@@ -324,26 +455,30 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
     
     if (!lastCandle || !previousCandle) return null;
 
-    const currentPrice = lastCandle.close;
+    const currentPrice = stablePrice || lastCandle.close;
     const previousPrice = previousCandle.close;
     const priceChange = currentPrice - previousPrice;
     const priceChangePercent = (priceChange / previousPrice) * 100;
 
+    // Use stable color state instead of calculating on every render
+    const isPositive = stableColorState === 'positive';
+    const isNegative = stableColorState === 'negative';
+
     const getPriceColor = () => {
-      if (priceChange > 0) return 'text-green-600';
-      if (priceChange < 0) return 'text-red-600';
+      if (isPositive) return 'text-green-600';
+      if (isNegative) return 'text-red-600';
       return 'text-gray-600';
     };
 
     const getPriceIcon = () => {
-      if (priceChange > 0) return <TrendingUp className="h-4 w-4" />;
-      if (priceChange < 0) return <TrendingDown className="h-4 w-4" />;
+      if (isPositive) return <TrendingUp className="h-4 w-4" />;
+      if (isNegative) return <TrendingDown className="h-4 w-4" />;
       return <Minus className="h-4 w-4" />;
     };
 
     return (
       <div className="absolute top-2 left-2 z-10">
-        <div className={`flex items-center gap-2 ${getPriceColor()}`}>
+        <div className={`flex items-center gap-2 ${getPriceColor()} transition-colors duration-300 ${isUpdating ? 'animate-pulse' : ''}`}>
           {getPriceIcon()}
           <span className="font-semibold">₹{currentPrice.toFixed(2)}</span>
           <span className="text-sm">
@@ -352,7 +487,7 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
         </div>
       </div>
     );
-  };
+  });
 
   // Control Buttons
   const ControlButtons = () => (

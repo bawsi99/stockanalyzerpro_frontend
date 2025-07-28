@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, Loader2, ArrowUpRight, ArrowDownRight, Eye, BarChart3, Settings } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, Loader2, Eye, BarChart3, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { analysisService } from '@/services/analysisService';
 import { authService } from '@/services/authService';
@@ -154,6 +155,11 @@ const mapTimeframeToInterval = (timeframe: string): string => {
   return mapping[timeframe] || '1day';
 };
 
+
+
+// Global variable to persist price across component re-mounts
+let globalLastPrice: number | null = null;
+
 const TIMEFRAMES = [
   { label: '1 Minute', value: '1m' },
   { label: '5 Minutes', value: '5m' },
@@ -197,6 +203,8 @@ const Charts = React.memo(function Charts() {
     error: liveError,
     lastUpdate,
     connectionStatus,
+    lastTickPrice,
+    lastTickTime,
     connect,
     disconnect,
     refetch,
@@ -209,6 +217,12 @@ const Charts = React.memo(function Charts() {
     maxDataPoints: 1000,
     autoConnect: true
   });
+
+  // Debug lastTickPrice changes
+  useEffect(() => {
+    console.log('🔄 lastTickPrice changed:', lastTickPrice, 'at', new Date().toLocaleTimeString());
+    console.log('🔄 lastTickPrice type:', typeof lastTickPrice, 'isNaN:', isNaN(lastTickPrice || 0));
+  }, [lastTickPrice]);
 
   // Initialize authentication
   useEffect(() => {
@@ -556,6 +570,196 @@ const Charts = React.memo(function Charts() {
     </Card>
   );
 
+  // Live Price Label Component - Optimized to reduce flickering
+  const LivePriceLabel = React.memo(({ price, isConnected, isLive, liveData, lastTickTime }: { 
+    price?: number; 
+    isConnected: boolean; 
+    isLive: boolean; 
+    liveData: any[];
+    lastTickTime?: number;
+  }) => {
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [previousPrice, setPreviousPrice] = useState<number | null>(null);
+    const [stablePrice, setStablePrice] = useState<number | null>(null);
+    const [stableColorState, setStableColorState] = useState<'positive' | 'negative' | 'neutral'>('neutral');
+    const lastPriceRef = useRef<number | null>(null);
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Debounced price update to reduce flickering
+    useEffect(() => {
+      if (price === undefined || price === null) return;
+
+      // Clear existing timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      // Set a new timer for debounced update
+      debounceTimerRef.current = setTimeout(() => {
+        if (globalLastPrice === null) {
+          // First price - just store it
+          globalLastPrice = price;
+          setPreviousPrice(price);
+          setStablePrice(price);
+          setStableColorState('neutral');
+        } else if (globalLastPrice !== price) {
+          // Price changed - update with stable state
+          const priceChange = price - globalLastPrice;
+          const newColorState = priceChange > 0 ? 'positive' : priceChange < 0 ? 'negative' : 'neutral';
+          
+          setPreviousPrice(globalLastPrice);
+          setStablePrice(price);
+          setStableColorState(newColorState);
+          globalLastPrice = price;
+          
+          // Trigger update animation
+          setIsUpdating(true);
+          setTimeout(() => setIsUpdating(false), 300);
+        }
+      }, 100); // 100ms debounce
+
+      return () => {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+      };
+    }, [price]);
+
+    // Calculate stable price change
+    const priceChange = stablePrice && globalLastPrice && globalLastPrice !== stablePrice ? stablePrice - globalLastPrice : 0;
+    const percentageChange = stablePrice && globalLastPrice && globalLastPrice !== 0 ? (priceChange / globalLastPrice) * 100 : 0;
+    
+    // Use stable color state instead of calculating on every render
+    const isPositive = stableColorState === 'positive';
+    const isNegative = stableColorState === 'negative';
+    const hasPriceChange = globalLastPrice !== null && stablePrice !== globalLastPrice;
+
+    // Cleanup on unmount
+    useEffect(() => {
+      return () => {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+      };
+    }, []);
+
+    // Format timestamp
+    const formatTime = (timestamp?: number) => {
+      if (!timestamp) return '';
+      try {
+        const date = new Date(timestamp * 1000);
+        return date.toLocaleTimeString('en-IN', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit',
+          hour12: false 
+        });
+      } catch (error) {
+        console.error('Error formatting timestamp:', error);
+        return '';
+      }
+    };
+
+    // Handle different connection states
+    if (!isConnected) {
+      return (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg border">
+          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+          <span className="text-sm font-medium text-gray-500">Disconnected</span>
+        </div>
+      );
+    }
+
+    if (!price) {
+      return (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-50 rounded-lg border border-yellow-200">
+          <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+          <span className="text-sm font-medium text-yellow-700">Waiting for data...</span>
+        </div>
+      );
+    }
+
+
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className={`flex items-center gap-3 px-3 py-2 border rounded-lg shadow-sm cursor-help transition-all duration-300 ${
+              isUpdating ? 'shadow-md' : ''
+            } ${
+              isPositive ? 'bg-green-50 border-green-200' :
+              isNegative ? 'bg-red-50 border-red-200' :
+              'bg-white border-gray-200'
+            }`}>
+              {/* Price and Change */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                    isPositive ? 'bg-green-600' :
+                    isNegative ? 'bg-red-600' :
+                    'bg-green-500 animate-pulse'
+                  } ${isUpdating ? 'animate-ping' : ''}`}></div>
+                                         <span className={`text-sm font-semibold transition-colors duration-300 ${
+                         isPositive ? 'text-green-800' :
+                         isNegative ? 'text-red-800' :
+                         'text-gray-900'
+                       }`}>
+                         ₹{(stablePrice || price || 0).toFixed(2)}
+                       </span>
+                </div>
+                
+
+              </div>
+              
+              {/* Separator */}
+              <div className="w-px h-4 bg-gray-300"></div>
+              
+              {/* Status and Time */}
+              <div className="flex items-center gap-2">
+                {isLive && (
+                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded transition-colors duration-300 ${
+                    isPositive ? 'text-green-700 bg-green-100' :
+                    isNegative ? 'text-red-700 bg-red-100' :
+                    'text-green-600 bg-green-50'
+                  }`}>
+                    LIVE
+                  </span>
+                )}
+                {lastTickTime && (
+                  <span className="text-xs text-gray-500 font-medium">
+                    {formatTime(lastTickTime)}
+                  </span>
+                )}
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            <div className="space-y-1">
+              <div className="font-medium">Live Price Data</div>
+              <div className="text-xs text-gray-500">
+                <div>Current Price: ₹{(stablePrice || price || 0).toFixed(2)}</div>
+                {hasPriceChange && (
+                  <>
+                    <div>Previous Price: ₹{previousPrice?.toFixed(2)}</div>
+                    <div>Change: {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)} ({percentageChange > 0 ? '+' : ''}{percentageChange.toFixed(2)}%)</div>
+                    <div>Direction: {isPositive ? '🟢 UP' : isNegative ? '🔴 DOWN' : '⚪ NO CHANGE'}</div>
+                  </>
+                )}
+                <div>Status: {isLive ? 'Live Streaming' : 'Connected'}</div>
+                {lastTickTime && (
+                  <div>Last Update: {new Date(lastTickTime * 1000).toLocaleString('en-IN')}</div>
+                )}
+                <div>Data Points: {liveData.length}</div>
+                <div>Has Change: {hasPriceChange ? 'Yes' : 'No'}</div>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="container mx-auto px-4 py-8">
@@ -724,7 +928,13 @@ const Charts = React.memo(function Charts() {
                       connectionStatus={connectionStatus}
                       error={liveError}
                     />
-
+                    <LivePriceLabel
+                      price={lastTickPrice}
+                      isConnected={isLiveConnected}
+                      isLive={isLive}
+                      liveData={liveData}
+                      lastTickTime={lastTickTime}
+                    />
                   </div>
                 </CardTitle>
                 <CardDescription>

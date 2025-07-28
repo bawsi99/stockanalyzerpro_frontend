@@ -370,6 +370,39 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           rightOffset: 12,
           barSpacing: 3,
           borderColor: theme === 'dark' ? '#2a2a2a' : '#e1e1e1',
+          tickMarkFormatter: (time: number) => {
+            const date = new Date(time * 1000);
+            
+            // For 1-day interval, show only date
+            if (timeframe === '1d' || timeframe === '1day') {
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                year: 'numeric'
+              });
+            } else if (timeframe === '1h' || timeframe === '60min' || timeframe === '60minute') {
+              // For hourly intervals, show date and full time
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            } else {
+              // For minute intervals, show date and time
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
+          },
         },
         rightPriceScale: {
           autoScale: true,
@@ -402,6 +435,43 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           axisPressedMouseMove: true,
           mouseWheel: true,
           pinch: true,
+        },
+        localization: {
+          timeFormatter: (time: number) => {
+            // Convert UTC time to IST for display
+            const utcDate = new Date(time * 1000);
+            
+            // For 1-day interval, show only date
+            if (timeframe === '1d' || timeframe === '1day') {
+              return utcDate.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+            } else if (timeframe === '1h' || timeframe === '60min' || timeframe === '60minute') {
+              // For hourly intervals, show date and full time
+              return utcDate.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            } else {
+              // For other intervals, show time
+              return utcDate.toLocaleTimeString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
+          },
+          priceFormatter: (price: number) => {
+            return price >= 1 ? price.toFixed(2) : price.toPrecision(4);
+          },
         },
       });
 
@@ -828,25 +898,112 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     );
   }
 
+  // Live Price Display Component - Optimized to reduce flickering
+  const LivePriceDisplay = React.memo(() => {
+    const [stablePrice, setStablePrice] = useState<number | null>(null);
+    const [stableColorState, setStableColorState] = useState<'positive' | 'negative' | 'neutral'>('neutral');
+    const [isUpdating, setIsUpdating] = useState(false);
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const lastPriceRef = useRef<number | null>(null);
+
+    // Debounced price update to reduce flickering
+    useEffect(() => {
+      if (!data || data.length === 0) return;
+
+      const lastCandle = data[data.length - 1];
+      const previousCandle = data[data.length - 2];
+      
+      if (!lastCandle || !previousCandle) return;
+
+      const currentPrice = lastCandle.close;
+      const previousPrice = previousCandle.close;
+
+      // Clear existing timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      // Set a new timer for debounced update
+      debounceTimerRef.current = setTimeout(() => {
+        if (lastPriceRef.current === null) {
+          // First price - just store it
+          lastPriceRef.current = currentPrice;
+          setStablePrice(currentPrice);
+          setStableColorState('neutral');
+        } else if (lastPriceRef.current !== currentPrice) {
+          // Price changed - update with stable state
+          const priceChange = currentPrice - lastPriceRef.current;
+          const newColorState = priceChange > 0 ? 'positive' : priceChange < 0 ? 'negative' : 'neutral';
+          
+          setStablePrice(currentPrice);
+          setStableColorState(newColorState);
+          lastPriceRef.current = currentPrice;
+          
+          // Trigger update animation
+          setIsUpdating(true);
+          setTimeout(() => setIsUpdating(false), 300);
+        }
+      }, 100); // 100ms debounce
+
+      return () => {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+      };
+    }, [data]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+      return () => {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+      };
+    }, []);
+
+    if (!isLive || !data || data.length === 0) return null;
+
+    const lastCandle = data[data.length - 1];
+    const previousCandle = data[data.length - 2];
+    
+    if (!lastCandle || !previousCandle) return null;
+
+    const currentPrice = stablePrice || lastCandle.close;
+
+    // Use stable color state instead of calculating on every render
+    const isPositive = stableColorState === 'positive';
+    const isNegative = stableColorState === 'negative';
+
+    const getPriceColor = () => {
+      if (isPositive) return 'text-green-600';
+      if (isNegative) return 'text-red-600';
+      return 'text-gray-600';
+    };
+
+    return (
+      <div className="absolute top-2 left-2 z-10 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg">
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-medium">{symbol}</div>
+          <div className={`text-lg font-bold transition-colors duration-300 ${getPriceColor()} ${isUpdating ? 'animate-pulse' : ''}`}>
+            ₹{currentPrice.toFixed(2)}
+          </div>
+          {isLive && (
+            <div className="flex items-center gap-1">
+              <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                isPositive ? 'bg-green-500' : isNegative ? 'bg-red-500' : 'bg-green-500'
+              } ${isUpdating ? 'animate-ping' : 'animate-pulse'}`}></div>
+              <span className="text-xs text-gray-600">LIVE</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  });
+
   return (
     <div className="relative w-full h-full">
       {/* Live Price Display */}
-      {isLive && data && data.length > 0 && (
-        <div className="absolute top-2 left-2 z-10 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg">
-          <div className="flex items-center gap-2">
-            <div className="text-sm font-medium">{symbol}</div>
-            <div className={`text-lg font-bold ${data[data.length - 1].close > data[data.length - 2]?.close ? 'text-green-600' : 'text-red-600'}`}>
-              ₹{data[data.length - 1].close.toFixed(2)}
-            </div>
-            {isLive && (
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-gray-600">LIVE</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <LivePriceDisplay />
 
       {/* Connection Status */}
       {showConnectionStatus && (

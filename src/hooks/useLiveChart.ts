@@ -337,11 +337,14 @@ export function useLiveChart({
                     console.log('➕ Added new candle:', liveChartData);
                   }
                   
+                  console.log('🔄 Setting lastTickPrice from candle data:', liveChartData.close, 'old lastTickPrice:', prev.lastTickPrice);
                   return {
                     ...prev,
                     data: newData,
                     lastUpdate: Date.now(),
-                    isLive: true
+                    isLive: true,
+                    lastTickPrice: liveChartData.close,
+                    lastTickTime: liveChartData.time
                   };
                 });
               }
