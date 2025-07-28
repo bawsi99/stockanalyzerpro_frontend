@@ -340,6 +340,12 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       // Cleanup existing chart
       if (chartRef.current) {
         try {
+          // Remove resize observer first
+          if (resizeObserverRef.current) {
+            resizeObserverRef.current.disconnect();
+            resizeObserverRef.current = null;
+          }
+          
           safeChartCleanup(chartRef);
         } catch (error) {
           console.warn('Error during symbol change cleanup:', error);
@@ -370,6 +376,12 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       // Cleanup existing chart
       if (chartRef.current) {
         try {
+          // Remove resize observer first
+          if (resizeObserverRef.current) {
+            resizeObserverRef.current.disconnect();
+            resizeObserverRef.current = null;
+          }
+          
           safeChartCleanup(chartRef);
         } catch (error) {
           console.warn('Error during timeframe change cleanup:', error);
@@ -596,15 +608,23 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       // Add resize handler with better dimension detection
       const handleResize = () => {
         if (chart && container) {
-          const newWidth = container.clientWidth || container.offsetWidth || container.getBoundingClientRect().width;
-          const newHeight = container.clientHeight || container.offsetHeight || container.getBoundingClientRect().height;
-          
-          if (newWidth > 0 && newHeight > 0) {
-            console.log('Resizing chart to:', { width: newWidth, height: newHeight });
-            chart.applyOptions({
-              width: newWidth,
-              height: newHeight,
-            });
+          try {
+            const newWidth = container.clientWidth || container.offsetWidth || container.getBoundingClientRect().width;
+            const newHeight = container.clientHeight || container.offsetHeight || container.getBoundingClientRect().height;
+            
+            if (newWidth > 0 && newHeight > 0) {
+              console.log('Resizing chart to:', { width: newWidth, height: newHeight });
+              chart.applyOptions({
+                width: newWidth,
+                height: newHeight,
+              });
+            }
+          } catch (error) {
+            console.warn('Error during chart resize:', error);
+            // If chart is disposed, clean up the reference
+            if (error instanceof Error && error.message.includes('disposed')) {
+              chartRef.current = null;
+            }
           }
         }
       };
@@ -619,6 +639,9 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       if (onRegisterReset) {
         onRegisterReset(() => {
           if (chart) {
+            // Reset user interaction state when manually resetting
+            hasUserInteractedRef.current = false;
+            chartStateRef.current = null;
             chart.timeScale().fitContent();
           }
         });
@@ -705,15 +728,20 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       lastDataRef.current = candlestickData as any;
       console.log('Initial data set:', candlestickData.length, 'candles');
       
-      // Only fit content for initial load or new symbol
+      // Only fit content for initial load or new symbol, preserve user's view otherwise
       if (isInitialLoadRef.current || isNewSymbolRef.current) {
         if (chartRef.current) {
           chartRef.current.timeScale().fitContent();
         }
         isInitialLoadRef.current = false;
+      } else if (hasUserInteractedRef.current) {
+        // Restore user's previous view state for same symbol updates
+        setTimeout(() => {
+          restoreChartState();
+        }, 0);
       }
     }
-  }, [isChartReady, data]);
+  }, [isChartReady, data, restoreChartState]);
 
   // Fallback initialization trigger - ensure chart initializes even if container detection fails
   useEffect(() => {
@@ -890,7 +918,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     } catch (error) {
       console.error('Error updating chart data:', error);
     }
-  }, [data, isChartReady]); // Removed lastUpdate dependency to prevent unnecessary re-renders
+  }, [data, isChartReady, saveChartState, restoreChartState]); // Added chart state functions to dependencies
 
   // Handle chart reset
   const handleChartReset = useCallback(() => {

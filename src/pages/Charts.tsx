@@ -171,6 +171,7 @@ const Charts = React.memo(function Charts() {
   const [chartData, setChartData] = useState<ChartData[] | null>(null);
   const [lastCandleCount, setLastCandleCount] = useState(0);
   const [isPriceStatsUpdating, setIsPriceStatsUpdating] = useState(false);
+  const chartResetRef = useRef<(() => void) | null>(null);
   
   // Live chart hook for real-time data
   // This hook provides real-time WebSocket data streaming with auto-reconnection
@@ -876,6 +877,15 @@ const Charts = React.memo(function Charts() {
                       onError={handleChartError}
                       onValidationResult={handleValidationResult}
                       onStatsCalculated={handleStatsCalculated}
+                      onResetScale={() => {
+                        // Reset the chart to fit content and clear user interaction state
+                        if (chartResetRef.current) {
+                          chartResetRef.current();
+                        }
+                      }}
+                      onRegisterReset={(resetFn) => {
+                        chartResetRef.current = resetFn;
+                      }}
                     />
                   ) : (
                     <div className="text-center py-16 text-slate-500">
