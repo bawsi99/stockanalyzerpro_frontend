@@ -130,6 +130,84 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
   const [lastChartUpdate, setLastChartUpdate] = useState(0);
   const [containerReady, setContainerReady] = useState(false);
 
+  // Chart state management for preserving zoom/pan
+  const hasUserInteractedRef = useRef<boolean>(false);
+
+  // Save current chart state
+  const saveChartState = useCallback(() => {
+    if (!chartRef.current) return;
+
+    try {
+      const timeScale = chartRef.current.timeScale();
+      const priceScale = chartRef.current.priceScale('right');
+      
+      const currentState: ChartState = {
+        visibleRange: timeScale.getVisibleRange() as any,
+        timeScale: {
+          rightOffset: timeScale.options().rightOffset,
+          barSpacing: timeScale.options().barSpacing,
+          fixLeftEdge: timeScale.options().fixLeftEdge,
+          fixRightEdge: timeScale.options().fixRightEdge,
+          lockVisibleTimeRangeOnResize: timeScale.options().lockVisibleTimeRangeOnResize,
+          rightBarStaysOnScroll: timeScale.options().rightBarStaysOnScroll,
+          borderVisible: timeScale.options().borderVisible,
+          visible: timeScale.options().visible,
+          timeVisible: timeScale.options().timeVisible,
+          secondsVisible: timeScale.options().secondsVisible,
+        },
+        priceScale: {
+          autoScale: priceScale.options().autoScale,
+          scaleMargins: priceScale.options().scaleMargins,
+        }
+      };
+
+      chartStateRef.current = currentState;
+
+      if (debug) {
+        console.log('💾 Chart state saved:', currentState);
+      }
+    } catch (error) {
+      console.warn('Error saving chart state:', error);
+    }
+  }, [debug]);
+
+  // Restore chart state
+  const restoreChartState = useCallback(() => {
+    if (!chartRef.current || !chartStateRef.current?.visibleRange) return;
+
+    try {
+      const timeScale = chartRef.current.timeScale();
+      const priceScale = chartRef.current.priceScale('right');
+
+      // Restore time scale options
+      if (chartStateRef.current.timeScale) {
+        timeScale.applyOptions(chartStateRef.current.timeScale);
+      }
+
+      // Restore price scale options
+      if (chartStateRef.current.priceScale) {
+        priceScale.applyOptions(chartStateRef.current.priceScale);
+      }
+
+      // Restore visible range
+      timeScale.setVisibleRange(chartStateRef.current.visibleRange as any);
+
+      if (debug) {
+        console.log('🔄 Chart state restored:', chartStateRef.current);
+      }
+    } catch (error) {
+      console.warn('Error restoring chart state:', error);
+    }
+  }, [debug]);
+
+  // Handle user interaction (zoom, pan, etc.)
+  const handleUserInteraction = useCallback(() => {
+    hasUserInteractedRef.current = true;
+    if (debug) {
+      console.log('👆 User interaction detected');
+    }
+  }, [debug]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -254,6 +332,11 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       initializationAttemptsRef.current = 0;
       lastDataRef.current = []; // Clear stored data
       
+      // Reset chart state management for new symbol
+      chartStateRef.current = null;
+      hasUserInteractedRef.current = false;
+      isInitialLoadRef.current = true;
+      
       // Cleanup existing chart
       if (chartRef.current) {
         try {
@@ -278,6 +361,11 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       setChartError(null);
       initializationAttemptsRef.current = 0;
       lastDataRef.current = []; // Clear stored data
+      
+      // Reset chart state management for new timeframe
+      chartStateRef.current = null;
+      hasUserInteractedRef.current = false;
+      isInitialLoadRef.current = true;
       
       // Cleanup existing chart
       if (chartRef.current) {
@@ -497,12 +585,13 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       setIsChartReady(true);
       initializationAttemptsRef.current = 0; // Reset attempts counter
 
-      // Add interaction handlers
-      const handleInteraction = () => {
-        if (chart && candlestickSeries) {
-          // Handle any chart interactions here
-        }
-      };
+      // Add user interaction handlers to detect zoom/pan
+      const timeScale = chart.timeScale();
+      
+      // Subscribe to time scale changes (zoom/pan)
+      timeScale.subscribeVisibleTimeRangeChange(() => {
+        handleUserInteraction();
+      });
 
       // Add resize handler with better dimension detection
       const handleResize = () => {
@@ -616,9 +705,12 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       lastDataRef.current = candlestickData as any;
       console.log('Initial data set:', candlestickData.length, 'candles');
       
-      // Fit content for new data
-      if (chartRef.current) {
-        chartRef.current.timeScale().fitContent();
+      // Only fit content for initial load or new symbol
+      if (isInitialLoadRef.current || isNewSymbolRef.current) {
+        if (chartRef.current) {
+          chartRef.current.timeScale().fitContent();
+        }
+        isInitialLoadRef.current = false;
       }
     }
   }, [isChartReady, data]);
@@ -731,14 +823,26 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       });
 
       if (isNewDataset || isNewSymbolRef.current) {
+        // Save current chart state before updating data
+        if (hasUserInteractedRef.current) {
+          saveChartState();
+        }
+        
         // Full dataset update
         candlestickSeriesRef.current.setData(candlestickData as any);
         lastDataRef.current = candlestickData as any;
         console.log('Full dataset updated:', candlestickData.length, 'candles');
         
-        // Fit content for new data
-        if (chartRef.current) {
-          chartRef.current.timeScale().fitContent();
+        // Only fit content for new symbol, preserve user's view for same symbol
+        if (isNewSymbolRef.current) {
+          if (chartRef.current) {
+            chartRef.current.timeScale().fitContent();
+          }
+        } else if (hasUserInteractedRef.current) {
+          // Restore user's previous view state
+          setTimeout(() => {
+            restoreChartState();
+          }, 0);
         }
       } else if (isTickUpdate) {
         // Tick update - only update the last candle
@@ -808,6 +912,11 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     setChartError(null);
     initializationAttemptsRef.current = 0;
     lastDataRef.current = [];
+    
+    // Reset chart state management
+    chartStateRef.current = null;
+    hasUserInteractedRef.current = false;
+    isInitialLoadRef.current = true;
     
     // Reset container ready state to force re-detection
     setContainerReady(false);
@@ -1081,6 +1190,8 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         {debug && isChartReady && (
           <div className="absolute bottom-2 right-2 z-10 bg-blue-100 border border-blue-300 rounded p-2 text-xs">
             <div>Last Update: {new Date(lastChartUpdate).toLocaleTimeString()}</div>
+            <div>User Interacted: {hasUserInteractedRef.current ? 'Yes' : 'No'}</div>
+            <div>Chart State: {chartStateRef.current ? 'Saved' : 'None'}</div>
             <Button 
               onClick={handleChartReset}
               className="mt-1"
@@ -1088,6 +1199,32 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
               size="sm"
             >
               🔧 Reset Chart
+            </Button>
+            <Button 
+              onClick={() => {
+                if (chartRef.current) {
+                  saveChartState();
+                  console.log('Chart state saved manually');
+                }
+              }}
+              className="mt-1 ml-1"
+              variant="outline"
+              size="sm"
+            >
+              💾 Save State
+            </Button>
+            <Button 
+              onClick={() => {
+                if (chartRef.current) {
+                  restoreChartState();
+                  console.log('Chart state restored manually');
+                }
+              }}
+              className="mt-1 ml-1"
+              variant="outline"
+              size="sm"
+            >
+              🔄 Restore State
             </Button>
           </div>
         )}
