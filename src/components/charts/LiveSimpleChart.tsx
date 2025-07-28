@@ -612,8 +612,8 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         close: d.close,
       }));
       
-      candlestickSeriesRef.current.setData(candlestickData);
-      lastDataRef.current = candlestickData;
+      candlestickSeriesRef.current.setData(candlestickData as any);
+      lastDataRef.current = candlestickData as any;
       console.log('Initial data set:', candlestickData.length, 'candles');
       
       // Fit content for new data
@@ -691,12 +691,12 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       })));
       
       const candlestickData = validatedData.map(d => ({
-        time: d.time, // Use time directly since it's already UTC timestamp in seconds
+        time: d.time as any, // Cast to any to satisfy TradingView's Time type
         open: d.open,
         high: d.high,
         low: d.low,
         close: d.close,
-      }));
+      })) as any; // Cast the entire array to satisfy TradingView's type requirements
 
       // Debug processed timestamps
       console.log('Processed candlestick timestamps:', candlestickData.slice(0, 5).map(d => ({
@@ -709,7 +709,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       const isNewDataset = lastDataRef.current.length === 0 || 
         (lastDataRef.current.length > 0 && candlestickData.length > 0 &&
          lastDataRef.current[0]?.time && candlestickData[0]?.time &&
-         Math.abs(lastDataRef.current[0].time - candlestickData[0].time) > 86400) ||
+         Math.abs((lastDataRef.current[0].time as number) - (candlestickData[0].time as number)) > 86400) ||
         (lastDataRef.current.length > 0 && candlestickData.length === 0) || // Data was cleared
         (lastDataRef.current.length === 0 && candlestickData.length > 0); // New data loaded
 
@@ -732,8 +732,8 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
       if (isNewDataset || isNewSymbolRef.current) {
         // Full dataset update
-        candlestickSeriesRef.current.setData(candlestickData);
-        lastDataRef.current = candlestickData;
+        candlestickSeriesRef.current.setData(candlestickData as any);
+        lastDataRef.current = candlestickData as any;
         console.log('Full dataset updated:', candlestickData.length, 'candles');
         
         // Fit content for new data
@@ -753,7 +753,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           
           if (hasPriceChange || hasHighChange || hasLowChange) {
             // Update the last candle with new tick data
-            candlestickSeriesRef.current.update(newLastCandle);
+            candlestickSeriesRef.current.update(newLastCandle as any);
             console.log('Live tick update:', {
               oldClose: lastStoredCandle.close,
               newClose: newLastCandle.close,
@@ -766,7 +766,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         }
         
         // Update the stored data reference
-        lastDataRef.current = candlestickData;
+        lastDataRef.current = candlestickData as any;
       } else {
         // New candle added or other data change
         const lastStoredCandle = lastDataRef.current[lastDataRef.current.length - 1];
@@ -774,12 +774,12 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
         if (lastStoredCandle && newLastCandle && candlestickData.length > lastDataRef.current.length) {
           // New candle added
-          candlestickSeriesRef.current.update(newLastCandle);
+          candlestickSeriesRef.current.update(newLastCandle as any);
           console.log('New candle added:', newLastCandle);
         }
         
         // Update the stored data reference
-        lastDataRef.current = candlestickData;
+        lastDataRef.current = candlestickData as any;
       }
 
       setLastChartUpdate(Date.now());

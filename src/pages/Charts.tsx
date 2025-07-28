@@ -3,10 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, Loader2, Eye, BarChart3, Settings } from 'lucide-react';
+import { ArrowLeft, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, Loader2, BarChart3, Activity, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { analysisService } from '@/services/analysisService';
 import { authService } from '@/services/authService';
@@ -17,28 +17,12 @@ import { useDataStore } from '@/stores/dataStore';
 import LiveSimpleChart from '@/components/charts/LiveSimpleChart';
 
 // Analysis Components
-import ConsensusSummaryCard from '@/components/analysis/ConsensusSummaryCard';
-import AITradingAnalysisOverviewCard from '@/components/analysis/AITradingAnalysisOverviewCard';
 import PriceStatisticsCard from '@/components/analysis/PriceStatisticsCard';
-import SectorBenchmarkingCard from '@/components/analysis/SectorBenchmarkingCard';
-import TechnicalAnalysisCard from '@/components/analysis/TechnicalAnalysisCard';
-import EnhancedPatternRecognitionCard from '@/components/analysis/EnhancedPatternRecognitionCard';
-import AdvancedPatternAnalysisCard from '@/components/analysis/AdvancedPatternAnalysisCard';
-import MultiTimeframeAnalysisCard from '@/components/analysis/MultiTimeframeAnalysisCard';
-import AdvancedRiskAssessmentCard from '@/components/analysis/AdvancedRiskAssessmentCard';
-import ComplexPatternAnalysisCard from '@/components/analysis/ComplexPatternAnalysisCard';
-import AdvancedRiskMetricsCard from '@/components/analysis/AdvancedRiskMetricsCard';
 
 // UI Components
 import { StockSelector } from '@/components/ui/stock-selector';
 import { 
-  AnalysisResponse, 
-  EnhancedOverlays, 
-  AdvancedPatterns,
-  MultiTimeframeAnalysis,
-  AdvancedRiskMetrics,
-  StressTestingData,
-  ScenarioAnalysisData
+  AnalysisResponse
 } from '@/types/analysis';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -61,13 +45,7 @@ interface ChartStats {
   returns: { avg: number; volatility: number };
 }
 
-interface ExtendedIndicators {
-  advanced_patterns?: AdvancedPatterns;
-  multi_timeframe?: MultiTimeframeAnalysis;
-  advanced_risk?: AdvancedRiskMetrics;
-  stress_testing?: StressTestingData;
-  scenario_analysis?: ScenarioAnalysisData;
-}
+
 
 const calculatePriceStatistics = (data: ChartData[] | null): ChartStats => {
   if (!data || data.length === 0) {
@@ -172,7 +150,7 @@ const Charts = React.memo(function Charts() {
   // Core State
   const [stockSymbol, setStockSymbol] = useState<string>('NIFTY 50');
   const [selectedTimeframe, setSelectedTimeframe] = useState('1d');
-  const [activeTab, setActiveTab] = useState('overview');
+
   
   // Authentication
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'error'>('loading');
@@ -190,6 +168,8 @@ const Charts = React.memo(function Charts() {
   const [debugMode, setDebugMode] = useState(true);
   const [chartDataLoaded, setChartDataLoaded] = useState(false);
   const [chartData, setChartData] = useState<ChartData[] | null>(null);
+  const [lastCandleCount, setLastCandleCount] = useState(0);
+  const [isPriceStatsUpdating, setIsPriceStatsUpdating] = useState(false);
   
   // Live chart hook for real-time data
   // This hook provides real-time WebSocket data streaming with auto-reconnection
@@ -457,13 +437,34 @@ const Charts = React.memo(function Charts() {
     return isLiveLoading;
   }, [isLiveLoading]);
 
-  // Memoize chart stats calculation
+  // Memoize chart stats calculation for analysis data
   const memoizedChartStats = useMemo(() => {
     if (chartData) {
       return calculatePriceStatistics(chartData);
     }
     return null;
   }, [chartData]);
+
+  // Memoize live chart stats calculation for Price Statistics Card
+  const memoizedLiveChartStats = useMemo(() => {
+    if (liveData && liveData.length > 0) {
+      return calculatePriceStatistics(liveData);
+    }
+    return null;
+  }, [liveData]);
+
+  // Detect new candles and trigger update animation for Price Statistics Card
+  useEffect(() => {
+    if (liveData && liveData.length > 0) {
+      if (liveData.length > lastCandleCount && lastCandleCount > 0) {
+        // New candle added
+        setIsPriceStatsUpdating(true);
+        setTimeout(() => setIsPriceStatsUpdating(false), 1000); // Show animation for 1 second
+        console.log('🕯️ New candle detected, updating Price Statistics Card');
+      }
+      setLastCandleCount(liveData.length);
+    }
+  }, [liveData, lastCandleCount]);
 
   // Loading and error states
   if (authStatus === 'loading') {
@@ -767,103 +768,47 @@ const Charts = React.memo(function Charts() {
         <div className="mb-8">
           <div className="text-center mb-6">
             <h1 className="text-4xl font-bold text-slate-800 mb-2">
-              {stockSymbol || "Loading..."} Analysis
+              {stockSymbol || "Loading..."}
             </h1>
           </div>
 
 
         </div>
 
-        {/* Main Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm">
-            <TabsTrigger value="overview" className="flex items-center space-x-2">
-              <Eye className="h-4 w-4" />
-              <span>Overview</span>
-            </TabsTrigger>
-            <TabsTrigger value="charts" className="flex items-center space-x-2">
-              <BarChart3 className="h-4 w-4" />
-              <span>Charts</span>
-              {chartDataLoaded && (
-                <div className="w-2 h-2 bg-green-500 rounded-full ml-1"></div>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="technical" className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4" />
-              <span>Technical</span>
-            </TabsTrigger>
-            <TabsTrigger value="advanced" className="flex items-center space-x-2">
-              <Settings className="h-4 w-4" />
-              <span>Advanced</span>
-            </TabsTrigger>
-          </TabsList>
+        {/* Main Content */}
+        <div className="space-y-6">
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            {/* Top Row - Summary Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Consensus Summary */}
-              <div className="lg:col-span-1">
-                {analysisLoading ? (
-                  <AnalysisCardSkeleton 
-                    title="Consensus Summary" 
-                    description="Loading consensus analysis..." 
-                  />
-                ) : (
-                  <ConsensusSummaryCard consensus={consensus} />
-                )}
-              </div>
-              
-              {/* AI Trading Analysis */}
-              <div className="lg:col-span-1">
-                {analysisLoading ? (
-                  <AnalysisCardSkeleton 
-                    title="AI Trading Analysis" 
-                    description="Loading AI analysis..." 
-                  />
-                ) : (
-                  <AITradingAnalysisOverviewCard aiAnalysis={analysisData?.ai_analysis} />
-                )}
-              </div>
-            </div>
 
-            {/* Bottom Row - Price Statistics and Sector Analysis */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Price Statistics Card */}
+
+
+            {/* Price Statistics Card */}
+            <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
               <div className="lg:col-span-1">
-                {analysisLoading ? (
+                {!liveData || liveData.length === 0 ? (
                   <AnalysisCardSkeleton 
                     title="Price Statistics" 
-                    description="Loading price statistics..." 
+                    description="Waiting for live data..." 
                   />
                 ) : (
-                  <PriceStatisticsCard 
-                    summaryStats={transformChartStatsForPriceCard(memoizedChartStats)}
-                    latestPrice={liveData && liveData.length > 0 ? liveData[liveData.length - 1].close || liveData[liveData.length - 1].price : null}
-                    timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
-                  />
-                )}
-              </div>
-              
-              <div className="lg:col-span-1">
-                {analysisLoading ? (
-                  <AnalysisCardSkeleton 
-                    title="Sector Benchmarking" 
-                    description="Loading sector analysis..." 
-                  />
-                ) : (
-                  analysisData?.sector_benchmarking && (
-                    <SectorBenchmarkingCard 
-                      sectorBenchmarking={analysisData.sector_benchmarking} 
+                  <div className={`transition-all duration-300 ${isPriceStatsUpdating ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}>
+                    <PriceStatisticsCard 
+                      summaryStats={transformChartStatsForPriceCard(memoizedLiveChartStats)}
+                      latestPrice={liveData[liveData.length - 1].close || liveData[liveData.length - 1].price}
+                      timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
                     />
-                  )
+                    {isPriceStatsUpdating && (
+                      <div className="absolute top-2 right-2 z-10">
+                        <Badge variant="secondary" className="bg-blue-500 text-white animate-pulse">
+                          <Activity className="h-3 w-3 mr-1" />
+                          New Candle
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
-          </TabsContent>
 
-          {/* Charts Tab */}
-          <TabsContent value="charts" className="space-y-6">
             {/* Chart Controls */}
             <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
               <CardHeader>
@@ -983,111 +928,7 @@ const Charts = React.memo(function Charts() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Technical Tab */}
-          <TabsContent value="technical" className="space-y-6">
-            {analysisLoading ? (
-              <AnalysisCardSkeleton 
-                title="Technical Analysis" 
-                description="Loading technical indicators..." 
-              />
-            ) : (
-              indicator_summary_md && (
-                <TechnicalAnalysisCard 
-                  indicatorSummary={indicator_summary_md || ''} 
-                />
-              )
-            )}
-
-            {analysisLoading ? (
-              <AnalysisCardSkeleton 
-                title="Pattern Recognition" 
-                description="Loading pattern analysis..." 
-              />
-            ) : (
-              analysisData?.overlays && (
-                <EnhancedPatternRecognitionCard 
-                  overlays={analysisData.overlays as EnhancedOverlays}
-                  symbol={stockSymbol}
-                />
-              )
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {analysisLoading ? (
-                <>
-                  <AnalysisCardSkeleton 
-                    title="Advanced Patterns" 
-                    description="Loading pattern analysis..." 
-                  />
-                  <AnalysisCardSkeleton 
-                    title="Multi-timeframe Analysis" 
-                    description="Loading timeframe analysis..." 
-                  />
-                </>
-              ) : (
-                <>
-                  {(indicators as ExtendedIndicators)?.advanced_patterns && (
-                    <AdvancedPatternAnalysisCard 
-                      patterns={(indicators as ExtendedIndicators).advanced_patterns!} 
-                      symbol={stockSymbol}
-                    />
-                  )}
-
-                  {(indicators as ExtendedIndicators)?.multi_timeframe && !(indicators as ExtendedIndicators).multi_timeframe?.error && (
-                    <MultiTimeframeAnalysisCard 
-                      analysis={(indicators as ExtendedIndicators).multi_timeframe!} 
-                      symbol={stockSymbol}
-                    />
-                  )}
-                </>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Advanced Tab */}
-          <TabsContent value="advanced" className="space-y-6">
-            {analysisLoading ? (
-              <>
-                <AnalysisCardSkeleton 
-                  title="Risk Assessment" 
-                  description="Loading risk analysis..." 
-                />
-                <AnalysisCardSkeleton 
-                  title="Complex Patterns" 
-                  description="Loading complex patterns..." 
-                />
-                <AnalysisCardSkeleton 
-                  title="Risk Metrics" 
-                  description="Loading risk metrics..." 
-                />
-              </>
-            ) : (
-              <>
-                {(indicators as ExtendedIndicators)?.advanced_risk && !(indicators as ExtendedIndicators).advanced_risk?.error && (
-                  <AdvancedRiskAssessmentCard 
-                    riskMetrics={(indicators as ExtendedIndicators).advanced_risk!}
-                    symbol={stockSymbol}
-                  />
-                )}
-
-                {(indicators as ExtendedIndicators)?.advanced_patterns && (
-                  <ComplexPatternAnalysisCard 
-                    patterns={(indicators as ExtendedIndicators).advanced_patterns!}
-                  />
-                )}
-
-                {((indicators as ExtendedIndicators)?.stress_testing || (indicators as ExtendedIndicators)?.scenario_analysis) && (
-                  <AdvancedRiskMetricsCard 
-                    stress_testing={(indicators as ExtendedIndicators)?.stress_testing}
-                    scenario_analysis={(indicators as ExtendedIndicators)?.scenario_analysis}
-                  />
-                )}
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+        </div>
       </div>
     </div>
   );
