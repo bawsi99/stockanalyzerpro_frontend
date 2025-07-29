@@ -180,6 +180,44 @@ class AnalysisService {
     }
   }
 
+  // POST /analyze/async - Comprehensive stock analysis with async index data
+  async analyzeStockAsync(request: AnalysisRequest): Promise<AnalysisResponse> {
+    try {
+      const token = await authService.ensureAuthenticated();
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+
+      const response = await fetch(ENDPOINTS.ANALYSIS.ANALYZE_ASYNC, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request)
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please login again.');
+        } else {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to analyze stock with async index data');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error analyzing stock with async index data:', error);
+      throw error;
+    }
+  }
+
   // GET /stock/{symbol}/indicators - Technical indicators
   async getIndicators(
     symbol: string, 
@@ -399,6 +437,44 @@ class AnalysisService {
       return data.results;
     } catch (error) {
       console.error('Error fetching sector benchmark:', error);
+      throw error;
+    }
+  }
+
+  // POST /sector/benchmark/async - Sector benchmarking with async index data
+  async getSectorBenchmarkAsync(request: AnalysisRequest): Promise<SectorBenchmarking> {
+    try {
+      const token = await authService.ensureAuthenticated();
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+
+      const response = await fetch(ENDPOINTS.ANALYSIS.SECTOR_BENCHMARK_ASYNC, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request)
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please login again.');
+        } else {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to get sector benchmarking with async index data');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error getting sector benchmarking with async index data:', error);
       throw error;
     }
   }

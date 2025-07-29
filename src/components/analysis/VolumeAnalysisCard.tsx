@@ -3,68 +3,48 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
-
-interface VolumeData {
-  volume: number;
-  price: number;
-  date: string;
-  volume_ratio: number;
-  price_change: number;
-  is_anomaly: boolean;
-}
-
-interface VolumeAnalysis {
-  average_volume: number;
-  volume_trend: string;
-  price_volume_correlation: number;
-  volume_anomalies: VolumeData[];
-  volume_patterns: {
-    accumulation: boolean;
-    distribution: boolean;
-    climax: boolean;
-  };
-  key_insights: string[];
-}
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
 
 interface VolumeAnalysisCardProps {
-  volumeData: VolumeAnalysis;
+  volumeData?: any;
+  priceData?: any[];
   symbol: string;
 }
 
-const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, className = '' }) => {
-  if (!volumeData || !volumeData.enhanced_volume?.comprehensive_analysis) {
-    return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Volume Analysis
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              Enhanced volume analysis data not available. Using basic volume metrics.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    );
-  }
+const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, priceData, symbol }) => {
+  // Extract volume information from the data
+  const volumeRatio = volumeData?.volume_ratio || 1;
+  const obv = volumeData?.obv || 0;
+  const obvTrend = volumeData?.obv_trend || 'neutral';
+  
+  // Calculate basic volume metrics from price data if available
+  const calculateVolumeMetrics = () => {
+    if (!priceData || priceData.length === 0) return null;
+    
+    const volumes = priceData.map(d => d.volume || 0).filter(v => v > 0);
+    if (volumes.length === 0) return null;
+    
+    const avgVolume = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
+    const recentVolumes = volumes.slice(-5); // Last 5 periods
+    const recentAvgVolume = recentVolumes.reduce((sum, vol) => sum + vol, 0) / recentVolumes.length;
+    
+    return {
+      averageVolume: avgVolume,
+      recentAverageVolume: recentAvgVolume,
+      volumeTrend: recentAvgVolume > avgVolume ? 'up' : recentAvgVolume < avgVolume ? 'down' : 'neutral',
+      volumeRatio: recentAvgVolume / avgVolume
+    };
+  };
 
-  const analysis = volumeData.enhanced_volume.comprehensive_analysis;
-  const ratios = analysis.volume_ratios;
-  const trends = analysis.volume_trends;
-  const confirmation = analysis.volume_confirmation;
-  const quality = analysis.volume_quality;
+  const volumeMetrics = calculateVolumeMetrics();
 
   const getTrendIcon = (trend: string) => {
-    switch (trend) {
+    switch (trend.toLowerCase()) {
       case 'up':
+      case 'bullish':
         return <TrendingUp className="h-4 w-4 text-green-600" />;
       case 'down':
+      case 'bearish':
         return <TrendingDown className="h-4 w-4 text-red-600" />;
       default:
         return <Minus className="h-4 w-4 text-gray-600" />;
@@ -78,245 +58,124 @@ const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, cla
     return 'text-gray-600';
   };
 
-  const getConfirmationBadge = () => {
-    const status = confirmation.confirmation_status;
-    const strength = confirmation.strength;
-    
-    if (status === 'confirmed' && strength === 'strong') {
-      return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Strong Confirmation</Badge>;
-    } else if (status === 'confirmed') {
-      return <Badge variant="secondary" className="bg-blue-100 text-blue-800"><CheckCircle className="h-3 w-3 mr-1" />Confirmed</Badge>;
-    } else {
-      return <Badge variant="destructive" className="bg-red-100 text-red-800"><XCircle className="h-3 w-3 mr-1" />Diverging</Badge>;
-    }
-  };
-
-  const getQualityBadge = () => {
-    const dataQuality = quality.data_quality;
-    const reliability = quality.reliability;
-    
-    if (dataQuality === 'good' && reliability === 'high') {
-      return <Badge variant="default" className="bg-green-100 text-green-800">High Quality</Badge>;
-    } else if (dataQuality === 'good') {
-      return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Good Quality</Badge>;
-    } else {
-      return <Badge variant="destructive" className="bg-red-100 text-red-800">Poor Quality</Badge>;
-    }
+  const getVolumeRatioBadge = (ratio: number) => {
+    if (ratio > 1.5) return <Badge className="bg-green-100 text-green-800">High Volume</Badge>;
+    if (ratio > 1.2) return <Badge className="bg-yellow-100 text-yellow-800">Above Average</Badge>;
+    if (ratio < 0.5) return <Badge className="bg-red-100 text-red-800">Low Volume</Badge>;
+    return <Badge className="bg-gray-100 text-gray-800">Normal</Badge>;
   };
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Volume Analysis
-          </div>
-          <div className="flex gap-2">
-            {getQualityBadge()}
-            {getConfirmationBadge()}
-          </div>
-        </CardTitle>
+    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+      <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-t-lg">
+        <div className="flex items-center space-x-2">
+          <BarChart3 className="h-6 w-6" />
+          <CardTitle className="text-xl">Volume Analysis</CardTitle>
+        </div>
+        <CardDescription className="text-purple-100">
+          Volume trends and price-volume relationship
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Daily Metrics */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-gray-600">Current Volume</h4>
-            <p className="text-2xl font-bold">
-              {analysis.daily_metrics.current_volume.toLocaleString()}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-gray-600">Volume/Price Ratio</h4>
-            <p className="text-2xl font-bold">
-              {analysis.daily_metrics.volume_price_ratio.toFixed(2)}
-            </p>
-          </div>
-        </div>
-
-        {/* Volume Ratios */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-600">Volume Ratios (vs Moving Averages)</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">5-day:</span>
-              <span className={`font-semibold ${getVolumeRatioColor(ratios.ratio_5d)}`}>
-                {ratios.ratio_5d.toFixed(2)}x
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">10-day:</span>
-              <span className={`font-semibold ${getVolumeRatioColor(ratios.ratio_10d)}`}>
-                {ratios.ratio_10d.toFixed(2)}x
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">20-day:</span>
-              <span className={`font-semibold ${getVolumeRatioColor(ratios.ratio_20d)}`}>
-                {ratios.ratio_20d.toFixed(2)}x
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">50-day:</span>
-              <span className={`font-semibold ${getVolumeRatioColor(ratios.ratio_50d)}`}>
-                {ratios.ratio_50d.toFixed(2)}x
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Volume Trends */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-600">Volume Trends</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">5-day:</span>
-              <div className="flex items-center gap-1">
-                {getTrendIcon(trends.trend_5d)}
-                <span className="text-sm font-medium capitalize">{trends.trend_5d}</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">10-day:</span>
-              <div className="flex items-center gap-1">
-                {getTrendIcon(trends.trend_10d)}
-                <span className="text-sm font-medium capitalize">{trends.trend_10d}</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">20-day:</span>
-              <div className="flex items-center gap-1">
-                {getTrendIcon(trends.trend_20d)}
-                <span className="text-sm font-medium capitalize">{trends.trend_20d}</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">50-day:</span>
-              <div className="flex items-center gap-1">
-                {getTrendIcon(trends.trend_50d)}
-                <span className="text-sm font-medium capitalize">{trends.trend_50d}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Volume Strength Score */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-gray-600">Volume Strength Score</h4>
-            <span className="text-lg font-bold">{analysis.volume_strength_score}/100</span>
-          </div>
-          <Progress value={analysis.volume_strength_score} className="h-2" />
-          <div className="flex justify-between text-xs text-gray-500">
-            <span>Weak</span>
-            <span>Moderate</span>
-            <span>Strong</span>
-          </div>
-        </div>
-
-        {/* Price-Volume Correlation */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-600">Price-Volume Correlation</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">20-day:</span>
-              <span className={`font-semibold ${
-                Math.abs(analysis.price_volume_correlation.correlation_20d) > 0.5 ? 'text-green-600' :
-                Math.abs(analysis.price_volume_correlation.correlation_20d) > 0.3 ? 'text-yellow-600' : 'text-red-600'
-              }`}>
-                {analysis.price_volume_correlation.correlation_20d.toFixed(3)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">50-day:</span>
-              <span className={`font-semibold ${
-                Math.abs(analysis.price_volume_correlation.correlation_50d) > 0.5 ? 'text-green-600' :
-                Math.abs(analysis.price_volume_correlation.correlation_50d) > 0.3 ? 'text-yellow-600' : 'text-red-600'
-              }`}>
-                {analysis.price_volume_correlation.correlation_50d.toFixed(3)}
-              </span>
-            </div>
-          </div>
-          <Badge variant="outline" className="capitalize">
-            {analysis.price_volume_correlation.correlation_strength} Correlation
-          </Badge>
-        </div>
-
-        {/* Volume Anomalies */}
-        {analysis.volume_anomalies.recent_anomalies > 0 && (
+      <CardContent className="pt-6">
+        <div className="space-y-6">
+          {/* Volume Ratio */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gray-600">Recent Volume Anomalies</h4>
-            <div className="space-y-2">
-              {analysis.volume_anomalies.anomaly_list.slice(0, 3).map((anomaly: Record<string, unknown>, index: number) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-yellow-50 rounded border border-yellow-200">
-                  <div>
-                    <p className="text-sm font-medium">{anomaly.date}</p>
-                    <p className="text-xs text-gray-600">
-                      {anomaly.volume_ratio.toFixed(2)}x average volume
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {anomaly.anomaly_strength}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Advanced Indicators */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-600">Advanced Volume Indicators</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">MFI:</span>
-              <span className={`font-semibold ${
-                analysis.advanced_indicators.mfi_status === 'overbought' ? 'text-red-600' :
-                analysis.advanced_indicators.mfi_status === 'oversold' ? 'text-green-600' : 'text-gray-600'
-              }`}>
-                {analysis.advanced_indicators.mfi.toFixed(1)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">OBV Trend:</span>
-              <div className="flex items-center gap-1">
-                {getTrendIcon(analysis.advanced_indicators.obv_trend)}
-                <span className="text-sm font-medium capitalize">{analysis.advanced_indicators.obv_trend}</span>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600 font-medium">Volume Ratio</span>
+              <div className="flex items-center space-x-2">
+                <span className={`font-semibold text-lg ${getVolumeRatioColor(volumeRatio)}`}>
+                  {volumeRatio.toFixed(2)}x
+                </span>
+                {getVolumeRatioBadge(volumeRatio)}
               </div>
             </div>
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">VWAP:</span>
-              <span className="font-semibold">
-                ₹{analysis.advanced_indicators.vwap.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm">Price vs VWAP:</span>
-              <span className={`font-semibold ${
-                analysis.advanced_indicators.price_vs_vwap_pct > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {analysis.advanced_indicators.price_vs_vwap_pct > 0 ? '+' : ''}{analysis.advanced_indicators.price_vs_vwap_pct.toFixed(2)}%
-              </span>
-            </div>
+            <Progress value={Math.min(volumeRatio * 50, 100)} className="h-2" />
+            <p className="text-sm text-slate-500">
+              {volumeRatio > 1.5 ? 'Significantly above average volume' :
+               volumeRatio > 1.2 ? 'Above average volume' :
+               volumeRatio < 0.5 ? 'Below average volume' :
+               'Normal volume levels'}
+            </p>
           </div>
-        </div>
 
-        {/* Volume Volatility */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-600">Volume Volatility</h4>
-          <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-            <span className="text-sm">Volatility Ratio:</span>
-            <span className={`font-semibold ${
-              analysis.volume_volatility.volatility_regime === 'high' ? 'text-red-600' :
-              analysis.volume_volatility.volatility_regime === 'low' ? 'text-green-600' : 'text-yellow-600'
-            }`}>
-              {analysis.volume_volatility.volatility_ratio.toFixed(3)}
-            </span>
+          {/* OBV Trend */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600 font-medium">OBV Trend</span>
+              <div className="flex items-center space-x-2">
+                {getTrendIcon(obvTrend)}
+                <span className="font-semibold capitalize">{obvTrend}</span>
+              </div>
+            </div>
+            <p className="text-sm text-slate-500">
+              On-Balance Volume trend indicates {obvTrend} buying/selling pressure
+            </p>
           </div>
-          <Badge variant="outline" className="capitalize">
-            {analysis.volume_volatility.volatility_regime} Volatility
-          </Badge>
+
+          {/* Calculated Volume Metrics */}
+          {volumeMetrics && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 font-medium">Recent Volume Trend</span>
+                <div className="flex items-center space-x-2">
+                  {getTrendIcon(volumeMetrics.volumeTrend)}
+                  <span className="font-semibold capitalize">{volumeMetrics.volumeTrend}</span>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="bg-slate-50 p-3 rounded-lg">
+                  <div className="text-slate-600">Average Volume</div>
+                  <div className="font-semibold">{volumeMetrics.averageVolume.toLocaleString()}</div>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-lg">
+                  <div className="text-slate-600">Recent Avg</div>
+                  <div className="font-semibold">{volumeMetrics.recentAverageVolume.toLocaleString()}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Volume Insights */}
+          <div className="space-y-3">
+            <h4 className="font-semibold text-slate-800">Volume Insights</h4>
+            <div className="space-y-2">
+              {volumeRatio > 1.5 && (
+                <div className="flex items-start space-x-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <span className="text-green-700">High volume confirms strong market interest</span>
+                </div>
+              )}
+              {volumeRatio < 0.5 && (
+                <div className="flex items-start space-x-2 text-sm">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <span className="text-yellow-700">Low volume suggests weak market participation</span>
+                </div>
+              )}
+              {obvTrend === 'up' && (
+                <div className="flex items-start space-x-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <span className="text-green-700">Rising OBV indicates accumulation</span>
+                </div>
+              )}
+              {obvTrend === 'down' && (
+                <div className="flex items-start space-x-2 text-sm">
+                  <XCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  <span className="text-red-700">Declining OBV suggests distribution</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* No Data Alert */}
+          {!volumeData && !volumeMetrics && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Volume analysis data not available for {symbol}
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </CardContent>
     </Card>

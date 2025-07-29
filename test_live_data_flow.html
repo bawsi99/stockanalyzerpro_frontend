@@ -144,7 +144,7 @@
         
         async function getAuthToken() {
             try {
-                const response = await fetch('http://localhost:8000/auth/token?user_id=test_user', {
+                const response = await fetch('http://localhost:8000/auth/token?user_id=6036aee5-624c-4275-8482-f77d32723c32', {
                     method: 'POST'
                 });
                 const data = await response.json();

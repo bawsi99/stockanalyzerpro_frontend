@@ -1,16 +1,18 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, Minus, Clock, History } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Clock, History, Loader2 } from 'lucide-react';
 import { StoredAnalysis } from '@/hooks/useStockAnalyses';
 import { format } from "date-fns";
 
 interface PreviousAnalysesProps {
   analyses: StoredAnalysis[];
   onAnalysisSelect?: (analysis: StoredAnalysis) => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
-const PreviousAnalyses = ({ analyses, onAnalysisSelect }: PreviousAnalysesProps) => {
+const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error = null }: PreviousAnalysesProps) => {
   return (
     <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm h-full flex flex-col">
       <CardHeader className="flex-shrink-0">
@@ -23,7 +25,18 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect }: PreviousAnalysesProps)
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto">
-        {analyses.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-8">
+            <Loader2 className="h-8 w-8 text-blue-500 mx-auto mb-4 animate-spin" />
+            <p className="text-slate-600">Loading analyses...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <TrendingDown className="h-12 w-12 text-red-300 mx-auto mb-4" />
+            <p className="text-red-600 mb-2">Error loading analyses</p>
+            <p className="text-sm text-slate-500">{error}</p>
+          </div>
+        ) : analyses.length === 0 ? (
           <div className="text-center py-8">
             <TrendingUp className="h-12 w-12 text-slate-300 mx-auto mb-4" />
             <p className="text-slate-500">No previous analyses found</p>
@@ -38,7 +51,8 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect }: PreviousAnalysesProps)
                     <div className="flex items-center space-x-3 mb-2">
                       <h3 className="font-semibold text-slate-800">{analysis.stock_symbol}</h3>
                       <Badge variant="outline" className="text-xs">
-                        {analysis.analysis_data?.results?.ai_analysis?.trend || 'N/A'}
+                        {analysis.analysis_data?.results?.ai_analysis?.trend || 
+                         analysis.analysis_data?.summary?.overall_signal || 'N/A'}
                       </Badge>
                     </div>
                     <div className="flex items-center text-sm text-slate-600">

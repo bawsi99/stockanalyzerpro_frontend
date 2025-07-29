@@ -44,7 +44,7 @@ class AuthService {
     }
   }
 
-  async createToken(userId: string = 'test_user'): Promise<AuthResponse> {
+  async createToken(userId?: string): Promise<AuthResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/token?user_id=${encodeURIComponent(userId)}`, {
         method: 'POST',
@@ -119,8 +119,11 @@ class AuthService {
       }
     }
 
-    // Create a new token
-    const authResponse = await this.createToken();
+    // Get user ID from localStorage or use anonymous
+    const userId = localStorage.getItem('user_id') || 'anonymous';
+    
+    // Create a new token with actual user ID
+    const authResponse = await this.createToken(userId);
     return authResponse.token;
   }
 }

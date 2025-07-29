@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Test User</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .info {
+            background-color: #e7f3ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Setup Test User Authentication</h1>
+        
+        <div class="info">
+            <p><strong>Current Issue:</strong> The system is trying to use "test_user" as the user ID, but this user doesn't exist in the database.</p>
+            <p><strong>Solution:</strong> Set up authentication with the correct email that exists in the database.</p>
+        </div>
+
+        <h2>Option 1: Set Correct User (Recommended)</h2>
+        <p>Use the existing user account: <strong>aaryanmanawat99@gmail.com</strong></p>
+        <button class="button" onclick="setCorrectUser()">Set Correct User</button>
+        
+        <h2>Option 2: Clear Authentication</h2>
+        <p>Clear all authentication data to start fresh</p>
+        <button class="button" onclick="clearAuth()">Clear Authentication</button>
+        
+        <h2>Current Authentication Status</h2>
+        <div id="status"></div>
+        
+        <h2>Test API Connection</h2>
+        <button class="button" onclick="testAPI()">Test API with Correct User</button>
+        <div id="apiResult"></div>
+        
+        <h2>Next Steps</h2>
+        <ol>
+            <li>Click "Set Correct User" to authenticate with the existing account</li>
+            <li>Click "Test API" to verify the connection works</li>
+            <li>Go to your main application and refresh the page</li>
+            <li>You should now see your analysis history</li>
+        </ol>
+    </div>
+
+    <script>
+        function updateStatus() {
+            const email = localStorage.getItem('user_email');
+            const id = localStorage.getItem('user_id');
+            const token = localStorage.getItem('jwt_token');
+            
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `
+                <p><strong>Email:</strong> ${email || 'Not set'}</p>
+                <p><strong>User ID:</strong> ${id || 'Not set'}</p>
+                <p><strong>Token:</strong> ${token ? 'Present' : 'Not set'}</p>
+            `;
+        }
+
+        function setCorrectUser() {
+            const correctEmail = 'aaryanmanawat99@gmail.com';
+            const correctUserId = '6036aee5-624c-4275-8482-f77d32723c32';
+            localStorage.setItem('user_email', correctEmail);
+            localStorage.setItem('user_id', correctUserId);
+            localStorage.setItem('jwt_token', 'dummy');
+            
+            updateStatus();
+            alert('✅ Correct user set! You can now go back to your main application.');
+        }
+
+        function clearAuth() {
+            localStorage.removeItem('user_email');
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('jwt_token');
+            
+            updateStatus();
+            alert('✅ Authentication cleared!');
+        }
+
+        async function testAPI() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.innerHTML = '<p>Testing API...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:8001/analyses/user/aaryanmanawat99@gmail.com?limit=5');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ API Test Successful!<br>
+                            Found ${data.count || 0} analyses for user aaryanmanawat99@gmail.com
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            ❌ API Test Failed<br>
+                            Status: ${response.status}<br>
+                            Error: ${data.detail || 'Unknown error'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ API Test Failed<br>
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Update status on page load
+        updateStatus();
+    </script>
+</body>
+</html> 

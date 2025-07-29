@@ -1,27 +1,38 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, Minus, Clock, Target, AlertTriangle } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import { TrendingUp, TrendingDown, Minus, Clock, Target, AlertTriangle, BarChart3 } from 'lucide-react';
 
+// Updated interface to match actual backend data structure
 interface TimeframeAnalysis {
-  timeframe: string;
-  signal: string;
-  confidence: number;
-  support_level?: number;
-  resistance_level?: number;
-  trend_strength: number;
-  key_levels: number[];
-  analysis_summary: string;
+  name: string;
+  periods: Record<string, any>;
+  ai_confidence?: number;
+  ai_trend?: string;
+  consensus?: {
+    direction: string;
+    strength: number;
+    score?: number;
+    timeframe_alignment?: Record<string, string>;
+    bullish_periods?: number;
+    bearish_periods?: number;
+    neutral_periods?: number;
+  };
 }
 
 interface MultiTimeframeAnalysis {
-  short_term: TimeframeAnalysis;
-  medium_term: TimeframeAnalysis;
-  long_term: TimeframeAnalysis;
-  consensus_signal: string;
-  overall_confidence: number;
-  timeframe_alignment: string;
-  key_insights: string[];
+  short_term?: TimeframeAnalysis;
+  medium_term?: TimeframeAnalysis;
+  long_term?: TimeframeAnalysis;
+  overall_consensus?: {
+    direction: string;
+    strength: number;
+    score: number;
+    timeframe_alignment: Record<string, string>;
+  };
+  error?: string;
 }
 
 interface MultiTimeframeAnalysisCardProps {
@@ -31,7 +42,7 @@ interface MultiTimeframeAnalysisCardProps {
 
 const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({ analysis, symbol }) => {
   const getDirectionIcon = (direction: string) => {
-    switch (direction) {
+    switch (direction?.toLowerCase()) {
       case 'bullish':
         return <TrendingUp className="h-4 w-4 text-green-500" />;
       case 'bearish':
@@ -42,7 +53,7 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
   };
 
   const getDirectionColor = (direction: string) => {
-    switch (direction) {
+    switch (direction?.toLowerCase()) {
       case 'bullish':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'bearish':
@@ -59,18 +70,30 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
     return 'bg-red-500';
   };
 
-  const renderTimeframeCard = (timeframe: string, data: Record<string, unknown>) => {
+  const renderTimeframeCard = (timeframe: string, data: TimeframeAnalysis | undefined) => {
     if (!data) return null;
 
     const consensus = data.consensus;
     const periods = Object.keys(data.periods || {});
+
+    if (!consensus) {
+      return (
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <div className="flex items-center space-x-2 mb-3">
+            <BarChart3 className="h-5 w-5 text-gray-400" />
+            <h3 className="font-semibold text-gray-600">{data.name || timeframe}</h3>
+          </div>
+          <p className="text-sm text-gray-500">No consensus data available</p>
+        </div>
+      );
+    }
 
     return (
       <div className="border rounded-lg p-4 bg-white">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
             <BarChart3 className="h-5 w-5 text-blue-500" />
-            <h3 className="font-semibold">{data.name}</h3>
+            <h3 className="font-semibold">{data.name || timeframe}</h3>
           </div>
           <Badge className={getDirectionColor(consensus.direction)}>
             <div className="flex items-center space-x-1">
@@ -84,35 +107,41 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
           <div>
             <div className="flex justify-between text-sm mb-1">
               <span>Strength</span>
-              <span>{consensus.strength.toFixed(0)}%</span>
+              <span>{consensus.strength?.toFixed(0) || 0}%</span>
             </div>
             <Progress 
-              value={consensus.strength} 
+              value={consensus.strength || 0} 
               className="h-2"
               style={{
-                '--progress-background': getStrengthColor(consensus.strength)
+                '--progress-background': getStrengthColor(consensus.strength || 0)
               } as React.CSSProperties}
             />
           </div>
 
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="text-center p-2 bg-green-50 rounded">
-              <div className="font-semibold text-green-700">{consensus.bullish_periods}</div>
+              <div className="font-semibold text-green-700">{consensus.bullish_periods || 0}</div>
               <div className="text-green-600">Bullish</div>
             </div>
             <div className="text-center p-2 bg-red-50 rounded">
-              <div className="font-semibold text-red-700">{consensus.bearish_periods}</div>
+              <div className="font-semibold text-red-700">{consensus.bearish_periods || 0}</div>
               <div className="text-red-600">Bearish</div>
             </div>
             <div className="text-center p-2 bg-gray-50 rounded">
-              <div className="font-semibold text-gray-700">{consensus.total_periods}</div>
-              <div className="text-gray-600">Total</div>
+              <div className="font-semibold text-gray-700">{consensus.neutral_periods || 0}</div>
+              <div className="text-gray-600">Neutral</div>
             </div>
           </div>
 
+          {consensus.score && (
+            <div className="text-sm">
+              <span className="font-medium">Score:</span> {consensus.score.toFixed(1)}
+            </div>
+          )}
+
           {periods.length > 0 && (
             <div className="text-xs text-gray-600">
-              <span className="font-medium">Periods:</span> {periods.join(', ')}
+              <span className="font-medium">Periods analyzed:</span> {periods.join(', ')}
             </div>
           )}
         </div>
@@ -120,7 +149,29 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
     );
   };
 
-  if (!analysis || Object.keys(analysis).length === 0) {
+  // Handle error case
+  if (analysis.error) {
+    return (
+      <Card className="w-full shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader className="bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-t-lg">
+          <CardTitle className="flex items-center space-x-2">
+            <AlertTriangle className="h-6 w-6" />
+            <span>Multi-Timeframe Analysis Error</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="text-center py-8 text-gray-500">
+            <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-red-300" />
+            <p className="text-red-600 font-medium">Analysis Error</p>
+            <p className="text-sm">{analysis.error}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Handle no data case
+  if (!analysis.short_term && !analysis.medium_term && !analysis.long_term) {
     return (
       <Card className="w-full shadow-xl border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-t-lg">
@@ -184,7 +235,7 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
                 <div>
                   <span className="font-medium">Alignment:</span>
                   <div className="flex space-x-1 mt-1">
-                    {Object.entries(analysis.overall_consensus.timeframe_alignment).map(([tf, direction]) => (
+                    {Object.entries(analysis.overall_consensus.timeframe_alignment || {}).map(([tf, direction]) => (
                       <Badge key={tf} variant="outline" className="text-xs">
                         {tf}: {direction}
                       </Badge>
@@ -219,32 +270,32 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
               </div>
             )}
             
-            {analysis.short_term && (
+            {analysis.short_term?.consensus && (
               <div className="flex items-center space-x-2">
                 <TrendingUp className="h-4 w-4 text-green-500" />
                 <span>
                   <strong>Short-term:</strong> {analysis.short_term.consensus.direction} 
-                  ({analysis.short_term.consensus.strength.toFixed(0)}%)
+                  ({analysis.short_term.consensus.strength?.toFixed(0) || 0}%)
                 </span>
               </div>
             )}
             
-            {analysis.medium_term && (
+            {analysis.medium_term?.consensus && (
               <div className="flex items-center space-x-2">
                 <BarChart3 className="h-4 w-4 text-blue-500" />
                 <span>
                   <strong>Medium-term:</strong> {analysis.medium_term.consensus.direction} 
-                  ({analysis.medium_term.consensus.strength.toFixed(0)}%)
+                  ({analysis.medium_term.consensus.strength?.toFixed(0) || 0}%)
                 </span>
               </div>
             )}
             
-            {analysis.long_term && (
+            {analysis.long_term?.consensus && (
               <div className="flex items-center space-x-2">
                 <TrendingDown className="h-4 w-4 text-purple-500" />
                 <span>
                   <strong>Long-term:</strong> {analysis.long_term.consensus.direction} 
-                  ({analysis.long_term.consensus.strength.toFixed(0)}%)
+                  ({analysis.long_term.consensus.strength?.toFixed(0) || 0}%)
                 </span>
               </div>
             )}

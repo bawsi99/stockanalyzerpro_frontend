@@ -149,7 +149,11 @@ const TIMEFRAMES = [
 
 const Charts = React.memo(function Charts() {
   // Core State
-  const [stockSymbol, setStockSymbol] = useState<string>('NIFTY 50');
+  const [stockSymbol, setStockSymbol] = useState<string>(() => {
+    // Try to get the stock symbol from localStorage (from analysis page)
+    const lastAnalyzedStock = localStorage.getItem('lastAnalyzedStock');
+    return lastAnalyzedStock || 'NIFTY 50';
+  });
   const [selectedTimeframe, setSelectedTimeframe] = useState('1d');
 
   
@@ -228,6 +232,14 @@ const Charts = React.memo(function Charts() {
 
     initializeAuth();
   }, []);
+
+  // Handle stock symbol change
+  const handleStockSymbolChange = (newSymbol: string) => {
+    setStockSymbol(newSymbol);
+    // Clear the localStorage value when user manually changes the stock
+    // This prevents it from interfering with future manual selections
+    localStorage.removeItem('lastAnalyzedStock');
+  };
 
   // Load analysis data
   useEffect(() => {
@@ -785,7 +797,7 @@ const Charts = React.memo(function Charts() {
                 <div>
                   <StockSelector
                     value={stockSymbol}
-                    onValueChange={setStockSymbol}
+                    onValueChange={handleStockSymbolChange}
                     placeholder="Select a stock"
                     label="Stock Symbol"
                   />

@@ -108,27 +108,53 @@ const ConsensusSummaryCard = ({ consensus }: ConsensusSummaryCardProps) => {
 
           {/* Signal Details */}
           <div className="space-y-3">
-            <h4 className="font-bold text-slate-700 text-lg">Signal Details</h4>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
+            <h4 className="font-bold text-slate-700 text-lg">Technical Indicators</h4>
+            <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto pr-2">
               {signalDetails.map((signal, index) => (
-                <div key={index} className="text-sm p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-slate-800">{signal.indicator || 'Unknown'}</span>
+                <div key={index} className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-slate-800 text-sm">{signal.indicator}</span>
+                      {signal.value !== undefined && (
+                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                          {typeof signal.value === 'number' ? signal.value.toFixed(2) : signal.value}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center space-x-2">
                       <Badge 
                         variant="outline" 
-                        className={`text-sm ${getSignalColor(signal.signal || 'neutral')}`}
+                        className={`text-xs px-2 py-1 ${getSignalColor(signal.signal || 'neutral')}`}
                       >
-                        {signal.signal || 'neutral'}
+                        {signal.signal?.toUpperCase() || 'NEUTRAL'}
                       </Badge>
-                      <span className={`text-sm font-medium ${getStrengthColor(signal.strength || 'weak')}`}>
-                        {signal.strength || 'weak'}
+                      <span className={`text-xs font-medium px-2 py-1 rounded ${getStrengthColor(signal.strength || 'weak')}`}>
+                        {signal.strength?.toUpperCase() || 'WEAK'}
                       </span>
                     </div>
                   </div>
-                  <div className="text-slate-600">{signal.description || 'No description available'}</div>
+                  <div className="text-sm text-slate-600 leading-relaxed">
+                    {signal.description || 'No description available'}
+                  </div>
+                  {signal.weight && (
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-xs text-slate-500">Weight:</span>
+                      <div className="w-16 bg-slate-200 rounded-full h-1.5">
+                        <div 
+                          className="bg-blue-500 h-1.5 rounded-full" 
+                          style={{ width: `${(signal.weight / 20) * 100}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-slate-500">{signal.weight}</span>
+                    </div>
+                  )}
                 </div>
               ))}
+              {signalDetails.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No technical indicators available</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

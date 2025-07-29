@@ -21,31 +21,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const token = localStorage.getItem('jwt_token');
     const email = localStorage.getItem('user_email');
     const id = localStorage.getItem('user_id');
+    
     if (token && email && id) {
       setUser({ id, email });
       setSession({ token });
+    } else {
+      // Auto-login with the correct user if no authentication exists
+      const correctEmail = 'aaryanmanawat99@gmail.com';
+      const correctUserId = '6036aee5-624c-4275-8482-f77d32723c32'; // Actual UUID from database
+      setUser({ id: correctUserId, email: correctEmail });
+      setSession({ token: 'dummy' });
+      localStorage.setItem('user_email', correctEmail);
+      localStorage.setItem('user_id', correctUserId);
+      localStorage.setItem('jwt_token', 'dummy');
     }
     setLoading(false);
   }, []);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     // TODO: Connect to backend /auth/signup endpoint
-    // For now, just fake a user
-    setUser({ id: email, email });
+    // For now, just fake a user with proper UUID
+    const userId = '6036aee5-624c-4275-8482-f77d32723c32'; // Use existing user ID for now
+    setUser({ id: userId, email });
     setSession({ token: 'dummy' });
     localStorage.setItem('user_email', email);
-    localStorage.setItem('user_id', email);
+    localStorage.setItem('user_id', userId);
     localStorage.setItem('jwt_token', 'dummy');
     return { error: null };
   };
 
   const signIn = async (email: string, password: string) => {
     // TODO: Connect to backend /auth/signin endpoint
-    // For now, just fake a user
-    setUser({ id: email, email });
+    // For now, just fake a user with proper UUID
+    const userId = '6036aee5-624c-4275-8482-f77d32723c32'; // Use existing user ID for now
+    setUser({ id: userId, email });
     setSession({ token: 'dummy' });
     localStorage.setItem('user_email', email);
-    localStorage.setItem('user_id', email);
+    localStorage.setItem('user_id', userId);
     localStorage.setItem('jwt_token', 'dummy');
     return { error: null };
   };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +58,7 @@ const NewStockAnalysis = () => {
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [timer, setTimer] = useState(0);
 
   // Sector state
@@ -71,35 +71,8 @@ const NewStockAnalysis = () => {
   // Hooks
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { saveAnalysis } = useStockAnalyses();
+  const { saveAnalysis, analyses, loading, error } = useStockAnalyses();
   const { user } = useAuth();
-
-  // Effects
-  useEffect(() => {
-    fetchSectors();
-  }, []);
-
-  useEffect(() => {
-    if (formData.stock) {
-      fetchStockSector(formData.stock);
-    }
-  }, [formData.stock, fetchStockSector]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isLoading) {
-      setTimer(0);
-      interval = setInterval(() => {
-        setTimer((prev) => prev + 1);
-      }, 1000);
-    } else {
-      if (interval) clearInterval(interval);
-      setTimer(0);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isLoading]);
 
   // API functions
   const fetchSectors = async () => {
@@ -135,12 +108,42 @@ const NewStockAnalysis = () => {
     }
   }, [formData.sector]);
 
+  // Effects
+  useEffect(() => {
+    fetchSectors();
+  }, []);
+
+  useEffect(() => {
+    if (formData.stock) {
+      fetchStockSector(formData.stock);
+    }
+  }, [formData.stock, fetchStockSector]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isLoading) {
+      setTimer(0);
+      interval = setInterval(() => {
+        setTimer((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (interval) clearInterval(interval);
+      setTimer(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isLoading]);
+
   // Event handlers
   const handleInputChange = (field: string, value: string) => {
     if (field === "stock") {
       setFormData(prev => ({ ...prev, stock: value, sector: "none" }));
       setDetectedSector("");
       firstSectorLoad.current = true;
+      
+      // Store the stock symbol immediately when user selects it
+      localStorage.setItem('lastAnalyzedStock', value.toUpperCase());
     } else if (field === "sector") {
       setFormData(prev => ({ ...prev, sector: value }));
     } else if (field === "interval") {
@@ -172,7 +175,7 @@ const NewStockAnalysis = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
+    setFormError(null);
 
     try {
       const payload = {
@@ -180,7 +183,8 @@ const NewStockAnalysis = () => {
         exchange: formData.exchange,
         period: parseInt(formData.period),
         interval: formData.interval,
-        sector: formData.sector === "none" ? null : formData.sector || null
+        sector: formData.sector === "none" ? null : formData.sector || null,
+        email: user?.email // Include user email for backend user ID mapping
       };
 
       const data = await apiService.analyzeStock(payload);
@@ -198,7 +202,7 @@ const NewStockAnalysis = () => {
 
       // Request JWT token for WebSocket authentication and store in localStorage
       try {
-        const userId = formData.stock || 'user';
+        const userId = user?.id || 'anonymous';
         const resp = await fetch(`/auth/token?user_id=${encodeURIComponent(userId)}`, {
           method: 'POST'
         });
@@ -220,7 +224,7 @@ const NewStockAnalysis = () => {
       navigate('/output');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred during analysis";
-      setError(errorMessage);
+      setFormError(errorMessage);
       toast({
         title: "Analysis Failed",
         description: errorMessage,
@@ -464,7 +468,12 @@ const NewStockAnalysis = () => {
             {/* Previous Analyses Sidebar */}
             <div className="xl:col-span-1">
               <div className="sticky top-8">
-                <PreviousAnalyses onSelectAnalysis={handleSelectAnalysis} />
+                <PreviousAnalyses 
+                  analyses={analyses}
+                  onAnalysisSelect={handleSelectAnalysis}
+                  loading={loading}
+                  error={error}
+                />
               </div>
             </div>
           </div>

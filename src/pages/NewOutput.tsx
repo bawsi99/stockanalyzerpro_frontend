@@ -24,7 +24,11 @@ import {
   Wifi,
   WifiOff,
   RefreshCw,
-  ZoomIn
+  ZoomIn,
+  Target,
+  Shield,
+  ChartBar,
+  DollarSign
 } from 'lucide-react';
 
 // Analysis Components
@@ -42,10 +46,14 @@ import EnhancedPatternRecognitionCard from "@/components/analysis/EnhancedPatter
 import PriceStatisticsCard from "@/components/analysis/PriceStatisticsCard";
 import ActionButtonsSection from "@/components/analysis/ActionButtonsSection";
 import DisclaimerCard from "@/components/analysis/DisclaimerCard";
+import TradingLevelsCard from "@/components/analysis/TradingLevelsCard";
+import StockInfoCard from "@/components/analysis/StockInfoCard";
+import VolumeAnalysisCard from "@/components/analysis/VolumeAnalysisCard";
 
 // Services and Utils
 import { apiService } from "@/services/api";
 import { AnalysisData, EnhancedOverlays, AdvancedPatterns, MultiTimeframeAnalysis, AdvancedRiskMetrics, StressTestingData, ScenarioAnalysisData } from "@/types/analysis";
+import { transformDatabaseRecord } from "@/utils/databaseDataTransformer";
 import Header from "@/components/Header";
 
 interface ChartData {
@@ -114,6 +122,22 @@ const mapTimeframeToInterval = (timeframe: string): string => {
   return mapping[timeframe] || '1day';
 };
 
+// Helper function to extract current price from data
+const getCurrentPrice = (data: ChartData[] | null): number | null => {
+  if (!data || data.length === 0) return null;
+  const lastCandle = data[data.length - 1];
+  return lastCandle.close || lastCandle.price || null;
+};
+
+// Helper function to extract price change
+const getPriceChange = (data: ChartData[] | null): { change: number; changePercent: number } | null => {
+  if (!data || data.length < 2) return null;
+  const current = data[data.length - 1].close || data[data.length - 1].price || 0;
+  const previous = data[data.length - 2].close || data[data.length - 2].price || 0;
+  const change = current - previous;
+  const changePercent = previous !== 0 ? (change / previous) * 100 : 0;
+  return { change, changePercent };
+};
 
 const NewOutput: React.FC = () => {
   // State
@@ -125,9 +149,6 @@ const NewOutput: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   
 
-
-
-
   // Load analysis data and stock symbol from localStorage or route params
   useEffect(() => {
     try {
@@ -135,7 +156,18 @@ const NewOutput: React.FC = () => {
       const storedAnalysis = localStorage.getItem('analysisResult');
       if (storedAnalysis) {
         const parsed = JSON.parse(storedAnalysis);
-        setAnalysisData(parsed);
+        
+        // Transform the data using the database transformer
+        const transformedData = transformDatabaseRecord({
+          id: parsed.id || '1',
+          user_id: parsed.user_id || '1',
+          stock_symbol: parsed.stock_symbol || "RELIANCE",
+          analysis_data: parsed,
+          created_at: parsed.created_at || new Date().toISOString(),
+          updated_at: parsed.updated_at || new Date().toISOString()
+        });
+        
+        setAnalysisData(transformedData);
         setStockSymbol(parsed.stock_symbol || "RELIANCE");
         setAnalysisLoading(false);
       } else {
@@ -148,7 +180,7 @@ const NewOutput: React.FC = () => {
           .then((data) => {
             if (data && data.success && data.candles && data.candles.length > 0) {
               // Create a basic analysis structure from historical data
-              setAnalysisData({
+              const basicAnalysis = {
                 consensus: { 
                   overall_signal: 'Neutral',
                   signal_strength: 'Weak',
@@ -243,7 +275,19 @@ const NewOutput: React.FC = () => {
                 chart_insights: 'Historical data available',
                 indicator_summary_md: 'Technical indicators will be calculated from historical data',
                 data: data.candles
+              };
+              
+              // Transform the basic analysis using the database transformer
+              const transformedData = transformDatabaseRecord({
+                id: '1',
+                user_id: '1',
+                stock_symbol: token,
+                analysis_data: basicAnalysis,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
               });
+              
+              setAnalysisData(transformedData);
               setStockSymbol(token);
             } else {
               setError("No analysis data available.");
@@ -260,10 +304,6 @@ const NewOutput: React.FC = () => {
       setAnalysisLoading(false);
     }
   }, [stockSymbol]);
-
-
-
-
 
   // Loading and error states
   if (loading && !stockSymbol) {
@@ -297,10 +337,22 @@ const NewOutput: React.FC = () => {
     );
   }
 
+  // Extract data with proper fallbacks
   const consensus = analysisData?.consensus;
   const indicators = analysisData?.indicators;
   const indicator_summary_md = analysisData?.indicator_summary_md;
   const chart_insights = analysisData?.chart_insights;
+  const ai_analysis = analysisData?.ai_analysis;
+  const sector_benchmarking = analysisData?.sector_benchmarking;
+  const overlays = analysisData?.overlays;
+  const trading_guidance = analysisData?.trading_guidance;
+  const summary = analysisData?.summary;
+  const metadata = analysisData?.metadata;
+  
+  // Calculate current price and price change
+  const currentPrice = getCurrentPrice(analysisData?.data || null);
+  const priceChange = getPriceChange(analysisData?.data || null);
+  const priceStats = calculatePriceStatistics(analysisData?.data || null);
 
   // Get signal color
   const getSignalColor = (signal: string) => {
@@ -374,25 +426,25 @@ const NewOutput: React.FC = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-slate-800">
-                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : "₹0.00"}
+                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : `₹${currentPrice?.toFixed(2) || "0.00"}`}
                 </div>
                 <div className="text-sm text-slate-600">Current Price</div>
               </div>
               <div className="text-center">
-                <div className={`text-2xl font-bold flex items-center justify-center text-red-600`}>
-                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : "₹0.00"}
+                <div className={`text-2xl font-bold flex items-center justify-center ${priceChange?.changePercent && priceChange.changePercent > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : `₹${priceChange?.change.toFixed(2) || "0.00"}`}
                 </div>
                 <div className="text-sm text-slate-600">Change</div>
               </div>
               <div className="text-center">
-                <div className={`text-2xl font-bold text-red-600`}>
-                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : "0.00%"}
+                <div className={`text-2xl font-bold ${priceChange?.changePercent && priceChange.changePercent > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : `${priceChange?.changePercent.toFixed(2) || "0.00"}%`}
                 </div>
                 <div className="text-sm text-slate-600">Change %</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-slate-800">
-                  {consensus?.overall_signal || (analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : 'Neutral')}
+                  {consensus?.overall_signal || summary?.overall_signal || ai_analysis?.trend || (analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : 'Neutral')}
                 </div>
                 <div className="text-sm text-slate-600">Signal</div>
               </div>
@@ -412,7 +464,7 @@ const NewOutput: React.FC = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-white/80 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm">
             <TabsTrigger value="overview" className="flex items-center space-x-2">
               <Eye className="h-4 w-4" />
               <span>Overview</span>
@@ -420,6 +472,10 @@ const NewOutput: React.FC = () => {
             <TabsTrigger value="technical" className="flex items-center space-x-2">
               <TrendingUp className="h-4 w-4" />
               <span>Technical</span>
+            </TabsTrigger>
+            <TabsTrigger value="trading" className="flex items-center space-x-2">
+              <Target className="h-4 w-4" />
+              <span>Trading</span>
             </TabsTrigger>
             <TabsTrigger value="advanced" className="flex items-center space-x-2">
               <Settings className="h-4 w-4" />
@@ -451,13 +507,31 @@ const NewOutput: React.FC = () => {
                     description="Loading AI analysis..." 
                   />
                 ) : (
-                  <AITradingAnalysisOverviewCard aiAnalysis={analysisData?.ai_analysis} />
+                  <AITradingAnalysisOverviewCard aiAnalysis={ai_analysis} />
                 )}
               </div>
             </div>
 
-            {/* Bottom Row - Price Statistics and Sector Analysis */}
+            {/* Middle Row - Stock Info and Price Statistics */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Stock Information */}
+              <div className="lg:col-span-1">
+                {analysisLoading ? (
+                  <AnalysisCardSkeleton 
+                    title="Stock Information" 
+                    description="Loading stock details..." 
+                  />
+                ) : (
+                  <StockInfoCard 
+                    symbol={stockSymbol}
+                    currentPrice={currentPrice}
+                    priceChange={priceChange}
+                    metadata={metadata}
+                    summary={summary}
+                  />
+                )}
+              </div>
+              
               {/* Price Statistics Card */}
               <div className="lg:col-span-1">
                 {analysisLoading ? (
@@ -467,7 +541,7 @@ const NewOutput: React.FC = () => {
                   />
                 ) : (
                   <PriceStatisticsCard 
-                    summaryStats={calculatePriceStatistics(analysisData?.data || null) || {
+                    summaryStats={priceStats || {
                       mean: 0,
                       max: 0,
                       min: 0,
@@ -479,12 +553,16 @@ const NewOutput: React.FC = () => {
                       distFromMaxPct: 0,
                       distFromMinPct: 0
                     }}
-                    latestPrice={analysisData?.data && analysisData.data.length > 0 ? analysisData.data[analysisData.data.length - 1].close || analysisData.data[analysisData.data.length - 1].price : null}
+                    latestPrice={currentPrice}
                     timeframe="1 Day"
                   />
                 )}
               </div>
-              
+            </div>
+
+            {/* Bottom Row - Sector Analysis and Volume Analysis */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Sector Benchmarking */}
               <div className="lg:col-span-1">
                 {analysisLoading ? (
                   <AnalysisCardSkeleton 
@@ -492,20 +570,47 @@ const NewOutput: React.FC = () => {
                     description="Loading sector analysis..." 
                   />
                 ) : (
-                  analysisData?.sector_benchmarking && (
+                  sector_benchmarking ? (
                     <SectorBenchmarkingCard 
-                      sectorBenchmarking={analysisData.sector_benchmarking} 
+                      sectorBenchmarking={sector_benchmarking} 
                     />
+                  ) : (
+                    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+                      <CardHeader>
+                        <CardTitle className="flex items-center text-slate-800">
+                          <ChartBar className="h-5 w-5 mr-2 text-blue-500" />
+                          Sector Benchmarking
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-slate-500">No sector benchmarking data available</p>
+                      </CardContent>
+                    </Card>
                   )
+                )}
+              </div>
+              
+              {/* Volume Analysis */}
+              <div className="lg:col-span-1">
+                {analysisLoading ? (
+                  <AnalysisCardSkeleton 
+                    title="Volume Analysis" 
+                    description="Loading volume analysis..." 
+                  />
+                ) : (
+                  <VolumeAnalysisCard 
+                    volumeData={indicators?.volume}
+                    priceData={analysisData?.data}
+                    symbol={stockSymbol}
+                  />
                 )}
               </div>
             </div>
           </TabsContent>
 
-
-
           {/* Technical Tab */}
           <TabsContent value="technical" className="space-y-6">
+            {/* Technical Analysis Summary */}
             {analysisLoading ? (
               <AnalysisCardSkeleton 
                 title="Technical Analysis" 
@@ -519,20 +624,22 @@ const NewOutput: React.FC = () => {
               )
             )}
 
+            {/* Pattern Recognition */}
             {analysisLoading ? (
               <AnalysisCardSkeleton 
                 title="Pattern Recognition" 
                 description="Loading pattern analysis..." 
               />
             ) : (
-              analysisData?.overlays && (
+              overlays && (
                 <EnhancedPatternRecognitionCard 
-                  overlays={analysisData.overlays as EnhancedOverlays}
+                  overlays={overlays as EnhancedOverlays}
                   symbol={stockSymbol}
                 />
               )
             )}
 
+            {/* Advanced Patterns and Multi-timeframe Analysis */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {analysisLoading ? (
                 <>
@@ -563,6 +670,92 @@ const NewOutput: React.FC = () => {
                 </>
               )}
             </div>
+          </TabsContent>
+
+          {/* Trading Tab */}
+          <TabsContent value="trading" className="space-y-6">
+            {/* Trading Levels */}
+            {analysisLoading ? (
+              <AnalysisCardSkeleton 
+                title="Trading Levels" 
+                description="Loading trading levels..." 
+              />
+            ) : (
+              <TradingLevelsCard 
+                supportLevels={analysisData?.support_levels}
+                resistanceLevels={analysisData?.resistance_levels}
+                currentPrice={currentPrice}
+                symbol={stockSymbol}
+              />
+            )}
+
+            {/* Trading Guidance */}
+            {analysisLoading ? (
+              <AnalysisCardSkeleton 
+                title="Trading Guidance" 
+                description="Loading trading guidance..." 
+              />
+            ) : (
+              trading_guidance && (
+                <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-slate-800">
+                      <Target className="h-5 w-5 mr-2 text-green-500" />
+                      Trading Guidance
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Short Term */}
+                    {trading_guidance.short_term && (
+                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <h4 className="font-semibold text-green-800 mb-2">Short Term Strategy</h4>
+                        <div className="space-y-2 text-sm">
+                          <div><span className="font-medium">Entry Range:</span> ₹{trading_guidance.short_term.entry_range?.[0] || 'N/A'} - ₹{trading_guidance.short_term.entry_range?.[1] || 'N/A'}</div>
+                          <div><span className="font-medium">Stop Loss:</span> ₹{trading_guidance.short_term.stop_loss || 'N/A'}</div>
+                          <div><span className="font-medium">Targets:</span> {trading_guidance.short_term.targets?.map(t => `₹${t}`).join(', ') || 'N/A'}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Medium Term */}
+                    {trading_guidance.medium_term && (
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h4 className="font-semibold text-blue-800 mb-2">Medium Term Strategy</h4>
+                        <div className="space-y-2 text-sm">
+                          <div><span className="font-medium">Entry Range:</span> ₹{trading_guidance.medium_term.entry_range?.[0] || 'N/A'} - ₹{trading_guidance.medium_term.entry_range?.[1] || 'N/A'}</div>
+                          <div><span className="font-medium">Stop Loss:</span> ₹{trading_guidance.medium_term.stop_loss || 'N/A'}</div>
+                          <div><span className="font-medium">Targets:</span> {trading_guidance.medium_term.targets?.map(t => `₹${t}`).join(', ') || 'N/A'}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Risk Management */}
+                    {trading_guidance.risk_management && trading_guidance.risk_management.length > 0 && (
+                      <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                        <h4 className="font-semibold text-red-800 mb-2">Risk Management</h4>
+                        <ul className="space-y-1 text-sm">
+                          {trading_guidance.risk_management.map((risk, index) => (
+                            <li key={index} className="text-red-700">• {risk}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Key Levels */}
+                    {trading_guidance.key_levels && trading_guidance.key_levels.length > 0 && (
+                      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <h4 className="font-semibold text-yellow-800 mb-2">Key Levels to Watch</h4>
+                        <ul className="space-y-1 text-sm">
+                          {trading_guidance.key_levels.map((level, index) => (
+                            <li key={index} className="text-yellow-700">• {level}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            )}
           </TabsContent>
 
           {/* Advanced Tab */}

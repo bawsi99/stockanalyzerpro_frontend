@@ -238,6 +238,24 @@ export interface AnalysisHistoryResponse {
 class ApiService {
   // ===== ANALYSIS SERVICE ENDPOINTS (Port 8001) =====
 
+  // Generic request method
+  private async makeRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Request failed with status ${response.status}`);
+    }
+    
+    return await response.json();
+  }
+
   // POST /analyze - Comprehensive stock analysis
   async analyzeStock(request: AnalysisRequest): Promise<AnalysisResponse> {
     const resp = await fetch(ENDPOINTS.ANALYSIS.ANALYZE, {
@@ -528,6 +546,60 @@ class ApiService {
     console.warn('getAnalysisHistory is deprecated. Use getHistoricalData instead.');
     return this.getHistoricalData('RELIANCE', timeframe);
   }
+
+  // User Analysis Methods
+  async getUserAnalyses(userId: string, limit: number = 50): Promise<{ success: boolean; analyses: any[]; count: number }> {
+    const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(
+      `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/user/${userId}?limit=${limit}`
+    );
+    return response;
+  }
+
+  async getAnalysisById(analysisId: string): Promise<AnalysisResponse | null> {
+    try {
+      const response = await this.makeRequest<AnalysisResponse>(
+        `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/${analysisId}`
+      );
+      return response;
+    } catch (error) {
+      console.error('Error fetching analysis by ID:', error);
+      return null;
+    }
+  }
+
+  async getAnalysesBySignal(signal: string, userId?: string, limit: number = 20): Promise<{ success: boolean; analyses: any[]; count: number }> {
+    const url = userId 
+      ? `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/signal/${signal}?user_id=${userId}&limit=${limit}`
+      : `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/signal/${signal}?limit=${limit}`;
+    
+    const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(url);
+    return response;
+  }
+
+  async getAnalysesBySector(sector: string, userId?: string, limit: number = 20): Promise<{ success: boolean; analyses: any[]; count: number }> {
+    const url = userId 
+      ? `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/sector/${sector}?user_id=${userId}&limit=${limit}`
+      : `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/sector/${sector}?limit=${limit}`;
+    
+    const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(url);
+    return response;
+  }
+
+  async getHighConfidenceAnalyses(minConfidence: number = 80, userId?: string, limit: number = 20): Promise<{ success: boolean; analyses: any[]; count: number }> {
+    const url = userId 
+      ? `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/confidence/${minConfidence}?user_id=${userId}&limit=${limit}`
+      : `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/confidence/${minConfidence}?limit=${limit}`;
+    
+    const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(url);
+    return response;
+  }
+
+  async getUserAnalysisSummary(userId: string): Promise<{ success: boolean; summary: any }> {
+    const response = await this.makeRequest<{ success: boolean; summary: any }>(
+      `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/summary/user/${userId}`
+    );
+    return response;
+  }
 }
 
 // Export a singleton instance
@@ -572,4 +644,12 @@ export const {
   // Legacy
   getRealtimeAnalysis,
   getAnalysisHistory,
+  
+  // User Analysis Methods
+  getUserAnalyses,
+  getAnalysisById,
+  getAnalysesBySignal,
+  getAnalysesBySector,
+  getHighConfidenceAnalyses,
+  getUserAnalysisSummary,
 } = apiService; 

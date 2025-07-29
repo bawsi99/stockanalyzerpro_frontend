@@ -5,6 +5,8 @@ export interface AnalysisRequest {
   interval?: string;
   output?: string | null;
   sector?: string | null; // Optional sector override
+  email?: string; // User email for backend user ID mapping
+  user_id?: string; // User ID (UUID) - alternative to email
 }
 
 export interface ChartData {
@@ -142,6 +144,7 @@ export interface Metadata {
   last_volume: number;
   data_quality: DataQuality;
   indicator_availability: IndicatorAvailability;
+  multi_timeframe?: any;
 }
 
 export interface Indicators {
@@ -153,6 +156,10 @@ export interface Indicators {
   adx: ADX;
   trend_data: TrendData;
   raw_data: RawData;
+  advanced_patterns?: any;
+  advanced_risk?: any;
+  stress_testing?: any;
+  scenario_analysis?: any;
   metadata: Metadata;
 }
 
@@ -834,4 +841,46 @@ export interface StockSectorResponse {
     note?: string;
   };
   timestamp: string;
+}
+
+// Multi-timeframe analysis interfaces
+export interface TimeframeAnalysis {
+  name: string;
+  periods: Record<string, any>;
+  ai_confidence?: number;
+  ai_trend?: string;
+  consensus?: {
+    direction: string;
+    strength: number;
+    score?: number;
+    timeframe_alignment?: Record<string, string>;
+    bullish_periods?: number;
+    bearish_periods?: number;
+    neutral_periods?: number;
+  };
+}
+
+export interface MultiTimeframeAnalysis {
+  short_term?: TimeframeAnalysis;
+  medium_term?: TimeframeAnalysis;
+  long_term?: TimeframeAnalysis;
+  overall_consensus?: {
+    direction: string;
+    strength: number;
+    score: number;
+    timeframe_alignment: Record<string, string>;
+  };
+  error?: string;
+}
+
+export interface AdvancedRiskMetrics {
+  // Add advanced risk metrics structure here
+}
+
+export interface StressTestingData {
+  // Add stress testing data structure here
+}
+
+export interface ScenarioAnalysisData {
+  // Add scenario analysis data structure here
 }

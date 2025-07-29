@@ -54,11 +54,6 @@ export interface SectorPerformance {
   last_analysis: string | null;
 }
 
-// All Supabase logic below should be replaced with new backend API calls.
-
-// TODO: Implement analysis storage/retrieval using new backend endpoints
-// For now, stub out the main functions and leave TODOs for advanced queries
-
 export const useStockAnalyses = () => {
   const [analyses, setAnalyses] = useState<StoredAnalysis[]>([]);
   const [analysisSummary, setAnalysisSummary] = useState<AnalysisSummary[]>([]);
@@ -67,335 +62,236 @@ export const useStockAnalyses = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  // Fetch analysis history for a stock and timeframe
-  const fetchAnalyses = async (stockSymbol: string, timeframe: string = '1day') => {
+  // Fetch user's analysis history
+  const fetchAnalyses = useCallback(async () => {
+    if (!user?.id) {
+      setAnalyses([]);
+      return [];
+    }
+
+    setLoading(true);
+    setError(null);
+
     try {
-      // Use getHistoricalData instead of deprecated getAnalysisHistory
-      const result = await apiService.getHistoricalData(stockSymbol, timeframe);
-      if (result && result.candles) {
-        // Transform historical data to match expected analysis format
-        return result.candles.map((candle: RealCandlestickData, index: number) => ({
-          id: `analysis_${index}`,
-          stock_symbol: stockSymbol,
-          analysis_data: {
-            success: true,
-            stock_symbol: stockSymbol,
-            exchange: 'NSE',
-            analysis_period: timeframe,
-            interval: timeframe,
-            timestamp: new Date(candle.time * 1000).toISOString(),
-            results: {
-              ai_analysis: {
-                meta: {
-                  symbol: stockSymbol,
-                  analysis_date: new Date(candle.time * 1000).toISOString(),
-                  timeframe: timeframe,
-                  overall_confidence: 0,
-                  data_quality_score: 0
-                },
-                market_outlook: {
-                  primary_trend: {
-                    direction: 'neutral',
-                    strength: 'weak',
-                    duration: 'short',
-                    confidence: 0,
-                    rationale: 'Historical data analysis'
-                  },
-                  secondary_trend: {
-                    direction: 'neutral',
-                    strength: 'weak',
-                    duration: 'short',
-                    confidence: 0,
-                    rationale: 'Historical data analysis'
-                  },
-                  key_drivers: []
-                },
-                trading_strategy: {
-                  short_term: {
-                    horizon_days: 1,
-                    bias: 'neutral',
-                    entry_strategy: {
-                      type: 'historical',
-                      entry_range: [null, null],
-                      entry_conditions: [],
-                      confidence: 0
-                    },
-                    exit_strategy: {
-                      stop_loss: 0,
-                      stop_loss_type: 'historical',
-                      targets: [],
-                      trailing_stop: { enabled: false, method: null }
-                    },
-                    position_sizing: {
-                      risk_per_trade: '0%',
-                      max_position_size: '0%',
-                      atr_multiplier: null
-                    },
-                    rationale: 'Historical data analysis'
-                  },
-                  medium_term: {
-                    horizon_days: 7,
-                    bias: 'neutral',
-                    entry_strategy: {
-                      type: 'historical',
-                      entry_range: [null, null],
-                      entry_conditions: [],
-                      confidence: 0
-                    },
-                    exit_strategy: {
-                      stop_loss: 0,
-                      stop_loss_type: 'historical',
-                      targets: [],
-                      trailing_stop: { enabled: false, method: null }
-                    },
-                    position_sizing: {
-                      risk_per_trade: '0%',
-                      max_position_size: '0%',
-                      atr_multiplier: null
-                    },
-                    rationale: 'Historical data analysis'
-                  },
-                  long_term: {
-                    horizon_days: 30,
-                    investment_rating: 'hold',
-                    fair_value_range: [0, 0],
-                    key_levels: {
-                      accumulation_zone: [0, 0],
-                      distribution_zone: [0, 0]
-                    },
-                    rationale: 'Historical data analysis'
-                  }
-                },
-                risk_management: {
-                  key_risks: [],
-                  stop_loss_levels: [],
-                  position_management: {
-                    scaling_in: false,
-                    scaling_out: false,
-                    max_correlation: 0
-                  }
-                },
-                critical_levels: {
-                  must_watch: [],
-                  confirmation_levels: []
-                },
-                monitoring_plan: {
-                  daily_checks: [],
-                  weekly_reviews: [],
-                  exit_triggers: []
-                },
-                data_quality_assessment: {
-                  issues: [],
-                  confidence_adjustments: {
-                    reason: 'Historical data',
-                    adjustment: 'none'
-                  }
-                },
-                key_takeaways: ['Historical data analysis'],
-                indicator_summary_md: 'Historical data analysis',
-                chart_insights: 'Historical data analysis'
-              },
-              consensus: {
-                overall_signal: 'neutral',
-                signal_strength: 'weak',
-                bullish_percentage: 0,
-                bearish_percentage: 0,
-                neutral_percentage: 100,
-                bullish_score: 0,
-                bearish_score: 0,
-                neutral_score: 0,
-                total_weight: 0,
-                confidence: 0,
-                signal_details: [],
-                data_quality_flags: [],
-                warnings: [],
-                bullish_count: 0,
-                bearish_count: 0,
-                neutral_count: 1
-              },
-              indicators: {
-                moving_averages: {
-                  sma_20: 0,
-                  sma_50: 0,
-                  sma_200: 0,
-                  ema_20: 0,
-                  ema_50: 0,
-                  price_to_sma_200: 0,
-                  sma_20_to_sma_50: 0,
-                  golden_cross: false,
-                  death_cross: false
-                },
-                rsi: {
-                  rsi_14: 0,
-                  trend: 'neutral',
-                  status: 'neutral'
-                },
-                macd: {
-                  macd_line: 0,
-                  signal_line: 0,
-                  histogram: 0
-                },
-                bollinger_bands: {
-                  upper_band: 0,
-                  middle_band: 0,
-                  lower_band: 0,
-                  percent_b: 0,
-                  bandwidth: 0
-                },
-                volume: {
-                  volume_ratio: 0,
-                  obv: 0,
-                  obv_trend: 'neutral'
-                },
-                adx: {
-                  adx: 0,
-                  plus_di: 0,
-                  minus_di: 0,
-                  trend_direction: 'neutral'
-                },
-                trend_data: {
-                  direction: 'neutral',
-                  strength: 'weak',
-                  adx: 0,
-                  plus_di: 0,
-                  minus_di: 0
-                },
-                raw_data: {
-                  open: [],
-                  high: [],
-                  low: [],
-                  close: [],
-                  volume: []
-                },
-                metadata: {
-                  start: new Date(candle.time * 1000).toISOString(),
-                  end: new Date(candle.time * 1000).toISOString(),
-                  period: 1,
-                  last_price: candle.close,
-                  last_volume: candle.volume,
-                  data_quality: {
-                    is_valid: true,
-                    warnings: [],
-                    data_quality_issues: [],
-                    missing_data: [],
-                    suspicious_patterns: []
-                  },
-                  indicator_availability: {
-                    sma_20: false,
-                    sma_50: false,
-                    sma_200: false,
-                    ema_20: false,
-                    ema_50: false,
-                    macd: false,
-                    rsi: false,
-                    bollinger_bands: false,
-                    stochastic: false,
-                    adx: false,
-                    obv: false,
-                    volume_ratio: false,
-                    atr: false
-                  }
-                }
-              },
-              charts: {
-                comparison_chart: { data: '', filename: '', type: '', error: '' },
-                divergence: { data: '', filename: '', type: '', error: '' },
-                double_tops_bottoms: { data: '', filename: '', type: '', error: '' },
-                support_resistance: { data: '', filename: '', type: '', error: '' },
-                triangles_flags: { data: '', filename: '', type: '', error: '' },
-                volume_anomalies: { data: '', filename: '', type: '', error: '' }
-              },
-              indicator_summary_md: 'Historical data analysis',
-              chart_insights: 'Historical data analysis',
-              summary: {
-                overall_signal: 'neutral',
-                signal_strength: 'weak',
-                bullish_percentage: 0,
-                bearish_percentage: 0,
-                neutral_percentage: 100
-              },
-              overlays: {
-                triangles: [],
-                flags: [],
-                support_resistance: { support: [], resistance: [] },
-                double_tops: [],
-                double_bottoms: [],
-                divergences: [],
-                volume_anomalies: []
-              }
-            },
-            data: []
-          },
-          created_at: new Date(candle.time * 1000).toISOString(),
-          overall_signal: null,
-          confidence_score: null,
+      const response = await apiService.getUserAnalyses(user.id, 50);
+      
+      if (response.success && response.analyses) {
+        const transformedAnalyses = response.analyses.map((analysis: any) => ({
+          id: analysis.id,
+          stock_symbol: analysis.stock_symbol,
+          analysis_data: analysis.analysis_data,
+          created_at: analysis.created_at,
+          // Extract normalized fields from analysis_data
+          overall_signal: analysis.analysis_data?.summary?.overall_signal || 
+                         analysis.analysis_data?.ai_analysis?.trend || null,
+          confidence_score: analysis.analysis_data?.summary?.confidence || 
+                           analysis.analysis_data?.ai_analysis?.confidence_pct || null,
+          risk_level: analysis.analysis_data?.ai_analysis?.risk_management?.key_risks?.[0]?.risk_level || null,
+          current_price: analysis.analysis_data?.stock_data?.current_price || null,
+          price_change_percentage: null, // Not available in current data structure
+          sector: analysis.analysis_data?.sector_benchmarking?.sector_info?.sector || null,
+          analysis_type: 'standard',
+          exchange: analysis.analysis_data?.metadata?.exchange || 'NSE',
+          period_days: analysis.analysis_data?.metadata?.period_days || null,
+          interval: analysis.analysis_data?.metadata?.interval || null,
+          analysis_quality: 'standard',
+          mathematical_validation: true,
+          chart_paths: null,
+          metadata: analysis.analysis_data?.metadata || null
+        }));
+
+        setAnalyses(transformedAnalyses);
+        return transformedAnalyses;
+      } else {
+        setAnalyses([]);
+        return [];
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch analyses';
+      setError(errorMessage);
+      console.error('Error fetching analyses:', err);
+      setAnalyses([]);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  // Fetch analysis by ID
+  const getAnalysisById = async (analysisId: string): Promise<StoredAnalysis | null> => {
+    if (!user?.id) return null;
+
+    try {
+      const response = await apiService.getAnalysisById(analysisId);
+      if (response) {
+        return {
+          id: analysisId,
+          stock_symbol: response.stock_symbol || '',
+          analysis_data: response,
+          created_at: response.timestamp || new Date().toISOString(),
+          overall_signal: response.results?.summary?.overall_signal || 
+                         response.results?.ai_analysis?.trend || null,
+          confidence_score: response.results?.summary?.confidence || 
+                           response.results?.ai_analysis?.confidence_pct || null,
           risk_level: null,
-          current_price: candle.close,
+          current_price: null,
           price_change_percentage: null,
           sector: null,
-          analysis_type: 'historical',
-          exchange: 'NSE',
+          analysis_type: 'standard',
+          exchange: response.exchange || 'NSE',
           period_days: null,
-          interval: timeframe,
-          analysis_quality: null,
-          mathematical_validation: null,
+          interval: response.interval || null,
+          analysis_quality: 'standard',
+          mathematical_validation: true,
+          chart_paths: null,
+          metadata: null
+        };
+      }
+      return null;
+    } catch (err) {
+      console.error('Error fetching analysis by ID:', err);
+      return null;
+    }
+  };
+
+  // Fetch analyses by signal
+  const getAnalysesBySignal = async (signal: string): Promise<StoredAnalysis[]> => {
+    if (!user?.id) return [];
+
+    try {
+      const response = await apiService.getAnalysesBySignal(signal, user.id, 20);
+      if (response.success && response.analyses) {
+        return response.analyses.map((analysis: any) => ({
+          id: analysis.id,
+          stock_symbol: analysis.stock_symbol,
+          analysis_data: analysis.analysis_data,
+          created_at: analysis.created_at,
+          overall_signal: analysis.overall_signal,
+          confidence_score: analysis.confidence_score,
+          risk_level: analysis.risk_level,
+          current_price: analysis.current_price,
+          price_change_percentage: analysis.price_change_percentage,
+          sector: analysis.sector,
+          analysis_type: analysis.analysis_type,
+          exchange: analysis.exchange || 'NSE',
+          period_days: null,
+          interval: null,
+          analysis_quality: analysis.analysis_quality,
+          mathematical_validation: analysis.mathematical_validation,
           chart_paths: null,
           metadata: null
         }));
       }
       return [];
     } catch (err) {
-      console.error('Error fetching analysis history:', err);
+      console.error('Error fetching analyses by signal:', err);
       return [];
     }
   };
 
+  // Fetch analyses by sector
+  const getAnalysesBySector = async (sector: string): Promise<StoredAnalysis[]> => {
+    if (!user?.id) return [];
+
+    try {
+      const response = await apiService.getAnalysesBySector(sector, user.id, 20);
+      if (response.success && response.analyses) {
+        return response.analyses.map((analysis: any) => ({
+          id: analysis.id,
+          stock_symbol: analysis.stock_symbol,
+          analysis_data: analysis.analysis_data,
+          created_at: analysis.created_at,
+          overall_signal: analysis.overall_signal,
+          confidence_score: analysis.confidence_score,
+          risk_level: analysis.risk_level,
+          current_price: analysis.current_price,
+          price_change_percentage: analysis.price_change_percentage,
+          sector: analysis.sector,
+          analysis_type: analysis.analysis_type,
+          exchange: analysis.exchange || 'NSE',
+          period_days: null,
+          interval: null,
+          analysis_quality: analysis.analysis_quality,
+          mathematical_validation: analysis.mathematical_validation,
+          chart_paths: null,
+          metadata: null
+        }));
+      }
+      return [];
+    } catch (err) {
+      console.error('Error fetching analyses by sector:', err);
+      return [];
+    }
+  };
+
+  // Fetch high confidence analyses
+  const getHighConfidenceAnalyses = async (minConfidence: number = 80): Promise<StoredAnalysis[]> => {
+    if (!user?.id) return [];
+
+    try {
+      const response = await apiService.getHighConfidenceAnalyses(minConfidence, user.id, 20);
+      if (response.success && response.analyses) {
+        return response.analyses.map((analysis: any) => ({
+          id: analysis.id,
+          stock_symbol: analysis.stock_symbol,
+          analysis_data: analysis.analysis_data,
+          created_at: analysis.created_at,
+          overall_signal: analysis.overall_signal,
+          confidence_score: analysis.confidence_score,
+          risk_level: analysis.risk_level,
+          current_price: analysis.current_price,
+          price_change_percentage: analysis.price_change_percentage,
+          sector: analysis.sector,
+          analysis_type: analysis.analysis_type,
+          exchange: analysis.exchange || 'NSE',
+          period_days: null,
+          interval: null,
+          analysis_quality: analysis.analysis_quality,
+          mathematical_validation: analysis.mathematical_validation,
+          chart_paths: null,
+          metadata: null
+        }));
+      }
+      return [];
+    } catch (err) {
+      console.error('Error fetching high confidence analyses:', err);
+      return [];
+    }
+  };
+
+  // Save a new analysis
+  const saveAnalysis = async (stockSymbol: string, analysisData: AnalysisResponse) => {
+    if (!user?.id) return;
+
+    try {
+      // The analysis is already saved by the backend when the analysis is completed
+      // This function is called after successful analysis in NewStockAnalysis.tsx
+      console.log('Analysis saved for:', stockSymbol);
+      
+      // Refresh the analyses list
+      await fetchAnalyses();
+    } catch (err) {
+      console.error('Error saving analysis:', err);
+    }
+  };
+
+  // Fetch sector performance (stubbed for now)
   const fetchSectorPerformance = async () => {
     try {
       // TODO: Implement sector performance fetching using new backend endpoint
-      // Example: const { data, error } = await apiService.getSectorPerformance()
-      setSectorPerformance([]); // Stubbed for now
+      setSectorPerformance([]);
     } catch (err) {
       console.error('Error fetching sector performance:', err);
     }
   };
 
-  // Example: Save a new analysis (replace with new API call)
-  const saveAnalysis = async (stockSymbol: string, analysisData: AnalysisResponse) => {
-    // TODO: Implement analysis saving using new backend endpoint
-    console.log('Saving analysis for:', stockSymbol, analysisData);
-  };
-
-  const getAnalysisById = async (analysisId: string): Promise<StoredAnalysis | null> => {
-    // TODO: Implement analysis retrieval by ID using new backend endpoint
-    console.log('Getting analysis by ID:', analysisId);
-    return null;
-  };
-
-  const getAnalysesBySignal = async (signal: string): Promise<StoredAnalysis[]> => {
-    // TODO: Implement analysis filtering by signal using new backend endpoint
-    console.log('Getting analyses by signal:', signal);
-    return [];
-  };
-
-  const getAnalysesBySector = async (sector: string): Promise<StoredAnalysis[]> => {
-    // TODO: Implement analysis filtering by sector using new backend endpoint
-    console.log('Getting analyses by sector:', sector);
-    return [];
-  };
-
-  const getHighConfidenceAnalyses = async (minConfidence: number = 80): Promise<StoredAnalysis[]> => {
-    // TODO: Implement high confidence analysis filtering using new backend endpoint
-    console.log('Getting high confidence analyses:', minConfidence);
-    return [];
-  };
-
+  // Load analyses on component mount
   useEffect(() => {
-    // TODO: Fetch analyses and sector performance using new backend endpoints
-    // For now, stubbing to avoid errors
-    // fetchAnalyses();
-    // fetchSectorPerformance();
-  }, [user]);
+    if (user?.id) {
+      fetchAnalyses();
+      fetchSectorPerformance();
+    }
+  }, [user?.id, fetchAnalyses]);
 
   return {
     analyses,
@@ -404,11 +300,11 @@ export const useStockAnalyses = () => {
     loading,
     error,
     saveAnalysis,
-    refetch: () => {}, // Stubbed for now
+    refetch: fetchAnalyses,
     getAnalysisById,
     getAnalysesBySignal,
     getAnalysesBySector,
     getHighConfidenceAnalyses,
-    fetchAnalyses // <-- Add this line
+    fetchAnalyses
   };
 };
