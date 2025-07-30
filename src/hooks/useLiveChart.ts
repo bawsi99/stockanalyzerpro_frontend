@@ -267,29 +267,16 @@ export function useLiveChart({
 
   // Enhanced WebSocket connection with better error handling
   const connect = useCallback(async () => {
-    if (isConnectingRef.current || wsRef.current?.readyState === WebSocket.OPEN) {
-      console.log('🔌 WebSocket already connected or connecting, skipping...');
+    if (isConnectingRef.current) {
+      console.log('🔌 WebSocket already connecting, skipping...');
       return;
     }
 
     console.log('🔌 Starting WebSocket connection for:', symbolRef.current, timeframeRef.current);
     isConnectingRef.current = true;
 
-    // Unsubscribe from previous symbols/timeframes before subscribing to new ones
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      try {
-        wsRef.current.send(JSON.stringify({
-          action: 'unsubscribe',
-          symbols: [symbolRef.current], // Send symbol name instead of token
-          timeframes: [timeframeRef.current]
-        }));
-        console.log('Unsubscribed from previous symbols/timeframes');
-        // Wait a moment to ensure unsubscribe is processed
-        await new Promise(res => setTimeout(res, 100));
-      } catch (error) {
-        console.warn('Error unsubscribing from previous symbols:', error);
-      }
-    }
+    // Disconnect any existing connection first
+    liveDataService.disconnectWebSocket();
 
     setState(prev => ({ 
       ...prev, 
@@ -344,7 +331,7 @@ export function useLiveChart({
                     lastUpdate: Date.now(),
                     isLive: true,
                     lastTickPrice: liveChartData.close,
-                    lastTickTime: liveChartData.time
+                    lastTickTime: candleData.time
                   };
                 });
               }
@@ -433,17 +420,8 @@ export function useLiveChart({
         reconnectAttempts: 0
       }));
 
-      // Subscribe to the current symbol and timeframe
-      if (wsRef.current.readyState === WebSocket.OPEN) {
-        const subscriptionMessage = {
-          action: 'subscribe',
-          symbols: [symbolRef.current],
-          timeframes: [timeframeRef.current]
-        };
-        
-        console.log('Sending subscription message:', subscriptionMessage);
-        wsRef.current.send(JSON.stringify(subscriptionMessage));
-      }
+      // Reset connecting flag on successful connection
+      isConnectingRef.current = false;
 
     } catch (error) {
       console.error('Failed to connect to WebSocket:', error);
@@ -474,14 +452,11 @@ export function useLiveChart({
   const disconnect = useCallback(() => {
     console.log('Disconnecting WebSocket...');
     
-    if (wsRef.current) {
-      try {
-        wsRef.current.close();
-      } catch (error) {
-        console.warn('Error closing WebSocket:', error);
-      }
-      wsRef.current = null;
-    }
+    // Use the liveDataService disconnect method
+    liveDataService.disconnectWebSocket();
+    
+    // Clear our local reference
+    wsRef.current = null;
 
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
@@ -658,18 +633,34 @@ export function useLiveChart({
     if (previousSymbol !== symbol) {
       console.log(`🔄 Symbol changed from ${previousSymbol || 'undefined'} to ${symbol}`);
       symbolRef.current = symbol;
+      
       // Clear data and reload for new symbol
       setState(prev => ({
         ...prev,
         data: [],
         isLoading: true,
         error: null,
-        isLive: false
+        isLive: false,
+        lastTickPrice: undefined,
+        lastTickTime: undefined
       }));
-      // Load new data
+      
+      // Disconnect current WebSocket to stop receiving old symbol data
+      disconnectRef.current?.();
+      
+      // Load new historical data
       console.log('🔄 Calling loadHistoricalData for symbol change...');
       console.log('loadHistoricalDataRef.current exists:', !!loadHistoricalDataRef.current);
       loadHistoricalDataRef.current?.();
+      
+      // Reconnect WebSocket for new symbol if autoConnect is enabled
+      if (autoConnect) {
+        console.log('🔄 Reconnecting WebSocket for new symbol...');
+        // Use setTimeout to ensure disconnect completes before reconnect
+        setTimeout(() => {
+          connectRef.current?.();
+        }, 100);
+      }
     } else {
       console.log('🔄 Symbol comparison failed - symbols are the same');
     }
@@ -678,20 +669,36 @@ export function useLiveChart({
     if (previousTimeframe !== timeframe) {
       console.log(`🔄 Timeframe changed from ${previousTimeframe || 'undefined'} to ${timeframe}`);
       timeframeRef.current = timeframe;
+      
       // Clear data and reload for new timeframe
       setState(prev => ({
         ...prev,
         data: [],
         isLoading: true,
         error: null,
-        isLive: false
+        isLive: false,
+        lastTickPrice: undefined,
+        lastTickTime: undefined
       }));
-      // Load new data
+      
+      // Disconnect current WebSocket to stop receiving old timeframe data
+      disconnectRef.current?.();
+      
+      // Load new historical data
       console.log('🔄 Calling loadHistoricalData for timeframe change...');
       console.log('loadHistoricalDataRef.current exists:', !!loadHistoricalDataRef.current);
       loadHistoricalDataRef.current?.();
+      
+      // Reconnect WebSocket for new timeframe if autoConnect is enabled
+      if (autoConnect) {
+        console.log('🔄 Reconnecting WebSocket for new timeframe...');
+        // Use setTimeout to ensure disconnect completes before reconnect
+        setTimeout(() => {
+          connectRef.current?.();
+        }, 100);
+      }
     }
-  }, [symbol, timeframe]);
+  }, [symbol, timeframe, autoConnect]);
 
   return {
     ...state,
