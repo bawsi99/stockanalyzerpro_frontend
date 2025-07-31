@@ -170,12 +170,50 @@ class AnalysisService {
       const data = await response.json();
       
       if (!data.success) {
-        throw new Error(data.error || 'Failed to perform enhanced analysis');
+        throw new Error(data.error || 'Failed to analyze stock');
       }
 
       return data;
     } catch (error) {
-      console.error('Error performing enhanced analysis:', error);
+      console.error('Error in enhanced analysis:', error);
+      throw error;
+    }
+  }
+
+  // POST /analyze/enhanced-mtf - Enhanced multi-timeframe analysis
+  async enhancedMtfAnalyzeStock(request: AnalysisRequest): Promise<AnalysisResponse> {
+    try {
+      const token = await authService.ensureAuthenticated();
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+
+      const response = await fetch(ENDPOINTS.ANALYSIS.ENHANCED_MTF_ANALYZE, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request)
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please login again.');
+        } else {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to perform enhanced multi-timeframe analysis');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in enhanced multi-timeframe analysis:', error);
       throw error;
     }
   }
@@ -666,6 +704,7 @@ export const analysisService = new AnalysisService();
 export const {
   analyzeStock,
   enhancedAnalyzeStock,
+  enhancedMtfAnalyzeStock,
   getIndicators,
   getPatterns,
   getCharts,

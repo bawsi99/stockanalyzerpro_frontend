@@ -144,7 +144,7 @@ export interface Metadata {
   last_volume: number;
   data_quality: DataQuality;
   indicator_availability: IndicatorAvailability;
-  multi_timeframe?: any;
+  multi_timeframe?: MultiTimeframeAnalysis;
 }
 
 export interface Indicators {
@@ -883,4 +883,159 @@ export interface StressTestingData {
 
 export interface ScenarioAnalysisData {
   // Add scenario analysis data structure here
+}
+
+// Enhanced Multi-Timeframe Analysis Types
+export interface TimeframeAnalysisData {
+  trend: string;
+  confidence: number;
+  data_points: number;
+  key_indicators: {
+    rsi: number;
+    macd_signal: string;
+    volume_status: string | null;
+    support_levels: number[];
+    resistance_levels: number[];
+  };
+  patterns: string[];
+  risk_metrics: {
+    current_price: number;
+    volatility: number;
+    max_drawdown: number;
+  };
+}
+
+export interface CrossTimeframeValidation {
+  consensus_trend: string;
+  signal_strength: number;
+  confidence_score: number;
+  supporting_timeframes: string[];
+  conflicting_timeframes: string[];
+  neutral_timeframes: string[];
+  divergence_detected: boolean;
+  divergence_type: string | null;
+  key_conflicts: string[];
+}
+
+export interface MultiTimeframeSummary {
+  overall_signal: string;
+  confidence: number;
+  timeframes_analyzed: number;
+  signal_alignment: string;
+  risk_level: string;
+  recommendation: string;
+}
+
+export interface MultiTimeframeAnalysis {
+  success: boolean;
+  symbol: string;
+  exchange: string;
+  analysis_timestamp: string;
+  timeframe_analyses: {
+    [key: string]: TimeframeAnalysisData;
+  };
+  cross_timeframe_validation: CrossTimeframeValidation;
+  summary: MultiTimeframeSummary;
+}
+
+// Enhanced Technical Indicators with new structure
+export interface TechnicalIndicators {
+  moving_averages: MovingAverages;
+  rsi: RSI;
+  macd: MACD;
+  bollinger_bands: BollingerBands;
+  volume: Volume;
+  adx: ADX;
+  trend_data: TrendData;
+  raw_data: RawData;
+  metadata: Metadata;
+}
+
+// Enhanced Metadata with new fields
+export interface Metadata {
+  start: string;
+  end: string;
+  period: number;
+  last_price: number;
+  last_volume: number;
+  data_quality: DataQuality;
+  indicator_availability: IndicatorAvailability;
+  multi_timeframe?: MultiTimeframeAnalysis;
+}
+
+// Enhanced Analysis Results with new structure
+export interface AnalysisResults {
+  symbol: string;
+  exchange: string;
+  analysis_timestamp: string;
+  analysis_type: string;
+  mathematical_validation: boolean;
+  calculation_method: string;
+  accuracy_improvement: string;
+  
+  // Price Information
+  current_price: number;
+  price_change: number;
+  price_change_percentage: number;
+  analysis_period: string;
+  interval: string;
+  
+  // Core Analysis Components
+  ai_analysis: AIAnalysis;
+  indicator_summary: string;
+  chart_insights: string;
+  
+  // Technical Analysis
+  technical_indicators: TechnicalIndicators;
+  risk_level: string;
+  recommendation: string;
+  
+  // Sector Analysis
+  sector_context: SectorContext;
+  
+  // Charts and Visualizations
+  charts: Charts;
+  
+  // Multi-timeframe Analysis
+  multi_timeframe_analysis: MultiTimeframeAnalysis;
+  
+  // Enhanced Metadata
+  enhanced_metadata: {
+    mathematical_validation: boolean;
+    code_execution_enabled: boolean;
+    statistical_analysis: boolean;
+    confidence_improvement: string;
+    calculation_timestamp: number;
+    analysis_quality: string;
+  };
+  
+  // Mathematical Validation Results
+  mathematical_validation_results: any;
+  
+  // Code Execution Metadata
+  code_execution_metadata: any;
+  
+  // Legacy fields for backward compatibility
+  consensus?: Consensus;
+  indicators?: Indicators;
+  summary?: Summary;
+  support_levels?: number[];
+  resistance_levels?: number[];
+  triangle_patterns?: any[];
+  flag_patterns?: any[];
+  volume_anomalies_detailed?: any[];
+  overlays?: Overlays;
+  trading_guidance?: any;
+}
+
+// Enhanced Analysis Response with new structure
+export interface AnalysisResponse {
+  success: boolean;
+  stock_symbol: string;
+  exchange: string;
+  analysis_period: string;
+  interval: string;
+  timestamp: string;
+  message: string;
+  results: AnalysisResults;
 }

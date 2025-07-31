@@ -28,7 +28,11 @@ import {
   Target,
   Shield,
   ChartBar,
-  DollarSign
+  DollarSign,
+  Brain,
+  Clock,
+  Building2,
+  CheckCircle
 } from 'lucide-react';
 
 // Analysis Components
@@ -50,9 +54,14 @@ import TradingLevelsCard from "@/components/analysis/TradingLevelsCard";
 import StockInfoCard from "@/components/analysis/StockInfoCard";
 import VolumeAnalysisCard from "@/components/analysis/VolumeAnalysisCard";
 
+// New Enhanced Components
+import EnhancedAIAnalysisCard from "@/components/analysis/EnhancedAIAnalysisCard";
+import EnhancedMultiTimeframeCard from "@/components/analysis/EnhancedMultiTimeframeCard";
+import EnhancedSectorContextCard from "@/components/analysis/EnhancedSectorContextCard";
+
 // Services and Utils
 import { apiService } from "@/services/api";
-import { AnalysisData, EnhancedOverlays, AdvancedPatterns, MultiTimeframeAnalysis, AdvancedRiskMetrics, StressTestingData, ScenarioAnalysisData } from "@/types/analysis";
+import { AnalysisData, EnhancedOverlays, AdvancedPatterns, MultiTimeframeAnalysis, AdvancedRiskMetrics, StressTestingData, ScenarioAnalysisData, AnalysisResults } from "@/types/analysis";
 import { transformDatabaseRecord } from "@/utils/databaseDataTransformer";
 import Header from "@/components/Header";
 
@@ -148,6 +157,8 @@ const NewOutput: React.FC = () => {
   const [analysisLoading, setAnalysisLoading] = useState(true); // Separate loading for analysis
   const [error, setError] = useState<string | null>(null);
   
+  // Enhanced data state
+  const [enhancedData, setEnhancedData] = useState<AnalysisResults | null>(null);
 
   // Load analysis data and stock symbol from localStorage or route params
   useEffect(() => {
@@ -157,18 +168,44 @@ const NewOutput: React.FC = () => {
       if (storedAnalysis) {
         const parsed = JSON.parse(storedAnalysis);
         
-        // Transform the data using the database transformer
-        const transformedData = transformDatabaseRecord({
-          id: parsed.id || '1',
-          user_id: parsed.user_id || '1',
-          stock_symbol: parsed.stock_symbol || "RELIANCE",
-          analysis_data: parsed,
-          created_at: parsed.created_at || new Date().toISOString(),
-          updated_at: parsed.updated_at || new Date().toISOString()
-        });
+        // Check if this is the new enhanced structure
+        const isEnhancedStructure = parsed && (
+          parsed.symbol || 
+          parsed.analysis_type || 
+          parsed.enhanced_metadata ||
+          parsed.technical_indicators
+        );
         
-        setAnalysisData(transformedData);
-        setStockSymbol(parsed.stock_symbol || "RELIANCE");
+        if (isEnhancedStructure) {
+          // Handle enhanced structure
+          setEnhancedData(parsed);
+          setStockSymbol(parsed.symbol || "RELIANCE");
+          
+          // Transform for backward compatibility
+          const transformedData = transformDatabaseRecord({
+            id: parsed.id || '1',
+            user_id: parsed.user_id || '1',
+            stock_symbol: parsed.symbol || "RELIANCE",
+            analysis_data: parsed,
+            created_at: parsed.analysis_timestamp || new Date().toISOString(),
+            updated_at: parsed.analysis_timestamp || new Date().toISOString()
+          });
+          setAnalysisData(transformedData);
+        } else {
+          // Handle legacy structure
+          const transformedData = transformDatabaseRecord({
+            id: parsed.id || '1',
+            user_id: parsed.user_id || '1',
+            stock_symbol: parsed.stock_symbol || "RELIANCE",
+            analysis_data: parsed,
+            created_at: parsed.created_at || new Date().toISOString(),
+            updated_at: parsed.updated_at || new Date().toISOString()
+          });
+          
+          setAnalysisData(transformedData);
+          setStockSymbol(parsed.stock_symbol || "RELIANCE");
+        }
+        
         setAnalysisLoading(false);
       } else {
         // If no stored analysis, try to get from historical data
@@ -349,9 +386,18 @@ const NewOutput: React.FC = () => {
   const summary = analysisData?.summary;
   const metadata = analysisData?.metadata;
   
+  // Enhanced data extraction
+  const enhancedAI = enhancedData?.ai_analysis;
+  const enhancedSectorContext = enhancedData?.sector_context;
+  const enhancedMultiTimeframe = enhancedData?.multi_timeframe_analysis;
+  const enhancedTechnicalIndicators = enhancedData?.technical_indicators;
+  
   // Calculate current price and price change
-  const currentPrice = getCurrentPrice(analysisData?.data || null);
-  const priceChange = getPriceChange(analysisData?.data || null);
+  const currentPrice = enhancedData?.current_price || getCurrentPrice(analysisData?.data || null);
+  const priceChange = enhancedData ? { 
+    change: enhancedData.price_change || 0, 
+    changePercent: enhancedData.price_change_percentage || 0 
+  } : getPriceChange(analysisData?.data || null);
   const priceStats = calculatePriceStatistics(analysisData?.data || null);
 
   // Get signal color
@@ -419,6 +465,22 @@ const NewOutput: React.FC = () => {
               {stockSymbol || "Loading..."} Analysis
             </h1>
             <p className="text-slate-600">Comprehensive technical analysis and insights</p>
+            {enhancedData && (
+              <div className="mt-2 flex items-center justify-center space-x-4">
+                <Badge className="bg-purple-100 text-purple-700">
+                  {enhancedData.analysis_type || 'Enhanced Analysis'}
+                </Badge>
+                {enhancedData.mathematical_validation && (
+                  <Badge className="bg-green-100 text-green-700">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Validated
+                  </Badge>
+                )}
+                <Badge className="bg-blue-100 text-blue-700">
+                  {enhancedData.accuracy_improvement || 'High Accuracy'}
+                </Badge>
+              </div>
+            )}
           </div>
 
           {/* Quick Stats Bar */}
@@ -444,7 +506,7 @@ const NewOutput: React.FC = () => {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-slate-800">
-                  {consensus?.overall_signal || summary?.overall_signal || ai_analysis?.trend || (analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : 'Neutral')}
+                  {enhancedData?.recommendation || consensus?.overall_signal || summary?.overall_signal || ai_analysis?.trend || (analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : 'Neutral')}
                 </div>
                 <div className="text-sm text-slate-600">Signal</div>
               </div>
@@ -464,7 +526,7 @@ const NewOutput: React.FC = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-5 bg-white/80 backdrop-blur-sm">
             <TabsTrigger value="overview" className="flex items-center space-x-2">
               <Eye className="h-4 w-4" />
               <span>Overview</span>
@@ -473,9 +535,13 @@ const NewOutput: React.FC = () => {
               <TrendingUp className="h-4 w-4" />
               <span>Technical</span>
             </TabsTrigger>
-            <TabsTrigger value="trading" className="flex items-center space-x-2">
-              <Target className="h-4 w-4" />
-              <span>Trading</span>
+            <TabsTrigger value="ai" className="flex items-center space-x-2">
+              <Brain className="h-4 w-4" />
+              <span>AI Analysis</span>
+            </TabsTrigger>
+            <TabsTrigger value="sector" className="flex items-center space-x-2">
+              <Building2 className="h-4 w-4" />
+              <span>Sector</span>
             </TabsTrigger>
             <TabsTrigger value="advanced" className="flex items-center space-x-2">
               <Settings className="h-4 w-4" />
@@ -672,88 +738,52 @@ const NewOutput: React.FC = () => {
             </div>
           </TabsContent>
 
-          {/* Trading Tab */}
-          <TabsContent value="trading" className="space-y-6">
-            {/* Trading Levels */}
+          {/* AI Analysis Tab */}
+          <TabsContent value="ai" className="space-y-6">
+            {/* Enhanced AI Analysis */}
             {analysisLoading ? (
               <AnalysisCardSkeleton 
-                title="Trading Levels" 
-                description="Loading trading levels..." 
+                title="Enhanced AI Analysis" 
+                description="Loading AI analysis..." 
               />
             ) : (
-              <TradingLevelsCard 
-                supportLevels={analysisData?.support_levels}
-                resistanceLevels={analysisData?.resistance_levels}
-                currentPrice={currentPrice}
-                symbol={stockSymbol}
-              />
+              enhancedAI && (
+                <EnhancedAIAnalysisCard 
+                  aiAnalysis={enhancedAI}
+                />
+              )
             )}
 
-            {/* Trading Guidance */}
+            {/* Multi-Timeframe Analysis */}
             {analysisLoading ? (
               <AnalysisCardSkeleton 
-                title="Trading Guidance" 
-                description="Loading trading guidance..." 
+                title="Multi-Timeframe Analysis" 
+                description="Loading multi-timeframe analysis..." 
               />
             ) : (
-              trading_guidance && (
-                <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-slate-800">
-                      <Target className="h-5 w-5 mr-2 text-green-500" />
-                      Trading Guidance
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Short Term */}
-                    {trading_guidance.short_term && (
-                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <h4 className="font-semibold text-green-800 mb-2">Short Term Strategy</h4>
-                        <div className="space-y-2 text-sm">
-                          <div><span className="font-medium">Entry Range:</span> ₹{trading_guidance.short_term.entry_range?.[0] || 'N/A'} - ₹{trading_guidance.short_term.entry_range?.[1] || 'N/A'}</div>
-                          <div><span className="font-medium">Stop Loss:</span> ₹{trading_guidance.short_term.stop_loss || 'N/A'}</div>
-                          <div><span className="font-medium">Targets:</span> {trading_guidance.short_term.targets?.map(t => `₹${t}`).join(', ') || 'N/A'}</div>
-                        </div>
-                      </div>
-                    )}
+              enhancedMultiTimeframe && (
+                <EnhancedMultiTimeframeCard 
+                  multiTimeframeAnalysis={enhancedMultiTimeframe}
+                  symbol={stockSymbol}
+                />
+              )
+            )}
+          </TabsContent>
 
-                    {/* Medium Term */}
-                    {trading_guidance.medium_term && (
-                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <h4 className="font-semibold text-blue-800 mb-2">Medium Term Strategy</h4>
-                        <div className="space-y-2 text-sm">
-                          <div><span className="font-medium">Entry Range:</span> ₹{trading_guidance.medium_term.entry_range?.[0] || 'N/A'} - ₹{trading_guidance.medium_term.entry_range?.[1] || 'N/A'}</div>
-                          <div><span className="font-medium">Stop Loss:</span> ₹{trading_guidance.medium_term.stop_loss || 'N/A'}</div>
-                          <div><span className="font-medium">Targets:</span> {trading_guidance.medium_term.targets?.map(t => `₹${t}`).join(', ') || 'N/A'}</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Risk Management */}
-                    {trading_guidance.risk_management && trading_guidance.risk_management.length > 0 && (
-                      <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                        <h4 className="font-semibold text-red-800 mb-2">Risk Management</h4>
-                        <ul className="space-y-1 text-sm">
-                          {trading_guidance.risk_management.map((risk, index) => (
-                            <li key={index} className="text-red-700">• {risk}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Key Levels */}
-                    {trading_guidance.key_levels && trading_guidance.key_levels.length > 0 && (
-                      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                        <h4 className="font-semibold text-yellow-800 mb-2">Key Levels to Watch</h4>
-                        <ul className="space-y-1 text-sm">
-                          {trading_guidance.key_levels.map((level, index) => (
-                            <li key={index} className="text-yellow-700">• {level}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+          {/* Sector Tab */}
+          <TabsContent value="sector" className="space-y-6">
+            {/* Enhanced Sector Context */}
+            {analysisLoading ? (
+              <AnalysisCardSkeleton 
+                title="Sector Context" 
+                description="Loading sector analysis..." 
+              />
+            ) : (
+              enhancedSectorContext && (
+                <EnhancedSectorContextCard 
+                  sectorContext={enhancedSectorContext}
+                  symbol={stockSymbol}
+                />
               )
             )}
           </TabsContent>

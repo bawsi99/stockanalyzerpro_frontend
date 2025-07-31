@@ -58,6 +58,7 @@ export const ENDPOINTS = {
     ANALYZE: `${ANALYSIS_SERVICE_URL}/analyze`,
     ANALYZE_ASYNC: `${ANALYSIS_SERVICE_URL}/analyze/async`,
     ENHANCED_ANALYZE: `${ANALYSIS_SERVICE_URL}/analyze/enhanced`,
+    ENHANCED_MTF_ANALYZE: `${ANALYSIS_SERVICE_URL}/analyze/enhanced-mtf`,
     STOCK_INDICATORS: `${ANALYSIS_SERVICE_URL}/stock`,
     PATTERNS: `${ANALYSIS_SERVICE_URL}/patterns`,
     CHARTS: `${ANALYSIS_SERVICE_URL}/charts`,
