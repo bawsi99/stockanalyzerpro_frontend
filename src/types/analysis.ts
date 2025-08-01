@@ -156,10 +156,10 @@ export interface Indicators {
   adx: ADX;
   trend_data: TrendData;
   raw_data: RawData;
-  advanced_patterns?: any;
-  advanced_risk?: any;
-  stress_testing?: any;
-  scenario_analysis?: any;
+  advanced_patterns?: Record<string, unknown>;
+  advanced_risk?: Record<string, unknown>;
+  stress_testing?: Record<string, unknown>;
+  scenario_analysis?: Record<string, unknown>;
   metadata: Metadata;
 }
 
@@ -846,7 +846,7 @@ export interface StockSectorResponse {
 // Multi-timeframe analysis interfaces
 export interface TimeframeAnalysis {
   name: string;
-  periods: Record<string, any>;
+  periods: Record<string, unknown>;
   ai_confidence?: number;
   ai_trend?: string;
   consensus?: {
@@ -875,14 +875,17 @@ export interface MultiTimeframeAnalysis {
 
 export interface AdvancedRiskMetrics {
   // Add advanced risk metrics structure here
+  [key: string]: unknown;
 }
 
 export interface StressTestingData {
   // Add stress testing data structure here
+  [key: string]: unknown;
 }
 
 export interface ScenarioAnalysisData {
   // Add scenario analysis data structure here
+  [key: string]: unknown;
 }
 
 // Enhanced Multi-Timeframe Analysis Types
@@ -1009,23 +1012,23 @@ export interface AnalysisResults {
     analysis_quality: string;
   };
   
-  // Mathematical Validation Results
-  mathematical_validation_results: any;
-  
-  // Code Execution Metadata
-  code_execution_metadata: any;
+      // Mathematical Validation Results
+    mathematical_validation_results: Record<string, unknown>;
+    
+    // Code Execution Metadata
+    code_execution_metadata: Record<string, unknown>;
   
   // Legacy fields for backward compatibility
   consensus?: Consensus;
   indicators?: Indicators;
   summary?: Summary;
-  support_levels?: number[];
-  resistance_levels?: number[];
-  triangle_patterns?: any[];
-  flag_patterns?: any[];
-  volume_anomalies_detailed?: any[];
-  overlays?: Overlays;
-  trading_guidance?: any;
+      support_levels?: number[];
+    resistance_levels?: number[];
+    triangle_patterns?: unknown[];
+    flag_patterns?: unknown[];
+    volume_anomalies_detailed?: unknown[];
+    overlays?: Overlays;
+    trading_guidance?: Record<string, unknown>;
 }
 
 // Enhanced Analysis Response with new structure

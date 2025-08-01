@@ -30,7 +30,7 @@ export interface SimplifiedDatabaseRecord {
   id: string;
   user_id: string;
   stock_symbol: string;
-  analysis_data: any; // The JSON column containing all analysis data
+  analysis_data: Record<string, unknown> | AnalysisResults; // The JSON column containing all analysis data
   created_at: string;
   updated_at: string;
 }
@@ -46,12 +46,12 @@ export interface TransformedAnalysisData {
   summary: Summary;
   support_levels?: number[];
   resistance_levels?: number[];
-  triangle_patterns?: any[];
-  flag_patterns?: any[];
-  volume_anomalies_detailed?: any[];
+  triangle_patterns?: unknown[];
+  flag_patterns?: unknown[];
+  volume_anomalies_detailed?: unknown[];
   overlays: Overlays;
-  trading_guidance?: any;
-  multi_timeframe_analysis?: any;
+  trading_guidance?: Record<string, unknown>;
+  multi_timeframe_analysis?: MultiTimeframeAnalysis;
   
   // New enhanced fields
   symbol?: string;
@@ -70,9 +70,9 @@ export interface TransformedAnalysisData {
   risk_level?: string;
   recommendation?: string;
   sector_context?: SectorContext;
-  enhanced_metadata?: any;
-  mathematical_validation_results?: any;
-  code_execution_metadata?: any;
+  enhanced_metadata?: Record<string, unknown>;
+  mathematical_validation_results?: Record<string, unknown>;
+  code_execution_metadata?: Record<string, unknown>;
 }
 
 /**
@@ -100,7 +100,7 @@ export function transformDatabaseRecord(record: SimplifiedDatabaseRecord): Trans
 /**
  * Transform enhanced JSON structure (new format)
  */
-function transformEnhancedStructure(data: any): TransformedAnalysisData {
+function transformEnhancedStructure(data: Record<string, unknown> | AnalysisResults): TransformedAnalysisData {
   return {
     // Enhanced fields
     symbol: data.symbol,
@@ -146,7 +146,7 @@ function transformEnhancedStructure(data: any): TransformedAnalysisData {
 /**
  * Transform legacy JSON structure (backward compatibility)
  */
-function transformLegacyStructure(data: any): TransformedAnalysisData {
+function transformLegacyStructure(data: Record<string, unknown>): TransformedAnalysisData {
   return {
     consensus: extractConsensus(data),
     indicators: extractIndicators(data),
@@ -170,7 +170,7 @@ function transformLegacyStructure(data: any): TransformedAnalysisData {
 /**
  * Extract consensus data from enhanced structure
  */
-function extractConsensusFromEnhanced(data: any): Consensus {
+function extractConsensusFromEnhanced(data: Record<string, unknown> | AnalysisResults): Consensus {
   const aiAnalysis = data.ai_analysis || {};
   const technicalIndicators = data.technical_indicators || {};
   
@@ -197,7 +197,7 @@ function extractConsensusFromEnhanced(data: any): Consensus {
 /**
  * Extract indicators data from enhanced structure
  */
-function extractIndicatorsFromEnhanced(data: any): Indicators {
+function extractIndicatorsFromEnhanced(data: Record<string, unknown> | AnalysisResults): Indicators {
   const technicalIndicators = data.technical_indicators || {};
   
   return {
@@ -294,7 +294,7 @@ function extractIndicatorsFromEnhanced(data: any): Indicators {
 /**
  * Extract AI analysis data from enhanced structure
  */
-function extractAIAnalysisFromEnhanced(data: any): AIAnalysis {
+function extractAIAnalysisFromEnhanced(data: Record<string, unknown> | AnalysisResults): AIAnalysis {
   const aiAnalysis = data.ai_analysis || {};
   
   return {
@@ -370,7 +370,7 @@ function extractAIAnalysisFromEnhanced(data: any): AIAnalysis {
 /**
  * Extract sector benchmarking data from enhanced structure
  */
-function extractSectorBenchmarkingFromEnhanced(data: any): SectorBenchmarking | undefined {
+function extractSectorBenchmarkingFromEnhanced(data: Record<string, unknown> | AnalysisResults): SectorBenchmarking | undefined {
   const sectorContext = data.sector_context;
   if (!sectorContext) return undefined;
   
@@ -454,7 +454,7 @@ function extractSectorBenchmarkingFromEnhanced(data: any): SectorBenchmarking | 
 /**
  * Extract summary data from enhanced structure
  */
-function extractSummaryFromEnhanced(data: any): Summary {
+function extractSummaryFromEnhanced(data: Record<string, unknown> | AnalysisResults): Summary {
   return {
     overall_signal: data.recommendation || 'Neutral',
     signal_strength: data.risk_level || 'Medium',
@@ -467,7 +467,7 @@ function extractSummaryFromEnhanced(data: any): Summary {
 /**
  * Extract overlays data for pattern analysis
  */
-function extractOverlays(data: any): Overlays {
+function extractOverlays(data: Record<string, unknown>): Overlays {
   const overlays = data.overlays || {};
   
   return {
@@ -482,7 +482,7 @@ function extractOverlays(data: any): Overlays {
 }
 
 // Helper functions for enhanced structure
-function calculateBullishPercentageFromEnhanced(data: any): number {
+function calculateBullishPercentageFromEnhanced(data: Record<string, unknown> | AnalysisResults): number {
   const aiAnalysis = data.ai_analysis;
   if (aiAnalysis?.meta?.overall_confidence && data.recommendation === 'Buy') {
     return aiAnalysis.meta.overall_confidence;
@@ -490,7 +490,7 @@ function calculateBullishPercentageFromEnhanced(data: any): number {
   return 0;
 }
 
-function calculateBearishPercentageFromEnhanced(data: any): number {
+function calculateBearishPercentageFromEnhanced(data: Record<string, unknown> | AnalysisResults): number {
   const aiAnalysis = data.ai_analysis;
   if (aiAnalysis?.meta?.overall_confidence && data.recommendation === 'Sell') {
     return aiAnalysis.meta.overall_confidence;
@@ -498,13 +498,13 @@ function calculateBearishPercentageFromEnhanced(data: any): number {
   return 0;
 }
 
-function calculateNeutralPercentageFromEnhanced(data: any): number {
+function calculateNeutralPercentageFromEnhanced(data: Record<string, unknown> | AnalysisResults): number {
   const bullish = calculateBullishPercentageFromEnhanced(data);
   const bearish = calculateBearishPercentageFromEnhanced(data);
   return Math.max(0, 100 - bullish - bearish);
 }
 
-function extractSignalDetailsFromEnhanced(data: any): any[] {
+function extractSignalDetailsFromEnhanced(data: Record<string, unknown> | AnalysisResults): unknown[] {
   const technicalIndicators = data.technical_indicators;
   if (!technicalIndicators) return [];
   
@@ -544,10 +544,10 @@ function extractSignalDetailsFromEnhanced(data: any): any[] {
   return signals;
 }
 
-function extractWarningsFromEnhanced(data: any): string[] {
+function extractWarningsFromEnhanced(data: Record<string, unknown> | AnalysisResults): string[] {
   const aiAnalysis = data.ai_analysis;
   if (aiAnalysis?.risk_management?.key_risks) {
-    return aiAnalysis.risk_management.key_risks.map((risk: any) => risk.risk);
+    return aiAnalysis.risk_management.key_risks.map((risk: Record<string, unknown>) => (risk as Record<string, unknown>).risk as string);
   }
   return [];
 }
@@ -555,7 +555,7 @@ function extractWarningsFromEnhanced(data: any): string[] {
 /**
  * Extract consensus data for ConsensusSummaryCard
  */
-function extractConsensus(data: any): Consensus {
+function extractConsensus(data: Record<string, unknown>): Consensus {
   const summary = data.summary || {};
   const aiAnalysis = data.ai_analysis || {};
   
@@ -582,7 +582,7 @@ function extractConsensus(data: any): Consensus {
 /**
  * Extract indicators data for TechnicalAnalysisCard
  */
-function extractIndicators(data: any): Indicators {
+function extractIndicators(data: Record<string, unknown>): Indicators {
   const indicators = data.indicators || {};
   
   return {
@@ -679,7 +679,7 @@ function extractIndicators(data: any): Indicators {
 /**
  * Extract AI analysis data for AITradingAnalysisOverviewCard
  */
-function extractAIAnalysis(data: any): AIAnalysis {
+function extractAIAnalysis(data: Record<string, unknown>): AIAnalysis {
   const aiAnalysis = data.ai_analysis || {};
   const summary = data.summary || {};
   
@@ -752,7 +752,7 @@ function extractAIAnalysis(data: any): AIAnalysis {
 /**
  * Extract sector benchmarking data for SectorAnalysisCard
  */
-function extractSectorBenchmarking(data: any): SectorBenchmarking | undefined {
+function extractSectorBenchmarking(data: Record<string, unknown>): SectorBenchmarking | undefined {
   const sectorData = data.sector_benchmarking;
   if (!sectorData) return undefined;
   
@@ -836,7 +836,7 @@ function extractSectorBenchmarking(data: any): SectorBenchmarking | undefined {
 /**
  * Extract summary data
  */
-function extractSummary(data: any): Summary {
+function extractSummary(data: Record<string, unknown>): Summary {
   const summary = data.summary || {};
   const aiAnalysis = data.ai_analysis || {};
   
@@ -850,47 +850,47 @@ function extractSummary(data: any): Summary {
 }
 
 // Helper functions
-function extractIndicatorSummary(data: any): string {
+function extractIndicatorSummary(data: Record<string, unknown>): string {
   return data.indicator_summary_md || '';
 }
 
-function extractChartInsights(data: any): string {
+function extractChartInsights(data: Record<string, unknown>): string {
   return data.chart_insights || '';
 }
 
-function extractSupportLevels(data: any): number[] {
+function extractSupportLevels(data: Record<string, unknown>): number[] {
   const overlays = data.overlays || {};
   const supportResistance = overlays.support_resistance || {};
-  return (supportResistance.support || []).map((s: any) => s.level || 0);
+  return (supportResistance.support || []).map((s: Record<string, unknown>) => (s as Record<string, unknown>).level as number || 0);
 }
 
-function extractResistanceLevels(data: any): number[] {
+function extractResistanceLevels(data: Record<string, unknown>): number[] {
   const overlays = data.overlays || {};
   const supportResistance = overlays.support_resistance || {};
-  return (supportResistance.resistance || []).map((r: any) => r.level || 0);
+  return (supportResistance.resistance || []).map((r: Record<string, unknown>) => (r as Record<string, unknown>).level as number || 0);
 }
 
-function extractTrianglePatterns(data: any): any[] {
+function extractTrianglePatterns(data: Record<string, unknown>): unknown[] {
   return data.overlays?.triangles || [];
 }
 
-function extractFlagPatterns(data: any): any[] {
+function extractFlagPatterns(data: Record<string, unknown>): unknown[] {
   return data.overlays?.flags || [];
 }
 
-function extractVolumeAnomalies(data: any): any[] {
+function extractVolumeAnomalies(data: Record<string, unknown>): unknown[] {
   return data.overlays?.volume_anomalies || [];
 }
 
-function extractTradingGuidance(data: any): any {
+function extractTradingGuidance(data: Record<string, unknown>): Record<string, unknown> | null {
   return data.trading_guidance || null;
 }
 
-function extractMultiTimeframeAnalysis(data: any): any {
+function extractMultiTimeframeAnalysis(data: Record<string, unknown>): MultiTimeframeAnalysis | null {
   return data.multi_timeframe_analysis || null;
 }
 
-function extractCharts(data: any): Charts {
+function extractCharts(data: Record<string, unknown>): Charts {
   return {
     comparison_chart: {},
     divergence: {},
@@ -901,7 +901,7 @@ function extractCharts(data: any): Charts {
   };
 }
 
-function calculateBullishPercentage(data: any): number {
+function calculateBullishPercentage(data: Record<string, unknown>): number {
   const summary = data.summary || {};
   const aiAnalysis = data.ai_analysis || {};
   
@@ -924,7 +924,7 @@ function calculateBullishPercentage(data: any): number {
   return 0;
 }
 
-function calculateBearishPercentage(data: any): number {
+function calculateBearishPercentage(data: Record<string, unknown>): number {
   const summary = data.summary || {};
   const aiAnalysis = data.ai_analysis || {};
   
@@ -947,13 +947,13 @@ function calculateBearishPercentage(data: any): number {
   return 0;
 }
 
-function calculateNeutralPercentage(data: any): number {
+function calculateNeutralPercentage(data: Record<string, unknown>): number {
   const bullish = calculateBullishPercentage(data);
   const bearish = calculateBearishPercentage(data);
   return Math.max(0, 100 - bullish - bearish);
 }
 
-function extractSignalDetails(data: any): any[] {
+function extractSignalDetails(data: Record<string, unknown>): unknown[] {
   const indicators = data.indicators || {};
   const signals = [];
   
@@ -1240,12 +1240,12 @@ function extractSignalDetails(data: any): any[] {
   return signals;
 }
 
-function extractWarnings(data: any): string[] {
+function extractWarnings(data: Record<string, unknown>): string[] {
   const aiAnalysis = data.ai_analysis || {};
   return aiAnalysis.risks || [];
 }
 
-function extractTimeframeStrategy(timeframeData: any): any {
+function extractTimeframeStrategy(timeframeData: Record<string, unknown>): Record<string, unknown> {
   if (!timeframeData) {
     return {
       horizon_days: 30,
@@ -1281,7 +1281,7 @@ function extractTimeframeStrategy(timeframeData: any): any {
   };
 }
 
-function extractRisks(risks: any[]): any[] {
+function extractRisks(risks: unknown[]): Record<string, unknown>[] {
   if (!Array.isArray(risks)) return [];
   
   return risks.map(risk => ({
@@ -1292,7 +1292,7 @@ function extractRisks(risks: any[]): any[] {
   }));
 }
 
-function extractCriticalLevels(levels: any[]): any[] {
+function extractCriticalLevels(levels: unknown[]): Record<string, unknown>[] {
   if (!Array.isArray(levels)) return [];
   
   return levels.map(level => ({
@@ -1306,7 +1306,7 @@ function extractCriticalLevels(levels: any[]): any[] {
 /**
  * Get sector context for SectorAnalysisCard
  */
-export function extractSectorContext(data: any): SectorContext | undefined {
+export function extractSectorContext(data: Record<string, unknown>): SectorContext | undefined {
   const sectorData = data.sector_benchmarking;
   if (!sectorData) return undefined;
   
