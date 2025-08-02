@@ -77,7 +77,7 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
   // If no valid data, show loading state
   if (!summaryStats || stats.current === 0) {
     return (
-      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-full">
+      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[99%]">
         <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
           <div className="flex items-center space-x-2">
             <Target className="h-6 w-6" />
@@ -98,57 +98,56 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
   }
 
   return (
-    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-full">
+    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[99%]">
       <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
         <div className="flex items-center space-x-2">
           <Target className="h-6 w-6" />
           <CardTitle className="text-xl">Price Statistics</CardTitle>
         </div>
-        <div className="text-blue-100 text-sm">
-          {timeframe} Analysis
-        </div>
       </CardHeader>
       <CardContent className="p-6">
-        {/* Current Price Highlight */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
-          <div className="text-center">
-            <div className="text-sm text-slate-600 mb-1">Current Price</div>
-            <div className="text-3xl font-bold text-slate-800">
-              {formatCurrency(stats.current)}
-            </div>
-            {latestPrice && latestPrice !== stats.current && (
-              <div className="text-sm text-slate-500 mt-1">
-                Latest: {formatCurrency(latestPrice)}
+        {/* Price Statistics Layout: 1,1 and 1,3 */}
+        <div className="space-y-4 mb-6">
+          {/* First Row: Current Price (1 column) */}
+          <div className="grid grid-cols-1 gap-4">
+            <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+              <div className="text-sm text-slate-600 mb-1">Current Price</div>
+              <div className="text-xl font-bold text-slate-800">
+                {formatCurrency(stats.current)}
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Key Price Levels */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-            <div className="text-sm text-slate-600 mb-1">All-Time High</div>
-            <div className="text-xl font-bold text-green-700">
-              {formatCurrency(stats.max)}
+              {latestPrice && latestPrice !== stats.current && (
+                <div className="text-xs text-slate-500 mt-1">
+                  Latest: {formatCurrency(latestPrice)}
+                </div>
+              )}
             </div>
           </div>
-          <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="text-sm text-slate-600 mb-1">Mean Price</div>
-            <div className="text-xl font-bold text-blue-700">
-              {formatCurrency(stats.mean)}
+          
+          {/* Second Row: High, Mean, Low (3 columns) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+              <div className="text-sm text-slate-600 mb-1">All-Time High</div>
+              <div className="text-xl font-bold text-green-700">
+                {formatCurrency(stats.max)}
+              </div>
             </div>
-          </div>
-          <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
-            <div className="text-sm text-slate-600 mb-1">All-Time Low</div>
-            <div className="text-xl font-bold text-red-700">
-              {formatCurrency(stats.min)}
+            <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="text-sm text-slate-600 mb-1">Mean Price</div>
+              <div className="text-xl font-bold text-blue-700">
+                {formatCurrency(stats.mean)}
+              </div>
+            </div>
+            <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
+              <div className="text-sm text-slate-600 mb-1">All-Time Low</div>
+              <div className="text-xl font-bold text-red-700">
+                {formatCurrency(stats.min)}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Distance Metrics */}
         <div className="space-y-4 mb-6">
-          <h4 className="font-semibold text-slate-800 text-lg">Distance Analysis</h4>
           
           {/* Deviation from Mean */}
           <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
@@ -204,7 +203,6 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
 
         {/* Position in Range */}
         <div className="space-y-3">
-          <h4 className="font-semibold text-slate-800 text-lg">Position in Range</h4>
           <div className="p-4 bg-slate-50 rounded-lg">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-slate-600">Current Position</span>

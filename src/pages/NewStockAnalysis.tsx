@@ -52,8 +52,8 @@ const NewStockAnalysis = () => {
     stock: "RELIANCE",
     exchange: "NSE",
     period: "365",
-    interval: "1day",
-    sector: "none"
+    interval: "day",
+    sector: null
   });
 
   // UI state
@@ -90,19 +90,20 @@ const NewStockAnalysis = () => {
     setSectorLoading(true);
     try {
       const data = await apiService.getStockSector(symbol);
-      if (data.success && data.sector_info) {
-        setDetectedSector(data.sector_info.sector || "");
-        if (!formData.sector || formData.sector === "none" || firstSectorLoad.current) {
-          setFormData(prev => ({ ...prev, sector: data.sector_info.sector || "none" }));
+      if (data.success && data.sector_info && data.sector_info.sector) {
+        setDetectedSector(data.sector_info.sector);
+        if (!formData.sector || firstSectorLoad.current) {
+          setFormData(prev => ({ ...prev, sector: data.sector_info.sector }));
           firstSectorLoad.current = false;
         }
       } else {
         setDetectedSector("");
-        setFormData(prev => ({ ...prev, sector: "none" }));
+        setFormData(prev => ({ ...prev, sector: null }));
       }
     } catch (error) {
       console.error('Error fetching stock sector:', error);
       setDetectedSector("");
+      setFormData(prev => ({ ...prev, sector: null }));
     } finally {
       setSectorLoading(false);
     }
@@ -138,7 +139,7 @@ const NewStockAnalysis = () => {
   // Event handlers
   const handleInputChange = (field: string, value: string) => {
     if (field === "stock") {
-      setFormData(prev => ({ ...prev, stock: value, sector: "none" }));
+      setFormData(prev => ({ ...prev, stock: value, sector: null }));
       setDetectedSector("");
       firstSectorLoad.current = true;
       
@@ -183,11 +184,11 @@ const NewStockAnalysis = () => {
         exchange: formData.exchange,
         period: parseInt(formData.period),
         interval: formData.interval,
-        sector: formData.sector === "none" ? null : formData.sector || null,
+        sector: formData.sector,
         email: user?.email // Include user email for backend user ID mapping
       };
 
-      const data = await apiService.analyzeStock(payload);
+      const data = await apiService.enhancedAnalyzeStock(payload);
 
       if (user) {
         try {
@@ -198,6 +199,7 @@ const NewStockAnalysis = () => {
         }
       }
 
+      // Store the complete response in localStorage for the output page
       localStorage.setItem('analysisResult', JSON.stringify(data));
 
       // Request JWT token for WebSocket authentication and store in localStorage
@@ -336,9 +338,9 @@ const NewStockAnalysis = () => {
                         
                         {(showSectorOverride || !detectedSector) && (
                           <Select
-                            value={formData.sector}
+                            value={formData.sector || "none"}
                             onValueChange={(value) => {
-                              handleInputChange("sector", value);
+                              handleInputChange("sector", value === "none" ? null : value);
                               setShowSectorOverride(false);
                             }}
                           >

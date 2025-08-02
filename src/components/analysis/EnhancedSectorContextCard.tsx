@@ -20,7 +20,7 @@ interface EnhancedSectorContextCardProps {
 }
 
 const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorContextCardProps) => {
-  if (!sectorContext) {
+  if (!sectorContext || !sectorContext.benchmarking) {
     return (
       <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full">
         <CardHeader>
@@ -75,34 +75,36 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
       <CardContent className="space-y-6">
         
         {/* Sector Overview */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-blue-800">Sector Overview</h3>
-            <Badge className={getPerformanceColor(benchmarking.analysis_summary.market_position)}>
-              {benchmarking.analysis_summary.market_position}
-            </Badge>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-slate-600">Sector:</span>
-              <div className="font-medium text-slate-800">{benchmarking.sector_info.sector_name}</div>
-            </div>
-            <div>
-              <span className="text-slate-600">Index:</span>
-              <div className="font-medium text-slate-800">{benchmarking.sector_info.sector_index}</div>
-            </div>
-            <div>
-              <span className="text-slate-600">Stocks:</span>
-              <div className="font-medium text-slate-800">{benchmarking.sector_info.sector_stocks_count}</div>
-            </div>
-            <div>
-              <span className="text-slate-600">Risk Level:</span>
-              <Badge className={`ml-1 ${getRiskLevelColor(benchmarking.sector_risk_metrics.risk_level)}`}>
-                {benchmarking.sector_risk_metrics.risk_level}
+        {benchmarking.analysis_summary && benchmarking.sector_info && benchmarking.sector_risk_metrics && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-blue-800">Sector Overview</h3>
+              <Badge className={getPerformanceColor(benchmarking.analysis_summary.market_position || 'neutral')}>
+                {benchmarking.analysis_summary.market_position || 'Neutral'}
               </Badge>
             </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className="text-slate-600">Sector:</span>
+                <div className="font-medium text-slate-800">{benchmarking.sector_info.sector_name || 'N/A'}</div>
+              </div>
+              <div>
+                <span className="text-slate-600">Index:</span>
+                <div className="font-medium text-slate-800">{benchmarking.sector_info.sector_index || 'N/A'}</div>
+              </div>
+              <div>
+                <span className="text-slate-600">Stocks:</span>
+                <div className="font-medium text-slate-800">{benchmarking.sector_info.sector_stocks_count || 'N/A'}</div>
+              </div>
+              <div>
+                <span className="text-slate-600">Risk Level:</span>
+                <Badge className={`ml-1 ${getRiskLevelColor(benchmarking.sector_risk_metrics.risk_level || 'medium')}`}>
+                  {benchmarking.sector_risk_metrics.risk_level || 'Medium'}
+                </Badge>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Market vs Sector Performance */}
         <div className="space-y-4">
@@ -113,64 +115,68 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Market Benchmarking */}
-            <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
-              <h4 className="font-medium text-emerald-800 mb-3 flex items-center">
-                <TrendingUp className="h-4 w-4 mr-1" />
-                vs Market
-              </h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Beta:</span>
-                  <span className="font-medium text-slate-800">{benchmarking.market_benchmarking.beta.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Correlation:</span>
-                  <span className="font-medium text-slate-800">{(benchmarking.market_benchmarking.correlation * 100).toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Sharpe Ratio:</span>
-                  <span className="font-medium text-slate-800">{benchmarking.market_benchmarking.sharpe_ratio.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Volatility:</span>
-                  <span className="font-medium text-slate-800">{(benchmarking.market_benchmarking.volatility * 100).toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Return:</span>
-                  <span className="font-medium text-slate-800">{(benchmarking.market_benchmarking.annualized_return * 100).toFixed(1)}%</span>
+            {benchmarking.market_benchmarking && (
+              <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+                <h4 className="font-medium text-emerald-800 mb-3 flex items-center">
+                  <TrendingUp className="h-4 w-4 mr-1" />
+                  vs Market
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Beta:</span>
+                    <span className="font-medium text-slate-800">{(benchmarking.market_benchmarking.beta || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Correlation:</span>
+                    <span className="font-medium text-slate-800">{((benchmarking.market_benchmarking.correlation || 0) * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Sharpe Ratio:</span>
+                    <span className="font-medium text-slate-800">{(benchmarking.market_benchmarking.sharpe_ratio || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Volatility:</span>
+                    <span className="font-medium text-slate-800">{((benchmarking.market_benchmarking.volatility || 0) * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Return:</span>
+                    <span className="font-medium text-slate-800">{((benchmarking.market_benchmarking.annualized_return || 0) * 100).toFixed(1)}%</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Sector Benchmarking */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h4 className="font-medium text-blue-800 mb-3 flex items-center">
-                <Activity className="h-4 w-4 mr-1" />
-                vs Sector
-              </h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Sector Beta:</span>
-                  <span className="font-medium text-slate-800">{benchmarking.sector_benchmarking.sector_beta.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Sector Correlation:</span>
-                  <span className="font-medium text-slate-800">{(benchmarking.sector_benchmarking.sector_correlation * 100).toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Sector Sharpe:</span>
-                  <span className="font-medium text-slate-800">{benchmarking.sector_benchmarking.sector_sharpe_ratio.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Sector Volatility:</span>
-                  <span className="font-medium text-slate-800">{(benchmarking.sector_benchmarking.sector_volatility * 100).toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Sector Return:</span>
-                  <span className="font-medium text-slate-800">{(benchmarking.sector_benchmarking.sector_annualized_return * 100).toFixed(1)}%</span>
+            {benchmarking.sector_benchmarking && (
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-medium text-blue-800 mb-3 flex items-center">
+                  <Activity className="h-4 w-4 mr-1" />
+                  vs Sector
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Sector Beta:</span>
+                    <span className="font-medium text-slate-800">{(benchmarking.sector_benchmarking.sector_beta || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Sector Correlation:</span>
+                    <span className="font-medium text-slate-800">{((benchmarking.sector_benchmarking.sector_correlation || 0) * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Sector Sharpe:</span>
+                    <span className="font-medium text-slate-800">{(benchmarking.sector_benchmarking.sector_sharpe_ratio || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Sector Volatility:</span>
+                    <span className="font-medium text-slate-800">{((benchmarking.sector_benchmarking.sector_volatility || 0) * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Sector Return:</span>
+                    <span className="font-medium text-slate-800">{((benchmarking.sector_benchmarking.sector_annualized_return || 0) * 100).toFixed(1)}%</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -230,19 +236,19 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
               </div>
               <div className="text-center p-3 bg-slate-50 rounded-lg">
                 <div className="text-lg font-bold text-slate-800">
-                  {rotation.sector_performance ? `${(rotation.sector_performance * 100).toFixed(1)}%` : 'N/A'}
+                  {rotation.sector_performance ? `${rotation.sector_performance.toFixed(2)}%` : 'N/A'}
                 </div>
                 <div className="text-xs text-slate-600">Performance</div>
               </div>
               <div className="text-center p-3 bg-slate-50 rounded-lg">
                 <div className="text-lg font-bold text-slate-800 capitalize">
-                  {rotation.rotation_strength}
+                  {rotation.rotation_strength || 'N/A'}
                 </div>
                 <div className="text-xs text-slate-600">Rotation Strength</div>
               </div>
               <div className="text-center p-3 bg-slate-50 rounded-lg">
                 <div className="text-lg font-bold text-slate-800">
-                  {rotation.recommendations.length}
+                  {rotation.recommendations?.length || 0}
                 </div>
                 <div className="text-xs text-slate-600">Recommendations</div>
               </div>
@@ -317,63 +323,67 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
         )}
 
         {/* Risk Assessment */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-slate-800 flex items-center">
-            <Shield className="h-4 w-4 mr-2 text-red-500" />
-            Risk Assessment
-          </h3>
-          
-          <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="text-slate-600">Risk Score:</span>
-                <div className="font-medium text-slate-800">{benchmarking.sector_risk_metrics.risk_score}</div>
-              </div>
-              <div>
-                <span className="text-slate-600">Correlation Risk:</span>
-                <div className="font-medium text-slate-800 capitalize">{benchmarking.sector_risk_metrics.correlation_risk}</div>
-              </div>
-              <div>
-                <span className="text-slate-600">Momentum Risk:</span>
-                <div className="font-medium text-slate-800 capitalize">{benchmarking.sector_risk_metrics.momentum_risk}</div>
-              </div>
-              <div>
-                <span className="text-slate-600">Volatility Risk:</span>
-                <div className="font-medium text-slate-800 capitalize">{benchmarking.sector_risk_metrics.volatility_risk}</div>
-              </div>
-            </div>
-
-            {/* Risk Factors */}
-            {benchmarking.sector_risk_metrics.risk_factors.length > 0 && (
-              <div className="mt-4">
-                <h4 className="font-medium text-red-800 mb-2">Key Risk Factors</h4>
-                <div className="space-y-1">
-                  {benchmarking.sector_risk_metrics.risk_factors.map((factor, index) => (
-                    <div key={index} className="text-sm text-red-700 flex items-start">
-                      <AlertTriangle className="h-3 w-3 mr-2 mt-0.5 flex-shrink-0" />
-                      {factor}
-                    </div>
-                  ))}
+        {benchmarking.sector_risk_metrics && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-slate-800 flex items-center">
+              <Shield className="h-4 w-4 mr-2 text-red-500" />
+              Risk Assessment
+            </h3>
+            
+            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="text-slate-600">Risk Score:</span>
+                  <div className="font-medium text-slate-800">{benchmarking.sector_risk_metrics.risk_score || 'N/A'}</div>
+                </div>
+                <div>
+                  <span className="text-slate-600">Correlation Risk:</span>
+                  <div className="font-medium text-slate-800 capitalize">{benchmarking.sector_risk_metrics.correlation_risk || 'N/A'}</div>
+                </div>
+                <div>
+                  <span className="text-slate-600">Momentum Risk:</span>
+                  <div className="font-medium text-slate-800 capitalize">{benchmarking.sector_risk_metrics.momentum_risk || 'N/A'}</div>
+                </div>
+                <div>
+                  <span className="text-slate-600">Volatility Risk:</span>
+                  <div className="font-medium text-slate-800 capitalize">{benchmarking.sector_risk_metrics.volatility_risk || 'N/A'}</div>
                 </div>
               </div>
-            )}
+
+              {/* Risk Factors */}
+              {benchmarking.sector_risk_metrics.risk_factors && benchmarking.sector_risk_metrics.risk_factors.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="font-medium text-red-800 mb-2">Key Risk Factors</h4>
+                  <div className="space-y-1">
+                    {benchmarking.sector_risk_metrics.risk_factors.map((factor, index) => (
+                      <div key={index} className="text-sm text-red-700 flex items-start">
+                        <AlertTriangle className="h-3 w-3 mr-2 mt-0.5 flex-shrink-0" />
+                        {factor}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Investment Recommendation */}
-        <div className="bg-gradient-to-r from-emerald-50 to-green-50 p-4 rounded-lg border border-emerald-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-emerald-800">Investment Recommendation</h3>
-              <p className="text-sm text-emerald-700 mt-1">
-                Based on sector analysis and market positioning
-              </p>
+        {benchmarking.analysis_summary && (
+          <div className="bg-gradient-to-r from-emerald-50 to-green-50 p-4 rounded-lg border border-emerald-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-emerald-800">Investment Recommendation</h3>
+                <p className="text-sm text-emerald-700 mt-1">
+                  Based on sector analysis and market positioning
+                </p>
+              </div>
+              <Badge className={getRecommendationColor(benchmarking.analysis_summary.investment_recommendation || 'neutral')}>
+                {benchmarking.analysis_summary.investment_recommendation || 'Neutral'}
+              </Badge>
             </div>
-            <Badge className={getRecommendationColor(benchmarking.analysis_summary.investment_recommendation)}>
-              {benchmarking.analysis_summary.investment_recommendation}
-            </Badge>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

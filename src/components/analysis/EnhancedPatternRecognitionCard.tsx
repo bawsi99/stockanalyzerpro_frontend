@@ -13,6 +13,7 @@ import {
   Zap
 } from "lucide-react";
 import { EnhancedOverlays } from "@/types/analysis";
+import AdvancedPatternAnalysisCard from "./AdvancedPatternAnalysisCard";
 
 interface EnhancedPatternRecognitionCardProps {
   overlays: EnhancedOverlays;
@@ -154,7 +155,11 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
     { name: 'Double Tops', count: double_tops.length, type: 'double_top' },
     { name: 'Double Bottoms', count: double_bottoms.length, type: 'double_bottom' },
     { name: 'Divergences', count: divergences.length, type: 'divergence' },
-    { name: 'Volume Anomalies', count: volume_anomalies.length, type: 'volume_anomaly' }
+    { name: 'Volume Anomalies', count: volume_anomalies.length, type: 'volume_anomaly' },
+    { name: 'Triple Tops', count: advanced_patterns.triple_tops?.length || 0, type: 'triple_top' },
+    { name: 'Triple Bottoms', count: advanced_patterns.triple_bottoms?.length || 0, type: 'triple_bottom' },
+    { name: 'Wedge Patterns', count: advanced_patterns.wedge_patterns?.length || 0, type: 'wedge_pattern' },
+    { name: 'Channel Patterns', count: advanced_patterns.channel_patterns?.length || 0, type: 'channel_pattern' }
   ];
 
   const supportResistance = {
@@ -237,40 +242,20 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
             </div>
           </div>
 
-          {/* Advanced Patterns */}
-          {allPatterns.length > 0 && (
-            <div className="mb-6">
-              <h4 className="font-semibold text-slate-700 mb-3">Advanced Patterns Detected</h4>
-              <div className="space-y-3">
-                {allPatterns.map((pattern) => (
-                  <div key={pattern.id} className="p-4 border border-slate-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <div className={`p-2 rounded-full ${pattern.color}`}>
-                          {pattern.icon}
-                        </div>
-                        <div>
-                          <h5 className="font-medium text-slate-800">{pattern.name}</h5>
-                          <p className="text-sm text-slate-600">{pattern.significance}</p>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        Pattern {pattern.id.split('_').pop()}
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-slate-600">
-                      <p>Pattern data available for chart overlay</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Advanced Pattern Analysis Card */}
+          <div className="mb-6">
+            <AdvancedPatternAnalysisCard 
+              patterns={advanced_patterns}
+              symbol={symbol}
+            />
+          </div>
+
+
 
           {/* Basic Patterns */}
           <div className="mb-6">
             <h4 className="font-semibold text-slate-700 mb-3">Basic Pattern Analysis</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {basicPatterns.map((pattern) => (
                 <div key={pattern.type} className="p-3 border border-slate-200 rounded-lg">
                   <div className="flex items-center justify-between">

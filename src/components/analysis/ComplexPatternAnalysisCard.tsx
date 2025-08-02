@@ -77,10 +77,10 @@ const ComplexPatternAnalysisCard: React.FC<ComplexPatternAnalysisCardProps> = ({
   const getPatternSummary = () => {
     const summary = {
       total: allPatterns.length,
-      completed: allPatterns.filter(p => p.completion_status === 'completed').length,
-      forming: allPatterns.filter(p => p.completion_status === 'forming').length,
+      completed: allPatterns.filter(p => (p.completion || p.completion_status) === 100 || (p.completion_status === 'completed')).length,
+      forming: allPatterns.filter(p => (p.completion || 0) < 100 && p.completion_status !== 'completed').length,
       avgQuality: allPatterns.length > 0 ? 
-        Math.round(allPatterns.reduce((sum, p) => sum + p.quality_score, 0) / allPatterns.length) : 0
+        Math.round(allPatterns.reduce((sum, p) => sum + (p.quality_score || p.completion || 0), 0) / allPatterns.length) : 0
     };
     return summary;
   };
@@ -156,86 +156,58 @@ const ComplexPatternAnalysisCard: React.FC<ComplexPatternAnalysisCardProps> = ({
                   <span className="font-semibold">
                     {formatPatternType(pattern.type)}
                   </span>
-                  <Badge variant="outline" className={getCompletionColor(pattern.completion_status)}>
-                    {pattern.completion_status}
+                  <Badge variant="outline" className={getCompletionColor(pattern.completion_status || (pattern.completion === 100 ? 'completed' : 'forming'))}>
+                    {pattern.completion_status || (pattern.completion === 100 ? 'completed' : 'forming')}
                   </Badge>
                 </div>
                 <div className="text-right">
-                  <div className={`font-bold ${getQualityColor(pattern.quality_score)}`}>
-                    Q: {pattern.quality_score}
+                  <div className={`font-bold ${getQualityColor(pattern.quality_score || pattern.completion || 0)}`}>
+                    Q: {pattern.quality_score || pattern.completion || 0}
                   </div>
-                  <Progress value={pattern.quality_score} className="w-20 h-2" />
+                  <Progress value={pattern.quality_score || pattern.completion || 0} className="w-20 h-2" />
                 </div>
               </div>
 
               {/* Pattern-specific details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                {pattern.type === 'triple_top' && (
-                  <>
-                    <div>
-                      <span className="font-medium">Support Level:</span> ₹{pattern.support_level?.toFixed(2)}
-                    </div>
-                    <div>
-                      <span className="font-medium">Target:</span> ₹{pattern.target?.toFixed(2)}
-                    </div>
-                    <div>
-                      <span className="font-medium">Peak Similarity:</span> {(pattern.peak_similarity * 100).toFixed(1)}%
-                    </div>
-                    <div>
-                      <span className="font-medium">Valley Ratio:</span> {(pattern.avg_valley_ratio * 100).toFixed(1)}%
-                    </div>
-                  </>
+                {/* Display common properties for all pattern types */}
+                <div>
+                  <span className="font-medium">Strength:</span> {pattern.strength || 'medium'}
+                </div>
+                <div>
+                  <span className="font-medium">Reliability:</span> {pattern.reliability || 'medium'}
+                </div>
+                {pattern.target_level && (
+                  <div>
+                    <span className="font-medium">Target Level:</span> ₹{pattern.target_level.toFixed(2)}
+                  </div>
                 )}
-
-                {pattern.type === 'triple_bottom' && (
-                  <>
-                    <div>
-                      <span className="font-medium">Resistance Level:</span> ₹{pattern.resistance_level?.toFixed(2)}
-                    </div>
-                    <div>
-                      <span className="font-medium">Target:</span> ₹{pattern.target?.toFixed(2)}
-                    </div>
-                    <div>
-                      <span className="font-medium">Low Similarity:</span> {(pattern.low_similarity * 100).toFixed(1)}%
-                    </div>
-                    <div>
-                      <span className="font-medium">Peak Ratio:</span> {(pattern.avg_peak_ratio * 100).toFixed(1)}%
-                    </div>
-                  </>
+                {pattern.stop_level && (
+                  <div>
+                    <span className="font-medium">Stop Level:</span> ₹{pattern.stop_level.toFixed(2)}
+                  </div>
                 )}
-
-                {pattern.type.includes('wedge') && (
-                  <>
-                    <div>
-                      <span className="font-medium">Duration:</span> {pattern.duration} days
-                    </div>
-                    <div>
-                      <span className="font-medium">Convergence:</span> {pattern.convergence?.toFixed(4)}
-                    </div>
-                    <div>
-                      <span className="font-medium">Target:</span> ₹{pattern.target?.toFixed(2)}
-                    </div>
-                    <div>
-                      <span className="font-medium">Price Range:</span> {(pattern.price_range * 100).toFixed(1)}%
-                    </div>
-                  </>
+                
+                {/* Legacy pattern properties (if available) */}
+                {pattern.support_level && (
+                  <div>
+                    <span className="font-medium">Support Level:</span> ₹{pattern.support_level.toFixed(2)}
+                  </div>
                 )}
-
-                {pattern.type.includes('channel') && (
-                  <>
-                    <div>
-                      <span className="font-medium">Duration:</span> {pattern.duration} days
-                    </div>
-                    <div>
-                      <span className="font-medium">Touches:</span> {pattern.touches}
-                    </div>
-                    <div>
-                      <span className="font-medium">Channel Height:</span> ₹{pattern.channel_height?.toFixed(2)}
-                    </div>
-                    <div>
-                      <span className="font-medium">Slope Difference:</span> {pattern.slope_difference?.toFixed(4)}
-                    </div>
-                  </>
+                {pattern.resistance_level && (
+                  <div>
+                    <span className="font-medium">Resistance Level:</span> ₹{pattern.resistance_level.toFixed(2)}
+                  </div>
+                )}
+                {pattern.target && (
+                  <div>
+                    <span className="font-medium">Target:</span> ₹{pattern.target.toFixed(2)}
+                  </div>
+                )}
+                {pattern.duration && (
+                  <div>
+                    <span className="font-medium">Duration:</span> {pattern.duration} days
+                  </div>
                 )}
               </div>
             </div>

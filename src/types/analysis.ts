@@ -10,11 +10,14 @@ export interface AnalysisRequest {
 }
 
 export interface ChartData {
-  data?: string; // base64 encoded image
-  filename?: string;
-  type?: string;
-  error?: string;
-  path?: string;
+  date: string;
+  time?: number; // Optional for backward compatibility
+  open: number;
+  close: number;
+  high: number;
+  low: number;
+  volume: number;
+  price?: number; // Add price property for backward compatibility
 }
 
 // Enhanced Consensus Signal with weights and scores
@@ -755,6 +758,7 @@ export interface SectorTradingRecommendation {
 export interface SectorContext {
   sector: string;
   benchmarking: SectorBenchmarking;
+  sector_benchmarking?: SectorBenchmarking; // Add missing property for backward compatibility
   rotation_insights: SectorRotationInsights;
   correlation_insights: SectorCorrelationInsights;
   trading_recommendations: SectorTradingRecommendation[];

@@ -106,78 +106,126 @@ class AnalysisService {
 
   // POST /analyze - Comprehensive stock analysis
   async analyzeStock(request: AnalysisRequest): Promise<AnalysisResponse> {
-    try {
-      const token = await authService.ensureAuthenticated();
-      if (!token) {
-        throw new Error('Authentication token not available');
-      }
-
-      const response = await fetch(ENDPOINTS.ANALYSIS.ANALYZE, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request)
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Authentication failed. Please login again.');
-        } else {
-          throw new Error(`HTTP error! status: ${response.status}`);
+    const maxRetries = 3;
+    const timeout = 60000; // 1 minute timeout for regular analysis
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const token = await authService.ensureAuthenticated();
+        if (!token) {
+          throw new Error('Authentication token not available');
         }
-      }
 
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to analyze stock');
-      }
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-      return data;
-    } catch (error) {
-      console.error('Error analyzing stock:', error);
-      throw error;
+        const response = await fetch(ENDPOINTS.ANALYSIS.ANALYZE, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(request),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Authentication failed. Please login again.');
+          } else if (response.status === 500) {
+            throw new Error(`Server error (attempt ${attempt}/${maxRetries}). Please try again.`);
+          } else {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+        }
+
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to analyze stock');
+        }
+
+        return data;
+      } catch (error) {
+        console.error(`Error analyzing stock (attempt ${attempt}/${maxRetries}):`, error);
+        
+        if (attempt === maxRetries) {
+          throw error;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+        console.log(`Retrying in ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
     }
+    
+    throw new Error('All retry attempts failed');
   }
 
   // POST /analyze/enhanced - Enhanced analysis with code execution
   async enhancedAnalyzeStock(request: AnalysisRequest & { enable_code_execution?: boolean }): Promise<AnalysisResponse> {
-    try {
-      const token = await authService.ensureAuthenticated();
-      if (!token) {
-        throw new Error('Authentication token not available');
-      }
-
-      const response = await fetch(ENDPOINTS.ANALYSIS.ENHANCED_ANALYZE, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request)
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Authentication failed. Please login again.');
-        } else {
-          throw new Error(`HTTP error! status: ${response.status}`);
+    const maxRetries = 3;
+    const timeout = 120000; // 2 minutes timeout for enhanced analysis
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const token = await authService.ensureAuthenticated();
+        if (!token) {
+          throw new Error('Authentication token not available');
         }
-      }
 
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to analyze stock');
-      }
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-      return data;
-    } catch (error) {
-      console.error('Error in enhanced analysis:', error);
-      throw error;
+        const response = await fetch(ENDPOINTS.ANALYSIS.ENHANCED_ANALYZE, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(request),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Authentication failed. Please login again.');
+          } else if (response.status === 500) {
+            throw new Error(`Server error (attempt ${attempt}/${maxRetries}). Please try again.`);
+          } else {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+        }
+
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to analyze stock');
+        }
+
+        return data;
+      } catch (error) {
+        console.error(`Error in enhanced analysis (attempt ${attempt}/${maxRetries}):`, error);
+        
+        if (attempt === maxRetries) {
+          throw error;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+        console.log(`Retrying in ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
     }
+    
+    throw new Error('All retry attempts failed');
   }
 
   // POST /analyze/enhanced-mtf - Enhanced multi-timeframe analysis

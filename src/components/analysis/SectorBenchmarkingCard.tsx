@@ -22,6 +22,8 @@ interface SectorBenchmarkingCardProps {
 const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({ 
   sectorBenchmarking 
 }) => {
+
+  
   // Add null checks and default values
   if (!sectorBenchmarking) {
     return (
@@ -41,28 +43,25 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
     );
   }
 
-  // Safe access to properties with defaults
+  // Safe access to properties with defaults - handle both frontend and backend structures
   const {
-    sector_info = { sector: 'Unknown', sector_name: 'Unknown', sector_index: 'Unknown', sector_stocks_count: 0 },
-    market_benchmarking = { cumulative_return: 0, volatility: 0, sharpe_ratio: 0, beta: 0 },
-    sector_benchmarking: sectorData = { 
-      sector_cumulative_return: 0, 
-      sector_volatility: 0, 
-      sector_sharpe_ratio: 0, 
-      sector_beta: 0 
-    },
-    relative_performance = { 
-      vs_market: { performance_ratio: 0, sector_rank: 0, sector_consistency: 0 },
-      vs_sector: { performance_ratio: 0, sector_rank: 0, sector_consistency: 0 }
-    },
-    sector_risk_metrics: rawSectorRiskMetrics
+    // Frontend structure fields
+    sector_info = null,
+    market_benchmarking = null,
+    sector_benchmarking: sectorData = null,
+    relative_performance = null,
+    sector_risk_metrics: rawSectorRiskMetrics = null,
+    analysis_summary = null
   } = sectorBenchmarking;
+
+  // Since data is now transformed to frontend format, we don't need backend structure fields
+  // The transformed data already has the correct structure
 
   // Safe access to sector_info with null checking
   const safeSectorInfo = {
     sector: sector_info?.sector ?? 'Unknown',
     sector_name: sector_info?.sector_name ?? 'Unknown',
-    sector_index: sector_info?.sector_index ?? 'Unknown',
+    sector_index: sector_info?.sector_index ?? 'NIFTY_IT',
     sector_stocks_count: sector_info?.sector_stocks_count ?? 0
   };
 
@@ -81,16 +80,17 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
     sector_beta: sectorData?.sector_beta ?? 0
   };
 
+  // Handle both frontend and backend relative performance structures
   const safeRelativePerformance = {
     vs_market: {
       performance_ratio: relative_performance?.vs_market?.performance_ratio ?? 0,
-      sector_rank: relative_performance?.vs_market?.sector_rank ?? 0,
-      sector_consistency: relative_performance?.vs_market?.sector_consistency ?? 0
+      sector_rank: relative_performance?.vs_market?.consistency_score ?? 0,
+      sector_consistency: relative_performance?.vs_market?.consistency_score ?? 0.5
     },
     vs_sector: {
       performance_ratio: relative_performance?.vs_sector?.performance_ratio ?? 0,
       sector_rank: relative_performance?.vs_sector?.sector_rank ?? 0,
-      sector_consistency: relative_performance?.vs_sector?.sector_consistency ?? 0
+      sector_consistency: relative_performance?.vs_sector?.sector_consistency ?? 0.5
     }
   };
 
@@ -112,6 +112,11 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
     stress_score: 0
   };
 
+  // Calculate stress score from backend stress metrics if available
+  const calculatedStressScore = stressMetrics.stress_score || 0;
+  const calculatedStressLevel = stressMetrics.stress_level || 
+    (calculatedStressScore > 30 ? 'High' : calculatedStressScore > 15 ? 'Medium' : 'Low');
+
   // Ensure arrays are safe to access
   const riskFactors = sector_risk_metrics.risk_factors || [];
   const riskMitigation = sector_risk_metrics.risk_mitigation || [];
@@ -124,7 +129,7 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
   const volatilityRisk = sector_risk_metrics.volatility_risk || 'Unknown';
 
   // Safe access to analysis_summary
-  const analysis_summary = sectorBenchmarking.analysis_summary || {
+  const safeAnalysisSummary = analysis_summary || {
     market_position: 'Unknown',
     sector_position: 'Unknown',
     risk_assessment: 'Unknown',
@@ -212,9 +217,13 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
                   <span className="font-medium">{(riskScore || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between">
+                  <span className="text-slate-600">Stress Score:</span>
+                  <span className="font-medium">{(calculatedStressScore || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="text-slate-600">Stress Level:</span>
-                  <Badge variant="outline" className={getRiskLevelColor(stressMetrics.stress_level)}>
-                    {stressMetrics.stress_level}
+                  <Badge variant="outline" className={getRiskLevelColor(calculatedStressLevel)}>
+                    {calculatedStressLevel}
                   </Badge>
                 </div>
               </div>
@@ -223,176 +232,209 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
         </CardContent>
       </Card>
 
-      {/* Performance Comparison */}
-      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center text-slate-800">
-            <TrendingUp className="h-5 w-5 mr-2 text-blue-500" />
-            Performance Comparison
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Market Performance */}
-            <div className="space-y-3">
-              <h4 className="font-semibold text-slate-700">Market (NIFTY 50)</h4>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Return:</span>
-                  <div className="flex items-center space-x-1">
-                    {getPerformanceIcon(safeMarketBenchmarking.cumulative_return)}
-                    <span className={`font-medium ${getPerformanceColor(safeMarketBenchmarking.cumulative_return)}`}>
-                      {(safeMarketBenchmarking.cumulative_return * 100).toFixed(2)}%
-                    </span>
+      {/* Performance Comparison and Risk Analysis - Side by Side */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Performance Comparison */}
+        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center text-slate-800">
+              <TrendingUp className="h-5 w-5 mr-2 text-blue-500" />
+              Performance Comparison
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Market Performance */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-slate-700">Market (NIFTY 50)</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Return:</span>
+                    <div className="flex items-center space-x-1">
+                      {getPerformanceIcon(safeMarketBenchmarking.cumulative_return)}
+                      <span className={`font-medium ${getPerformanceColor(safeMarketBenchmarking.cumulative_return)}`}>
+                        {(safeMarketBenchmarking.cumulative_return * 100).toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Volatility:</span>
+                    <span className="font-medium">{(safeMarketBenchmarking.volatility * 100).toFixed(2)}%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Sharpe Ratio:</span>
+                    <span className="font-medium">{safeMarketBenchmarking.sharpe_ratio.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Beta:</span>
+                    <span className="font-medium">{safeMarketBenchmarking.beta.toFixed(2)}</span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Volatility:</span>
-                  <span className="font-medium">{(safeMarketBenchmarking.volatility * 100).toFixed(2)}%</span>
+              </div>
+
+              {/* Sector Performance */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-slate-700">Sector ({safeSectorInfo.sector_index})</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Return:</span>
+                    <div className="flex items-center space-x-1">
+                      {getPerformanceIcon(safeSectorData.sector_cumulative_return)}
+                      <span className={`font-medium ${getPerformanceColor(safeSectorData.sector_cumulative_return)}`}>
+                        {(safeSectorData.sector_cumulative_return * 100).toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Volatility:</span>
+                    <span className="font-medium">{(safeSectorData.sector_volatility * 100).toFixed(2)}%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Sharpe Ratio:</span>
+                    <span className="font-medium">{safeSectorData.sector_sharpe_ratio.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Beta:</span>
+                    <span className="font-medium">{safeSectorData.sector_beta.toFixed(2)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Sharpe Ratio:</span>
-                  <span className="font-medium">{safeMarketBenchmarking.sharpe_ratio.toFixed(2)}</span>
+              </div>
+
+              {/* Relative Performance */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-slate-700">Relative Performance</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">vs Market:</span>
+                    <div className="flex items-center space-x-1">
+                      {getPerformanceIcon(safeRelativePerformance.vs_market.performance_ratio)}
+                      <span className={`font-medium ${getPerformanceColor(safeRelativePerformance.vs_market.performance_ratio)}`}>
+                        {(safeRelativePerformance.vs_market.performance_ratio * 100).toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">vs Sector:</span>
+                    <div className="flex items-center space-x-1">
+                      {getPerformanceIcon(safeRelativePerformance.vs_sector.performance_ratio)}
+                      <span className={`font-medium ${getPerformanceColor(safeRelativePerformance.vs_sector.performance_ratio)}`}>
+                        {(safeRelativePerformance.vs_sector.performance_ratio * 100).toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Sector Rank:</span>
+                    <Badge variant="outline">
+                      {safeRelativePerformance.vs_sector.sector_rank}/{safeSectorInfo.sector_stocks_count}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Consistency:</span>
+                    <span className="font-medium">{(safeRelativePerformance.vs_sector.sector_consistency * 100).toFixed(1)}%</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Beta:</span>
-                  <span className="font-medium">{safeMarketBenchmarking.beta.toFixed(2)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Risk Analysis */}
+        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center text-slate-800">
+              <Shield className="h-5 w-5 mr-2 text-red-500" />
+              Risk Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Risk Factors */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-slate-700">Risk Factors</h4>
+                <div className="space-y-2">
+                  {riskFactors.length > 0 ? (
+                    riskFactors.map((factor, index) => (
+                      <div key={index} className="flex items-start space-x-2">
+                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-slate-600">{factor}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="flex items-start space-x-2">
+                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-slate-600">Oil price volatility</span>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-slate-600">Regulatory changes</span>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-slate-600">Environmental risks</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Risk Mitigation */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-slate-700">Risk Mitigation</h4>
+                <div className="space-y-2">
+                  {riskMitigation.length > 0 ? (
+                    riskMitigation.map((mitigation, index) => (
+                      <div key={index} className="flex items-start space-x-2">
+                        <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-slate-600">{mitigation}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="flex items-start space-x-2">
+                        <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-slate-600">Monitor oil price trends</span>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-slate-600">Track regulatory changes</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Sector Performance */}
-            <div className="space-y-3">
-              <h4 className="font-semibold text-slate-700">Sector ({safeSectorInfo.sector_index})</h4>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Return:</span>
-                  <div className="flex items-center space-x-1">
-                    {getPerformanceIcon(safeSectorData.sector_cumulative_return)}
-                    <span className={`font-medium ${getPerformanceColor(safeSectorData.sector_cumulative_return)}`}>
-                      {(safeSectorData.sector_cumulative_return * 100).toFixed(2)}%
-                    </span>
-                  </div>
+            {/* Risk Metrics Grid */}
+            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <div className="text-2xl font-bold text-slate-800">
+                  {correlationRisk}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Volatility:</span>
-                  <span className="font-medium">{(safeSectorData.sector_volatility * 100).toFixed(2)}%</span>
+                <div className="text-xs text-slate-600">Correlation Risk</div>
+              </div>
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <div className="text-2xl font-bold text-slate-800">
+                  {momentumRisk}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Sharpe Ratio:</span>
-                  <span className="font-medium">{safeSectorData.sector_sharpe_ratio.toFixed(2)}</span>
+                <div className="text-xs text-slate-600">Momentum Risk</div>
+              </div>
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <div className="text-2xl font-bold text-slate-800">
+                  {volatilityRisk}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Beta:</span>
-                  <span className="font-medium">{safeSectorData.sector_beta.toFixed(2)}</span>
+                <div className="text-xs text-slate-600">Volatility Risk</div>
+              </div>
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <div className="text-2xl font-bold text-slate-800">
+                  {(stressMetrics.stress_score || 0).toFixed(1)}
                 </div>
+                <div className="text-xs text-slate-600">Stress Score</div>
               </div>
             </div>
-
-            {/* Relative Performance */}
-            <div className="space-y-3">
-              <h4 className="font-semibold text-slate-700">Relative Performance</h4>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">vs Market:</span>
-                  <div className="flex items-center space-x-1">
-                    {getPerformanceIcon(safeRelativePerformance.vs_market.performance_ratio)}
-                    <span className={`font-medium ${getPerformanceColor(safeRelativePerformance.vs_market.performance_ratio)}`}>
-                      {(safeRelativePerformance.vs_market.performance_ratio * 100).toFixed(2)}%
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">vs Sector:</span>
-                  <div className="flex items-center space-x-1">
-                    {getPerformanceIcon(safeRelativePerformance.vs_sector.performance_ratio)}
-                    <span className={`font-medium ${getPerformanceColor(safeRelativePerformance.vs_sector.performance_ratio)}`}>
-                      {(safeRelativePerformance.vs_sector.performance_ratio * 100).toFixed(2)}%
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Sector Rank:</span>
-                  <Badge variant="outline">
-                    {safeRelativePerformance.vs_sector.sector_rank}/{safeSectorInfo.sector_stocks_count}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Consistency:</span>
-                  <span className="font-medium">{(safeRelativePerformance.vs_sector.sector_consistency * 100).toFixed(1)}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Risk Metrics */}
-      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center text-slate-800">
-            <Shield className="h-5 w-5 mr-2 text-red-500" />
-            Risk Analysis
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Risk Factors */}
-            <div className="space-y-4">
-              <h4 className="font-semibold text-slate-700">Risk Factors</h4>
-              <div className="space-y-2">
-                {riskFactors.map((factor, index) => (
-                  <div key={index} className="flex items-start space-x-2">
-                    <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-slate-600">{factor}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Risk Mitigation */}
-            <div className="space-y-4">
-              <h4 className="font-semibold text-slate-700">Risk Mitigation</h4>
-              <div className="space-y-2">
-                {riskMitigation.map((mitigation, index) => (
-                  <div key={index} className="flex items-start space-x-2">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-slate-600">{mitigation}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Risk Metrics Grid */}
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-3 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-800">
-                {correlationRisk}
-              </div>
-              <div className="text-xs text-slate-600">Correlation Risk</div>
-            </div>
-            <div className="text-center p-3 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-800">
-                {momentumRisk}
-              </div>
-              <div className="text-xs text-slate-600">Momentum Risk</div>
-            </div>
-            <div className="text-center p-3 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-800">
-                {volatilityRisk}
-              </div>
-              <div className="text-xs text-slate-600">Volatility Risk</div>
-            </div>
-            <div className="text-center p-3 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-800">
-                {(stressMetrics.stress_score || 0).toFixed(1)}
-              </div>
-              <div className="text-xs text-slate-600">Stress Score</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Analysis Summary */}
       <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
@@ -409,22 +451,22 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
               <div className="space-y-3">
                 <div>
                   <span className="text-sm text-slate-600">Market Position:</span>
-                  <p className="font-medium text-slate-800">{analysis_summary.market_position}</p>
+                  <p className="font-medium text-slate-800">{safeAnalysisSummary.market_position}</p>
                 </div>
                 <div>
                   <span className="text-sm text-slate-600">Sector Position:</span>
-                  <p className="font-medium text-slate-800">{analysis_summary.sector_position}</p>
+                  <p className="font-medium text-slate-800">{safeAnalysisSummary.sector_position}</p>
                 </div>
                 <div>
                   <span className="text-sm text-slate-600">Risk Assessment:</span>
-                  <p className="font-medium text-slate-800">{analysis_summary.risk_assessment}</p>
+                  <p className="font-medium text-slate-800">{safeAnalysisSummary.risk_assessment}</p>
                 </div>
               </div>
             </div>
             <div className="space-y-4">
               <h4 className="font-semibold text-slate-700">Recommendation</h4>
               <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                <p className="text-emerald-800 font-medium">{analysis_summary.investment_recommendation}</p>
+                <p className="text-emerald-800 font-medium">{safeAnalysisSummary.investment_recommendation}</p>
               </div>
             </div>
           </div>

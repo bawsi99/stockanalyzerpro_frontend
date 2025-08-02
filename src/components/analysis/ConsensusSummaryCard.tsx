@@ -6,20 +6,22 @@ import { AnalysisData } from "@/types/analysis";
 
 interface ConsensusSummaryCardProps {
   consensus: AnalysisData['consensus'];
+  analysisDate?: string;
+  analysisPeriod?: string;
 }
 
-const ConsensusSummaryCard = ({ consensus }: ConsensusSummaryCardProps) => {
+const ConsensusSummaryCard = ({ consensus, analysisDate, analysisPeriod }: ConsensusSummaryCardProps) => {
   // Add null checks and default values
   if (!consensus) {
     return (
-      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-full flex flex-col">
+      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[99%] flex flex-col">
         <CardHeader className="pb-6 flex-shrink-0">
           <CardTitle className="flex items-center text-slate-800 text-2xl">
             <TrendingUp className="h-7 w-7 mr-3 text-emerald-500" />
-            Analysis Consensus
+            Indicator Consensus
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-0 flex-1 overflow-y-auto">
+        <CardContent className="pt-0 flex-1 overflow-y-auto max-h-[calc(90vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="text-center py-8 text-gray-500">
             <p>No consensus data available</p>
           </div>
@@ -59,95 +61,44 @@ const ConsensusSummaryCard = ({ consensus }: ConsensusSummaryCardProps) => {
   const signalDetails = consensus.signal_details || [];
 
   return (
-    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-full flex flex-col">
+    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[99%] flex flex-col">
       <CardHeader className="pb-6 flex-shrink-0">
         <CardTitle className="flex items-center text-slate-800 text-2xl">
           <TrendingUp className="h-7 w-7 mr-3 text-emerald-500" />
-          Analysis Consensus
+          Indicator Consensus
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-0 flex-1 overflow-y-auto">
+      <CardContent className="pt-0 flex-1 overflow-y-auto max-h-[calc(90vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="space-y-6">
-          {/* Overall Signal */}
-          <div className="text-center">
-            <Badge 
-              variant="secondary" 
-              className={`text-xl px-6 py-3 ${getSignalColor(overallSignal)}`}
-            >
-              {overallSignal.toUpperCase()} ({signalStrength})
-            </Badge>
-          </div>
-
-          {/* Signal Breakdown */}
-          <div className="grid grid-cols-3 gap-4 text-base">
-            <div className="text-center p-4 bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg border border-emerald-100">
-              <div className="text-emerald-600 font-bold text-lg">{bullishPercentage.toFixed(1)}%</div>
-              <div className="text-slate-600 font-medium">Bullish</div>
-            </div>
-            <div className="text-center p-4 bg-gradient-to-br from-red-50 to-pink-50 rounded-lg border border-red-100">
-              <div className="text-red-600 font-bold text-lg">{bearishPercentage.toFixed(1)}%</div>
-              <div className="text-slate-600 font-medium">Bearish</div>
-            </div>
-            <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg border border-yellow-100">
-              <div className="text-yellow-600 font-bold text-lg">{neutralPercentage.toFixed(1)}%</div>
-              <div className="text-slate-600 font-medium">Neutral</div>
-            </div>
-          </div>
-
-          {/* User Warnings */}
-          {warnings.length > 0 && (
-            <div className="space-y-3">
-              {warnings.map((warning, index) => (
-                <div key={index} className="flex items-start p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-base">
-                  <AlertTriangle className="h-5 w-5 mr-3 text-yellow-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-yellow-800 font-medium">{warning}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* Signal Details */}
           <div className="space-y-3">
-            <h4 className="font-bold text-slate-700 text-lg">Technical Indicators</h4>
-            <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 gap-3">
               {signalDetails.map((signal, index) => (
                 <div key={index} className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-bold text-slate-800 text-sm">{signal.indicator}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                    <div className="flex flex-wrap items-center gap-2 min-w-0">
+                      <span className="font-bold text-slate-800 text-sm truncate">{signal.indicator}</span>
                       {signal.value !== undefined && (
-                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded flex-shrink-0">
                           {typeof signal.value === 'number' ? signal.value.toFixed(2) : signal.value}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                       <Badge 
                         variant="outline" 
-                        className={`text-xs px-2 py-1 ${getSignalColor(signal.signal || 'neutral')}`}
+                        className={`text-xs px-2 py-1 flex-shrink-0 ${getSignalColor(signal.signal || 'neutral')}`}
                       >
                         {signal.signal?.toUpperCase() || 'NEUTRAL'}
                       </Badge>
-                      <span className={`text-xs font-medium px-2 py-1 rounded ${getStrengthColor(signal.strength || 'weak')}`}>
+                      <span className={`text-xs font-medium px-2 py-1 rounded flex-shrink-0 ${getStrengthColor(signal.strength || 'weak')}`}>
                         {signal.strength?.toUpperCase() || 'WEAK'}
                       </span>
                     </div>
                   </div>
-                  <div className="text-sm text-slate-600 leading-relaxed">
+                  <div className="text-sm text-slate-600 leading-relaxed break-words">
                     {signal.description || 'No description available'}
                   </div>
-                  {signal.weight && (
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs text-slate-500">Weight:</span>
-                      <div className="w-16 bg-slate-200 rounded-full h-1.5">
-                        <div 
-                          className="bg-blue-500 h-1.5 rounded-full" 
-                          style={{ width: `${(signal.weight / 20) * 100}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-slate-500">{signal.weight}</span>
-                    </div>
-                  )}
                 </div>
               ))}
               {signalDetails.length === 0 && (

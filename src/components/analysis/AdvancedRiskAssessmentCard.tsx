@@ -67,6 +67,10 @@ interface AdvancedRiskAssessmentCardProps {
 }
 
 const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({ riskMetrics, symbol }) => {
+  // Debug: Log the risk metrics received by the component
+  console.log('🔍 DEBUG: AdvancedRiskAssessmentCard received riskMetrics:', riskMetrics);
+  console.log('🔍 DEBUG: AdvancedRiskAssessmentCard liquidity_analysis:', riskMetrics?.liquidity_analysis);
+  console.log('🔍 DEBUG: AdvancedRiskAssessmentCard correlation_analysis:', riskMetrics?.correlation_analysis);
   const getRiskLevelColor = (level: string) => {
     switch (level) {
       case 'high':
@@ -146,8 +150,8 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
         <div className="border-2 border-red-200 rounded-lg p-4 bg-red-50">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-lg">Overall Risk Assessment</h3>
-            <Badge className={getRiskLevelColor(riskMetrics.risk_assessment.risk_level)}>
-              {riskMetrics.risk_assessment.risk_level.toUpperCase()} RISK
+            <Badge className={getRiskLevelColor(riskMetrics?.risk_assessment?.risk_level || 'medium')}>
+              {(riskMetrics?.risk_assessment?.risk_level || 'medium').toUpperCase()} RISK
             </Badge>
           </div>
 
@@ -155,22 +159,22 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span>Risk Score</span>
-                <span>{riskMetrics.risk_assessment.overall_risk_score.toFixed(0)}/100</span>
+                <span>{(riskMetrics?.risk_assessment?.overall_risk_score || 0).toFixed(0)}/100</span>
               </div>
               <Progress 
-                value={riskMetrics.risk_assessment.overall_risk_score} 
+                value={riskMetrics?.risk_assessment?.overall_risk_score || 0} 
                 className="h-3"
                 style={{
-                  '--progress-background': getRiskScoreColor(riskMetrics.risk_assessment.overall_risk_score)
+                  '--progress-background': getRiskScoreColor(riskMetrics?.risk_assessment?.overall_risk_score || 0)
                 } as React.CSSProperties}
               />
             </div>
 
             {/* Risk Components */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
-              {Object.entries(riskMetrics.risk_assessment.risk_components).map(([component, score]) => (
+              {Object.entries(riskMetrics?.risk_assessment?.risk_components || {}).map(([component, score]) => (
                 <div key={component} className="text-center p-2 bg-white rounded border">
-                  <div className="font-semibold">{score.toFixed(0)}</div>
+                  <div className="font-semibold">{(score as number).toFixed(0)}</div>
                   <div className="text-gray-600 capitalize">{component.replace(/_/g, ' ')}</div>
                 </div>
               ))}
@@ -185,10 +189,10 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
           {renderMetricCard(
             "Basic Metrics",
             {
-              volatility: formatPercentage(riskMetrics.basic_metrics.volatility),
-              annualized_volatility: formatPercentage(riskMetrics.basic_metrics.annualized_volatility),
-              mean_return: formatPercentage(riskMetrics.basic_metrics.mean_return),
-              annualized_return: formatPercentage(riskMetrics.basic_metrics.annualized_return)
+              volatility: formatPercentage(riskMetrics?.basic_metrics?.volatility || 0),
+              annualized_volatility: formatPercentage(riskMetrics?.basic_metrics?.annualized_volatility || 0),
+              mean_return: formatPercentage(riskMetrics?.basic_metrics?.mean_return || 0),
+              annualized_return: formatPercentage(riskMetrics?.basic_metrics?.annualized_return || 0)
             },
             <BarChart3 className="h-5 w-5 text-blue-500" />
           )}
@@ -196,10 +200,10 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
           {renderMetricCard(
             "Value at Risk",
             {
-              "95% VaR": formatPercentage(riskMetrics.var_metrics.var_95),
-              "99% VaR": formatPercentage(riskMetrics.var_metrics.var_99),
-              "95% ES": formatPercentage(riskMetrics.var_metrics.es_95),
-              "99% ES": formatPercentage(riskMetrics.var_metrics.es_99)
+              "95% VaR": formatPercentage(riskMetrics?.var_metrics?.var_95 || 0),
+              "99% VaR": formatPercentage(riskMetrics?.var_metrics?.var_99 || 0),
+              "95% ES": formatPercentage(riskMetrics?.var_metrics?.es_95 || 0),
+              "99% ES": formatPercentage(riskMetrics?.var_metrics?.es_99 || 0)
             },
             <AlertTriangle className="h-5 w-5 text-red-500" />
           )}
@@ -207,9 +211,9 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
           {renderMetricCard(
             "Drawdown Metrics",
             {
-              max_drawdown: formatPercentage(riskMetrics.drawdown_metrics.max_drawdown),
-              current_drawdown: formatPercentage(riskMetrics.drawdown_metrics.current_drawdown),
-              duration: `${riskMetrics.drawdown_metrics.drawdown_duration} days`
+              max_drawdown: formatPercentage(riskMetrics?.drawdown_metrics?.max_drawdown || 0),
+              current_drawdown: formatPercentage(riskMetrics?.drawdown_metrics?.current_drawdown || 0),
+              duration: `${riskMetrics?.drawdown_metrics?.drawdown_duration || 0} days`
             },
             <TrendingDown className="h-5 w-5 text-orange-500" />
           )}
@@ -217,10 +221,10 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
           {renderMetricCard(
             "Risk-Adjusted Metrics",
             {
-              sharpe_ratio: formatNumber(riskMetrics.risk_adjusted_metrics.sharpe_ratio),
-              sortino_ratio: formatNumber(riskMetrics.risk_adjusted_metrics.sortino_ratio),
-              calmar_ratio: formatNumber(riskMetrics.risk_adjusted_metrics.calmar_ratio),
-              risk_adjusted_return: formatPercentage(riskMetrics.risk_adjusted_metrics.risk_adjusted_return)
+              sharpe_ratio: formatNumber(riskMetrics?.risk_adjusted_metrics?.sharpe_ratio || 0),
+              sortino_ratio: formatNumber(riskMetrics?.risk_adjusted_metrics?.sortino_ratio || 0),
+              calmar_ratio: formatNumber(riskMetrics?.risk_adjusted_metrics?.calmar_ratio || 0),
+              risk_adjusted_return: formatPercentage(riskMetrics?.risk_adjusted_metrics?.risk_adjusted_return || 0)
             },
             <Target className="h-5 w-5 text-green-500" />
           )}
@@ -228,9 +232,9 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
           {renderMetricCard(
             "Distribution Metrics",
             {
-              skewness: formatNumber(riskMetrics.distribution_metrics.skewness),
-              kurtosis: formatNumber(riskMetrics.distribution_metrics.kurtosis),
-              tail_frequency: formatPercentage(riskMetrics.distribution_metrics.tail_frequency)
+              skewness: formatNumber(riskMetrics?.distribution_metrics?.skewness || 0),
+              kurtosis: formatNumber(riskMetrics?.distribution_metrics?.kurtosis || 0),
+              tail_frequency: formatPercentage(riskMetrics?.distribution_metrics?.tail_frequency || 0)
             },
             <Activity className="h-5 w-5 text-purple-500" />
           )}
@@ -238,9 +242,9 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
           {renderMetricCard(
             "Volatility Analysis",
             {
-              current_volatility: formatPercentage(riskMetrics.volatility_analysis.current_volatility),
-              volatility_percentile: formatNumber(riskMetrics.volatility_analysis.volatility_percentile),
-              regime: riskMetrics.volatility_analysis.volatility_regime
+              current_volatility: formatPercentage(riskMetrics?.volatility_analysis?.current_volatility || 0),
+              volatility_percentile: formatNumber(riskMetrics?.volatility_analysis?.volatility_percentile || 0),
+              regime: riskMetrics?.volatility_analysis?.volatility_regime || 'normal'
             },
             <TrendingUp className="h-5 w-5 text-indigo-500" />
           )}
@@ -251,8 +255,8 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
           {renderMetricCard(
             "Liquidity Analysis",
             {
-              liquidity_score: `${riskMetrics.liquidity_analysis.liquidity_score.toFixed(0)}/100`,
-              volume_volatility: riskMetrics.liquidity_analysis.volume_volatility 
+              liquidity_score: `${(riskMetrics?.liquidity_analysis?.liquidity_score || 0).toFixed(0)}/100`,
+              volume_volatility: riskMetrics?.liquidity_analysis?.volume_volatility !== undefined && riskMetrics?.liquidity_analysis?.volume_volatility !== null
                 ? formatPercentage(riskMetrics.liquidity_analysis.volume_volatility)
                 : 'N/A'
             },
@@ -262,62 +266,65 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
           {renderMetricCard(
             "Correlation Analysis",
             {
-              market_correlation: formatNumber(riskMetrics.correlation_analysis.market_correlation),
-              beta: formatNumber(riskMetrics.correlation_analysis.beta)
+              market_correlation: formatNumber(riskMetrics?.correlation_analysis?.market_correlation || 0),
+              beta: formatNumber(riskMetrics?.correlation_analysis?.beta || 0)
             },
             <BarChart3 className="h-5 w-5 text-cyan-500" />
           )}
         </div>
 
-        {/* Mitigation Strategies */}
-        {riskMetrics.risk_assessment.mitigation_strategies.length > 0 && (
-          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h4 className="font-semibold mb-3 flex items-center space-x-2">
-              <Shield className="h-5 w-5 text-yellow-600" />
-              <span>Risk Mitigation Strategies</span>
-            </h4>
-            <ul className="space-y-2 text-sm">
-              {riskMetrics.risk_assessment.mitigation_strategies.map((strategy, index) => (
-                <li key={index} className="flex items-start space-x-2">
-                  <span className="text-yellow-600 mt-1">•</span>
-                  <span>{strategy}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* Mitigation Strategies and Risk Summary - Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* Mitigation Strategies */}
+          {(riskMetrics?.risk_assessment?.mitigation_strategies?.length || 0) > 0 && (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h4 className="font-semibold mb-3 flex items-center space-x-2">
+                <Shield className="h-5 w-5 text-yellow-600" />
+                <span>Risk Mitigation Strategies</span>
+              </h4>
+              <ul className="space-y-2 text-sm">
+                {(riskMetrics?.risk_assessment?.mitigation_strategies || []).map((strategy, index) => (
+                  <li key={index} className="flex items-start space-x-2">
+                    <span className="text-yellow-600 mt-1">•</span>
+                    <span>{strategy}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        {/* Risk Summary */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-semibold mb-3">Risk Summary</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span>
-                <strong>Risk Level:</strong> {riskMetrics.risk_assessment.risk_level.toUpperCase()} 
-                (Score: {riskMetrics.risk_assessment.overall_risk_score.toFixed(0)}/100)
-              </span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <TrendingDown className="h-4 w-4 text-orange-500" />
-              <span>
-                <strong>Max Drawdown:</strong> {formatPercentage(riskMetrics.drawdown_metrics.max_drawdown)}
-              </span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <BarChart3 className="h-4 w-4 text-blue-500" />
-              <span>
-                <strong>Volatility Regime:</strong> {riskMetrics.volatility_analysis.volatility_regime.toUpperCase()}
-              </span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Target className="h-4 w-4 text-green-500" />
-              <span>
-                <strong>Sharpe Ratio:</strong> {formatNumber(riskMetrics.risk_adjusted_metrics.sharpe_ratio)}
-              </span>
+          {/* Risk Summary */}
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-semibold mb-3">Risk Summary</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+                <span>
+                  <strong>Risk Level:</strong> {(riskMetrics?.risk_assessment?.risk_level || 'medium').toUpperCase()} 
+                  (Score: {(riskMetrics?.risk_assessment?.overall_risk_score || 0).toFixed(0)}/100)
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <TrendingDown className="h-4 w-4 text-orange-500" />
+                <span>
+                  <strong>Max Drawdown:</strong> {formatPercentage(riskMetrics?.drawdown_metrics?.max_drawdown || 0)}
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="h-4 w-4 text-blue-500" />
+                <span>
+                  <strong>Volatility Regime:</strong> {(riskMetrics?.volatility_analysis?.volatility_regime || 'normal').toUpperCase()}
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Target className="h-4 w-4 text-green-500" />
+                <span>
+                  <strong>Sharpe Ratio:</strong> {formatNumber(riskMetrics?.risk_adjusted_metrics?.sharpe_ratio || 0)}
+                </span>
+              </div>
             </div>
           </div>
         </div>

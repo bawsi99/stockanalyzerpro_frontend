@@ -41,6 +41,7 @@ export interface TransformedAnalysisData {
   charts: Charts;
   ai_analysis: AIAnalysis;
   indicator_summary_md: string;
+  indicator_summary: string; // Add missing property
   chart_insights: string;
   sector_benchmarking?: SectorBenchmarking;
   summary: Summary;
@@ -129,6 +130,7 @@ function transformEnhancedStructure(data: Record<string, unknown> | AnalysisResu
     charts: extractCharts(data),
     ai_analysis: extractAIAnalysisFromEnhanced(data),
     indicator_summary_md: data.indicator_summary || '',
+    indicator_summary: data.indicator_summary || '', // Add missing property
     chart_insights: data.chart_insights || '',
     sector_benchmarking: extractSectorBenchmarkingFromEnhanced(data),
     summary: extractSummaryFromEnhanced(data),
@@ -153,6 +155,7 @@ function transformLegacyStructure(data: Record<string, unknown>): TransformedAna
     charts: extractCharts(data),
     ai_analysis: extractAIAnalysis(data),
     indicator_summary_md: extractIndicatorSummary(data),
+    indicator_summary: extractIndicatorSummary(data), // Add missing property
     chart_insights: extractChartInsights(data),
     sector_benchmarking: extractSectorBenchmarking(data),
     summary: extractSummary(data),
@@ -174,23 +177,52 @@ function extractConsensusFromEnhanced(data: Record<string, unknown> | AnalysisRe
   const aiAnalysis = data.ai_analysis || {};
   const technicalIndicators = data.technical_indicators || {};
   
+  // Calculate signal percentages based on technical indicators
+  const bullishPercentage = calculateBullishPercentageFromEnhanced(data);
+  const bearishPercentage = calculateBearishPercentageFromEnhanced(data);
+  const neutralPercentage = calculateNeutralPercentageFromEnhanced(data);
+  
+  // Determine overall signal from recommendation or AI analysis
+  let overallSignal = 'Neutral';
+  if (data.recommendation) {
+    const rec = data.recommendation.toLowerCase();
+    if (rec.includes('buy') || rec.includes('bullish')) overallSignal = 'Bullish';
+    else if (rec.includes('sell') || rec.includes('bearish')) overallSignal = 'Bearish';
+  } else if (aiAnalysis.meta?.overall_confidence) {
+    const confidence = aiAnalysis.meta.overall_confidence;
+    if (confidence > 60) overallSignal = 'Bullish';
+    else if (confidence < 40) overallSignal = 'Bearish';
+  }
+  
+  // Determine signal strength from risk level or confidence
+  let signalStrength = 'Medium';
+  if (data.risk_level) {
+    const risk = data.risk_level.toLowerCase();
+    if (risk.includes('high')) signalStrength = 'Strong';
+    else if (risk.includes('low')) signalStrength = 'Weak';
+  } else if (aiAnalysis.meta?.overall_confidence) {
+    const confidence = aiAnalysis.meta.overall_confidence;
+    if (confidence > 80) signalStrength = 'Strong';
+    else if (confidence < 50) signalStrength = 'Weak';
+  }
+  
   return {
-    overall_signal: data.recommendation || aiAnalysis.meta?.overall_confidence ? 'Bullish' : 'Neutral',
-    signal_strength: data.risk_level || 'Medium',
-    bullish_percentage: calculateBullishPercentageFromEnhanced(data),
-    bearish_percentage: calculateBearishPercentageFromEnhanced(data),
-    neutral_percentage: calculateNeutralPercentageFromEnhanced(data),
-    bullish_score: 0,
-    bearish_score: 0,
-    neutral_score: 0,
+    overall_signal: overallSignal,
+    signal_strength: signalStrength,
+    bullish_percentage: bullishPercentage,
+    bearish_percentage: bearishPercentage,
+    neutral_percentage: neutralPercentage,
+    bullish_score: bullishPercentage * 0.8, // Weighted score
+    bearish_score: bearishPercentage * 0.8,
+    neutral_score: neutralPercentage * 0.8,
     total_weight: 100,
     confidence: aiAnalysis.meta?.overall_confidence || 0,
     signal_details: extractSignalDetailsFromEnhanced(data),
     data_quality_flags: [],
     warnings: extractWarningsFromEnhanced(data),
-    bullish_count: 0,
-    bearish_count: 0,
-    neutral_count: 0
+    bullish_count: Math.round(bullishPercentage / 10), // Approximate count
+    bearish_count: Math.round(bearishPercentage / 10),
+    neutral_count: Math.round(neutralPercentage / 10)
   };
 }
 
@@ -255,9 +287,9 @@ function extractIndicatorsFromEnhanced(data: Record<string, unknown> | AnalysisR
       volume: []
     },
     advanced_patterns: data.overlays?.advanced_patterns || null,
-    advanced_risk: data.indicators?.advanced_risk_metrics || null,
-    stress_testing: data.indicators?.stress_testing_metrics || null,
-    scenario_analysis: data.indicators?.scenario_analysis_metrics || null,
+    advanced_risk: data.enhanced_metadata?.advanced_risk_metrics || null,
+    stress_testing: data.enhanced_metadata?.stress_testing_metrics || null,
+    scenario_analysis: data.enhanced_metadata?.scenario_analysis_metrics || null,
     metadata: {
       start: data.analysis_timestamp || '',
       end: data.analysis_timestamp || '',
@@ -374,79 +406,90 @@ function extractSectorBenchmarkingFromEnhanced(data: Record<string, unknown> | A
   const sectorContext = data.sector_context;
   if (!sectorContext) return undefined;
   
+  // Handle the actual backend response structure - flat structure with sector_benchmarking, sector_rotation, sector_correlation
+  const sectorBenchmarking = sectorContext.sector_benchmarking as Record<string, unknown>;
+  if (!sectorBenchmarking) return undefined;
+  
+  const sectorInfo = sectorBenchmarking.sector_info as Record<string, unknown>;
+  const marketBenchmarking = sectorBenchmarking.market_benchmarking as Record<string, unknown>;
+  const sectorBenchmarkingData = sectorBenchmarking.sector_benchmarking as Record<string, unknown>;
+  const relativePerformance = sectorBenchmarking.relative_performance as Record<string, unknown>;
+  const sectorRiskMetrics = sectorBenchmarking.sector_risk_metrics as Record<string, unknown>;
+  const analysisSummary = sectorBenchmarking.analysis_summary as Record<string, unknown>;
+  
   return {
-    stock_symbol: data.symbol || '',
+    stock_symbol: sectorBenchmarking.stock_symbol as string || data.symbol || '',
     sector_info: {
-      sector: sectorContext.sector || '',
-      sector_name: sectorContext.sector || '',
-      sector_index: sectorContext.benchmarking?.sector_info?.sector_index || '',
-      sector_stocks_count: 0
+      sector: sectorInfo?.sector as string || sectorContext.sector as string || '',
+      sector_name: sectorInfo?.sector_name as string || sectorContext.sector as string || '',
+      sector_index: sectorInfo?.sector_index as string || 'NIFTY_ENERGY',
+      sector_stocks_count: sectorInfo?.sector_stocks_count as number || 0
     },
     market_benchmarking: {
-      beta: sectorContext.benchmarking?.market_benchmarking?.beta || 1.0,
-      correlation: sectorContext.benchmarking?.market_benchmarking?.correlation || 0.5,
-      sharpe_ratio: sectorContext.benchmarking?.market_benchmarking?.sharpe_ratio || 0,
-      volatility: sectorContext.benchmarking?.market_benchmarking?.volatility || 0,
-      max_drawdown: sectorContext.benchmarking?.market_benchmarking?.max_drawdown || 0,
-      cumulative_return: sectorContext.benchmarking?.market_benchmarking?.cumulative_return || 0,
-      annualized_return: sectorContext.benchmarking?.market_benchmarking?.annualized_return || 0,
-      risk_free_rate: 0.02,
+      beta: marketBenchmarking?.beta as number || 1.0,
+      correlation: marketBenchmarking?.correlation as number || 0.5,
+      sharpe_ratio: marketBenchmarking?.stock_sharpe as number || 0,
+      volatility: marketBenchmarking?.volatility as number || 0,
+      max_drawdown: marketBenchmarking?.max_drawdown as number || 0,
+      cumulative_return: marketBenchmarking?.cumulative_return as number || 0,
+      annualized_return: marketBenchmarking?.annualized_return as number || 0,
+      risk_free_rate: 0.05,
       current_vix: 20,
       data_source: 'NSE',
-      data_points: 252
+      data_points: marketBenchmarking?.data_points as number || 0
     },
     sector_benchmarking: {
-      sector_beta: sectorContext.benchmarking?.sector_benchmarking?.sector_beta || 1.0,
-      sector_correlation: sectorContext.benchmarking?.sector_benchmarking?.sector_correlation || 0.5,
-      sector_sharpe_ratio: sectorContext.benchmarking?.sector_benchmarking?.sector_sharpe_ratio || 0,
-      sector_volatility: sectorContext.benchmarking?.sector_benchmarking?.sector_volatility || 0,
-      sector_max_drawdown: sectorContext.benchmarking?.sector_benchmarking?.sector_max_drawdown || 0,
-      sector_cumulative_return: sectorContext.benchmarking?.sector_benchmarking?.sector_cumulative_return || 0,
-      sector_annualized_return: sectorContext.benchmarking?.sector_benchmarking?.sector_annualized_return || 0,
-      sector_index: sectorContext.benchmarking?.sector_benchmarking?.sector_index || '',
-      sector_data_points: 252
+      sector_beta: sectorBenchmarkingData?.sector_beta as number || 1.0,
+      sector_correlation: sectorBenchmarkingData?.sector_correlation as number || 0.5,
+      sector_sharpe_ratio: sectorBenchmarkingData?.sector_sharpe_ratio as number || 0,
+      sector_volatility: sectorBenchmarkingData?.sector_volatility as number || 0,
+      sector_max_drawdown: sectorBenchmarkingData?.sector_max_drawdown as number || 0,
+      sector_cumulative_return: sectorBenchmarkingData?.sector_cumulative_return as number || 0,
+      sector_annualized_return: sectorBenchmarkingData?.sector_annualized_return as number || 0,
+      sector_index: sectorBenchmarkingData?.sector_index as string || 'NIFTY_ENERGY',
+      sector_data_points: sectorBenchmarkingData?.sector_data_points as number || 0
     },
     relative_performance: {
       vs_market: {
-        performance_ratio: 1.0,
-        risk_adjusted_ratio: 1.0,
-        outperformance_periods: 0,
-        underperformance_periods: 0,
-        consistency_score: 0.5
+        performance_ratio: (relativePerformance?.vs_market as Record<string, unknown>)?.performance_ratio as number || 1.0,
+        risk_adjusted_ratio: (relativePerformance?.vs_market as Record<string, unknown>)?.risk_adjusted_ratio as number || 1.0,
+        outperformance_periods: (relativePerformance?.vs_market as Record<string, unknown>)?.outperformance_periods as number || 0,
+        underperformance_periods: (relativePerformance?.vs_market as Record<string, unknown>)?.underperformance_periods as number || 0,
+        consistency_score: (relativePerformance?.vs_market as Record<string, unknown>)?.consistency_score as number || 0.5
       },
       vs_sector: {
-        performance_ratio: 1.0,
-        risk_adjusted_ratio: 1.0,
-        sector_rank: 0,
-        sector_percentile: 50,
-        sector_consistency: 0.5
+        performance_ratio: (relativePerformance?.vs_sector as Record<string, unknown>)?.performance_ratio as number || 1.0,
+        risk_adjusted_ratio: (relativePerformance?.vs_sector as Record<string, unknown>)?.risk_adjusted_ratio as number || 1.0,
+        sector_rank: (relativePerformance?.vs_sector as Record<string, unknown>)?.sector_rank as number || 0,
+        sector_percentile: (relativePerformance?.vs_sector as Record<string, unknown>)?.sector_percentile as number || 50,
+        sector_consistency: (relativePerformance?.vs_sector as Record<string, unknown>)?.sector_consistency as number || 0.5
       }
     },
     sector_risk_metrics: {
-      risk_score: 50,
-      risk_level: 'Medium',
-      correlation_risk: 'Low',
-      momentum_risk: 'Medium',
-      volatility_risk: 'Medium',
+      risk_score: sectorRiskMetrics?.risk_score as number || 50,
+      risk_level: sectorRiskMetrics?.risk_level as string || 'Medium',
+      correlation_risk: sectorRiskMetrics?.correlation_risk as string || 'Low',
+      momentum_risk: sectorRiskMetrics?.momentum_risk as string || 'Medium',
+      volatility_risk: sectorRiskMetrics?.volatility_risk as string || 'Medium',
       sector_stress_metrics: {
-        stress_score: 50,
-        stress_level: 'Medium',
-        stress_factors: []
+        stress_score: (sectorRiskMetrics?.sector_stress_metrics as Record<string, unknown>)?.stress_score as number || 50,
+        stress_level: (sectorRiskMetrics?.sector_stress_metrics as Record<string, unknown>)?.stress_level as string || 'Medium',
+        stress_factors: (sectorRiskMetrics?.sector_stress_metrics as Record<string, unknown>)?.stress_factors as string[] || []
       },
-      risk_factors: [],
-      risk_mitigation: []
+      risk_factors: sectorRiskMetrics?.risk_factors as string[] || [],
+      risk_mitigation: sectorRiskMetrics?.risk_mitigation as string[] || []
     },
     analysis_summary: {
-      market_position: 'Neutral',
-      sector_position: 'Neutral',
-      risk_assessment: 'Medium',
-      investment_recommendation: 'Hold'
+      market_position: analysisSummary?.market_position as string || 'Neutral',
+      sector_position: analysisSummary?.sector_position as string || 'Neutral',
+      risk_assessment: analysisSummary?.risk_assessment as string || 'Medium',
+      investment_recommendation: analysisSummary?.investment_recommendation as string || 'Hold'
     },
-    timestamp: data.analysis_timestamp || '',
+    timestamp: sectorBenchmarking.timestamp as string || data.analysis_timestamp || '',
     data_points: {
-      stock_data_points: 252,
-      market_data_points: 252,
-      sector_data_points: 252
+      stock_data_points: (sectorBenchmarking.data_points as Record<string, unknown>)?.stock_data_points as number || 0,
+      market_data_points: (sectorBenchmarking.data_points as Record<string, unknown>)?.market_data_points as number || 0,
+      sector_data_points: (sectorBenchmarking.data_points as Record<string, unknown>)?.sector_data_points as number || 0
     }
   };
 }
@@ -483,25 +526,153 @@ function extractOverlays(data: Record<string, unknown>): Overlays {
 
 // Helper functions for enhanced structure
 function calculateBullishPercentageFromEnhanced(data: Record<string, unknown> | AnalysisResults): number {
-  const aiAnalysis = data.ai_analysis;
-  if (aiAnalysis?.meta?.overall_confidence && data.recommendation === 'Buy') {
-    return aiAnalysis.meta.overall_confidence;
+  const technicalIndicators = data.technical_indicators;
+  if (!technicalIndicators) return 0;
+  
+  let bullishScore = 0;
+  let totalWeight = 0;
+  
+  // RSI
+  if (technicalIndicators.rsi?.rsi_14) {
+    const rsi = technicalIndicators.rsi.rsi_14;
+    if (rsi < 30) bullishScore += 15; // Oversold = bullish
+    totalWeight += 15;
   }
-  return 0;
+  
+  // MACD
+  if (technicalIndicators.macd) {
+    const macd = technicalIndicators.macd;
+    if (macd.macd_line > macd.signal_line && macd.histogram > 0) {
+      bullishScore += 20; // Bullish crossover
+    }
+    totalWeight += 20;
+  }
+  
+  // Moving Averages
+  if (technicalIndicators.moving_averages) {
+    const ma = technicalIndicators.moving_averages;
+    const currentPrice = data.current_price || 0;
+    let maScore = 0;
+    
+    if (currentPrice > ma.sma_20) maScore += 8;
+    if (currentPrice > ma.sma_50) maScore += 8;
+    if (currentPrice > ma.sma_200) maScore += 9;
+    if (ma.golden_cross) maScore += 5;
+    
+    bullishScore += maScore;
+    totalWeight += 25;
+  }
+  
+  // Bollinger Bands
+  if (technicalIndicators.bollinger_bands) {
+    const bb = technicalIndicators.bollinger_bands;
+    const currentPrice = data.current_price || 0;
+    
+    if (currentPrice < bb.lower_band) {
+      bullishScore += 15; // Oversold = bullish
+    }
+    totalWeight += 15;
+  }
+  
+  // Volume
+  if (technicalIndicators.volume?.volume_ratio) {
+    const volumeRatio = technicalIndicators.volume.volume_ratio;
+    if (volumeRatio > 1.5) {
+      bullishScore += 10; // High volume = bullish
+    }
+    totalWeight += 10;
+  }
+  
+  // ADX
+  if (technicalIndicators.adx) {
+    const adx = technicalIndicators.adx;
+    if (adx.adx > 25 && adx.plus_di > adx.minus_di) {
+      bullishScore += 15; // Strong bullish trend
+    }
+    totalWeight += 15;
+  }
+  
+  return totalWeight > 0 ? (bullishScore / totalWeight) * 100 : 0;
 }
 
 function calculateBearishPercentageFromEnhanced(data: Record<string, unknown> | AnalysisResults): number {
-  const aiAnalysis = data.ai_analysis;
-  if (aiAnalysis?.meta?.overall_confidence && data.recommendation === 'Sell') {
-    return aiAnalysis.meta.overall_confidence;
+  const technicalIndicators = data.technical_indicators;
+  if (!technicalIndicators) return 0;
+  
+  let bearishScore = 0;
+  let totalWeight = 0;
+  
+  // RSI
+  if (technicalIndicators.rsi?.rsi_14) {
+    const rsi = technicalIndicators.rsi.rsi_14;
+    if (rsi > 70) bearishScore += 15; // Overbought = bearish
+    totalWeight += 15;
   }
-  return 0;
+  
+  // MACD
+  if (technicalIndicators.macd) {
+    const macd = technicalIndicators.macd;
+    if (macd.macd_line < macd.signal_line && macd.histogram < 0) {
+      bearishScore += 20; // Bearish crossover
+    }
+    totalWeight += 20;
+  }
+  
+  // Moving Averages
+  if (technicalIndicators.moving_averages) {
+    const ma = technicalIndicators.moving_averages;
+    const currentPrice = data.current_price || 0;
+    let maScore = 0;
+    
+    if (currentPrice < ma.sma_20) maScore += 8;
+    if (currentPrice < ma.sma_50) maScore += 8;
+    if (currentPrice < ma.sma_200) maScore += 9;
+    if (ma.death_cross) maScore += 5;
+    
+    bearishScore += maScore;
+    totalWeight += 25;
+  }
+  
+  // Bollinger Bands
+  if (technicalIndicators.bollinger_bands) {
+    const bb = technicalIndicators.bollinger_bands;
+    const currentPrice = data.current_price || 0;
+    
+    if (currentPrice > bb.upper_band) {
+      bearishScore += 15; // Overbought = bearish
+    }
+    totalWeight += 15;
+  }
+  
+  // Volume
+  if (technicalIndicators.volume?.volume_ratio) {
+    const volumeRatio = technicalIndicators.volume.volume_ratio;
+    if (volumeRatio < 0.5) {
+      bearishScore += 10; // Low volume = bearish
+    }
+    totalWeight += 10;
+  }
+  
+  // ADX
+  if (technicalIndicators.adx) {
+    const adx = technicalIndicators.adx;
+    if (adx.adx > 25 && adx.minus_di > adx.plus_di) {
+      bearishScore += 15; // Strong bearish trend
+    }
+    totalWeight += 15;
+  }
+  
+  return totalWeight > 0 ? (bearishScore / totalWeight) * 100 : 0;
 }
 
 function calculateNeutralPercentageFromEnhanced(data: Record<string, unknown> | AnalysisResults): number {
-  const bullish = calculateBullishPercentageFromEnhanced(data);
-  const bearish = calculateBearishPercentageFromEnhanced(data);
-  return Math.max(0, 100 - bullish - bearish);
+  const bullishPercentage = calculateBullishPercentageFromEnhanced(data);
+  const bearishPercentage = calculateBearishPercentageFromEnhanced(data);
+  
+  // Neutral is what's left after bullish and bearish
+  const neutralPercentage = Math.max(0, 100 - bullishPercentage - bearishPercentage);
+  
+  return neutralPercentage;
 }
 
 function extractSignalDetailsFromEnhanced(data: Record<string, unknown> | AnalysisResults): unknown[] {
@@ -541,15 +712,270 @@ function extractSignalDetailsFromEnhanced(data: Record<string, unknown> | Analys
     });
   }
   
+  // MACD Analysis
+  if (technicalIndicators.macd) {
+    const macd = technicalIndicators.macd;
+    const macdLine = macd.macd_line;
+    const signalLine = macd.signal_line;
+    const histogram = macd.histogram;
+    
+    let macdSignal = 'neutral';
+    let macdStrength = 'weak';
+    let macdDescription = '';
+    
+    if (macdLine > signalLine && histogram > 0) {
+      macdSignal = 'bullish';
+      macdStrength = Math.abs(histogram) > 1 ? 'strong' : 'weak';
+      macdDescription = `MACD bullish crossover - Histogram: ${histogram.toFixed(2)}`;
+    } else if (macdLine < signalLine && histogram < 0) {
+      macdSignal = 'bearish';
+      macdStrength = Math.abs(histogram) > 1 ? 'strong' : 'weak';
+      macdDescription = `MACD bearish crossover - Histogram: ${histogram.toFixed(2)}`;
+    } else {
+      macdSignal = 'neutral';
+      macdStrength = 'weak';
+      macdDescription = `MACD neutral - Line: ${macdLine.toFixed(2)}, Signal: ${signalLine.toFixed(2)}`;
+    }
+    
+    signals.push({
+      indicator: 'MACD',
+      signal: macdSignal,
+      strength: macdStrength,
+      description: macdDescription,
+      value: histogram,
+      weight: 20
+    });
+  }
+  
+  // Moving Averages Analysis
+  if (technicalIndicators.moving_averages) {
+    const ma = technicalIndicators.moving_averages;
+    const currentPrice = data.current_price || 0;
+    
+    let maSignal = 'neutral';
+    let maStrength = 'weak';
+    let maDescription = '';
+    let bullishCount = 0;
+    let totalCount = 0;
+    
+    // Check SMA 20
+    if (ma.sma_20 && currentPrice > ma.sma_20) {
+      bullishCount++;
+    }
+    totalCount++;
+    
+    // Check SMA 50
+    if (ma.sma_50 && currentPrice > ma.sma_50) {
+      bullishCount++;
+    }
+    totalCount++;
+    
+    // Check SMA 200
+    if (ma.sma_200 && currentPrice > ma.sma_200) {
+      bullishCount++;
+    }
+    totalCount++;
+    
+    // Check Golden/Death Cross
+    if (ma.golden_cross) {
+      bullishCount++;
+      maDescription += 'Golden Cross detected. ';
+    } else if (ma.death_cross) {
+      bullishCount--;
+      maDescription += 'Death Cross detected. ';
+    }
+    
+    const bullishRatio = bullishCount / totalCount;
+    if (bullishRatio > 0.6) {
+      maSignal = 'bullish';
+      maStrength = bullishRatio > 0.8 ? 'strong' : 'weak';
+    } else if (bullishRatio < 0.4) {
+      maSignal = 'bearish';
+      maStrength = bullishRatio < 0.2 ? 'strong' : 'weak';
+    } else {
+      maSignal = 'neutral';
+      maStrength = 'weak';
+    }
+    
+    maDescription += `Price vs MAs: ${bullishCount}/${totalCount} bullish`;
+    
+    signals.push({
+      indicator: 'Moving Averages',
+      signal: maSignal,
+      strength: maStrength,
+      description: maDescription,
+      value: bullishRatio * 100,
+      weight: 25
+    });
+  }
+  
+  // Bollinger Bands Analysis
+  if (technicalIndicators.bollinger_bands) {
+    const bb = technicalIndicators.bollinger_bands;
+    const currentPrice = data.current_price || 0;
+    
+    let bbSignal = 'neutral';
+    let bbStrength = 'weak';
+    let bbDescription = '';
+    
+    if (currentPrice > bb.upper_band) {
+      bbSignal = 'bearish';
+      bbStrength = 'strong';
+      bbDescription = `Price above upper band - Overbought`;
+    } else if (currentPrice < bb.lower_band) {
+      bbSignal = 'bullish';
+      bbStrength = 'strong';
+      bbDescription = `Price below lower band - Oversold`;
+    } else {
+      bbSignal = 'neutral';
+      bbStrength = 'weak';
+      bbDescription = `Price within bands - Neutral`;
+    }
+    
+    signals.push({
+      indicator: 'Bollinger Bands',
+      signal: bbSignal,
+      strength: bbStrength,
+      description: bbDescription,
+      value: bb.percent_b || 0,
+      weight: 15
+    });
+  }
+  
+  // Volume Analysis
+  if (technicalIndicators.volume) {
+    const volume = technicalIndicators.volume;
+    
+    let volumeSignal = 'neutral';
+    let volumeStrength = 'weak';
+    let volumeDescription = '';
+    
+    if (volume.volume_ratio > 1.5) {
+      volumeSignal = 'bullish';
+      volumeStrength = 'strong';
+      volumeDescription = `High volume - ${volume.volume_ratio.toFixed(1)}x average`;
+    } else if (volume.volume_ratio < 0.5) {
+      volumeSignal = 'bearish';
+      volumeStrength = 'weak';
+      volumeDescription = `Low volume - ${volume.volume_ratio.toFixed(1)}x average`;
+    } else {
+      volumeSignal = 'neutral';
+      volumeStrength = 'weak';
+      volumeDescription = `Normal volume - ${volume.volume_ratio.toFixed(1)}x average`;
+    }
+    
+    signals.push({
+      indicator: 'Volume',
+      signal: volumeSignal,
+      strength: volumeStrength,
+      description: volumeDescription,
+      value: volume.volume_ratio,
+      weight: 10
+    });
+  }
+  
+  // ADX Analysis
+  if (technicalIndicators.adx) {
+    const adx = technicalIndicators.adx;
+    
+    let adxSignal = 'neutral';
+    let adxStrength = 'weak';
+    let adxDescription = '';
+    
+    if (adx.adx > 25) {
+      adxSignal = adx.plus_di > adx.minus_di ? 'bullish' : 'bearish';
+      adxStrength = adx.adx > 40 ? 'strong' : 'weak';
+      adxDescription = `Strong trend - ADX: ${adx.adx.toFixed(1)}, DI+: ${adx.plus_di.toFixed(1)}, DI-: ${adx.minus_di.toFixed(1)}`;
+    } else {
+      adxSignal = 'neutral';
+      adxStrength = 'weak';
+      adxDescription = `Weak trend - ADX: ${adx.adx.toFixed(1)}`;
+    }
+    
+    signals.push({
+      indicator: 'ADX',
+      signal: adxSignal,
+      strength: adxStrength,
+      description: adxDescription,
+      value: adx.adx,
+      weight: 15
+    });
+  }
+  
   return signals;
 }
 
 function extractWarningsFromEnhanced(data: Record<string, unknown> | AnalysisResults): string[] {
+  const warnings: string[] = [];
+  
+  // Extract from AI analysis risk management
   const aiAnalysis = data.ai_analysis;
   if (aiAnalysis?.risk_management?.key_risks) {
-    return aiAnalysis.risk_management.key_risks.map((risk: Record<string, unknown>) => (risk as Record<string, unknown>).risk as string);
+    const risks = aiAnalysis.risk_management.key_risks;
+    if (Array.isArray(risks)) {
+      risks.forEach((risk: Record<string, unknown>) => {
+        if (typeof risk === 'object' && risk.risk) {
+          warnings.push(risk.risk as string);
+        }
+      });
+    }
   }
-  return [];
+  
+  // Extract from data quality issues
+  if (aiAnalysis?.data_quality_assessment?.issues) {
+    const issues = aiAnalysis.data_quality_assessment.issues;
+    if (Array.isArray(issues)) {
+      issues.forEach((issue: Record<string, unknown>) => {
+        if (typeof issue === 'object' && issue.issue) {
+          warnings.push(issue.issue as string);
+        }
+      });
+    }
+  }
+  
+  // Extract from technical indicators metadata
+  const technicalIndicators = data.technical_indicators;
+  if (technicalIndicators?.metadata?.data_quality?.warnings) {
+    const dataWarnings = technicalIndicators.metadata.data_quality.warnings;
+    if (Array.isArray(dataWarnings)) {
+      dataWarnings.forEach((warning: unknown) => {
+        if (typeof warning === 'string') {
+          warnings.push(warning);
+        }
+      });
+    }
+  }
+  
+  // Extract from sector context warnings
+  const sectorContext = data.sector_context;
+  if (sectorContext?.benchmarking?.sector_risk_metrics?.risk_factors) {
+    const riskFactors = sectorContext.benchmarking.sector_risk_metrics.risk_factors;
+    if (Array.isArray(riskFactors)) {
+      riskFactors.forEach((factor: unknown) => {
+        if (typeof factor === 'string') {
+          warnings.push(factor);
+        }
+      });
+    }
+  }
+  
+  // Add general warnings based on risk level
+  if (data.risk_level) {
+    const riskLevel = data.risk_level.toLowerCase();
+    if (riskLevel.includes('high')) {
+      warnings.push('High risk level detected - exercise caution');
+    }
+  }
+  
+  // Add warnings for low confidence
+  if (aiAnalysis?.meta?.overall_confidence) {
+    const confidence = aiAnalysis.meta.overall_confidence;
+    if (confidence < 50) {
+      warnings.push('Low confidence analysis - consider additional verification');
+    }
+  }
+  
+  return warnings;
 }
 
 /**
@@ -1257,25 +1683,30 @@ function extractTimeframeStrategy(timeframeData: Record<string, unknown>): Recor
     };
   }
   
+  // Extract from the correct nested structure that matches backend response
+  const entryStrategy = timeframeData.entry_strategy as Record<string, unknown>;
+  const exitStrategy = timeframeData.exit_strategy as Record<string, unknown>;
+  const positionSizing = timeframeData.position_sizing as Record<string, unknown>;
+  
   return {
     horizon_days: timeframeData.horizon_days || 30,
-    bias: timeframeData.signal || 'Neutral',
+    bias: timeframeData.bias || 'Neutral',
     entry_strategy: {
-      type: 'Standard',
-      entry_range: [timeframeData.entry_range_min || null, timeframeData.entry_range_max || null],
-      entry_conditions: [],
-      confidence: timeframeData.confidence || 0
+      type: entryStrategy?.type || 'Standard',
+      entry_range: entryStrategy?.entry_range || [null, null], // Use correct field from backend
+      entry_conditions: entryStrategy?.entry_conditions || [],
+      confidence: entryStrategy?.confidence || 0
     },
     exit_strategy: {
-      stop_loss: timeframeData.stop_loss || 0,
-      stop_loss_type: 'Fixed',
-      targets: [timeframeData.target_1 || 0, timeframeData.target_2 || 0],
-      trailing_stop: { enabled: false, method: null }
+      stop_loss: exitStrategy?.stop_loss || 0, // Use correct field from backend
+      stop_loss_type: exitStrategy?.stop_loss_type || 'Fixed',
+      targets: exitStrategy?.targets || [], // Use correct field from backend
+      trailing_stop: exitStrategy?.trailing_stop || { enabled: false, method: null }
     },
     position_sizing: {
-      risk_per_trade: '2%',
-      max_position_size: '10%',
-      atr_multiplier: null
+      risk_per_trade: positionSizing?.risk_per_trade || '2%',
+      max_position_size: positionSizing?.max_position_size || '10%',
+      atr_multiplier: positionSizing?.atr_multiplier || null
     },
     rationale: timeframeData.rationale || ''
   };
@@ -1337,4 +1768,89 @@ export function extractSectorContext(data: Record<string, unknown>): SectorConte
  */
 export function transformMultipleRecords(records: SimplifiedDatabaseRecord[]): TransformedAnalysisData[] {
   return records.map(record => transformDatabaseRecord(record));
+} 
+
+/**
+ * Extract price statistics from enhanced structure
+ */
+export function extractPriceStatisticsFromEnhanced(data: Record<string, unknown> | AnalysisResults): {
+  mean: number;
+  max: number;
+  min: number;
+  current: number;
+  distFromMean: number;
+  distFromMax: number;
+  distFromMin: number;
+  distFromMeanPct: number;
+  distFromMaxPct: number;
+  distFromMinPct: number;
+} | null {
+  const technicalIndicators = data.technical_indicators;
+  const currentPrice = data.current_price;
+  
+  if (!technicalIndicators || !currentPrice) {
+    return null;
+  }
+  
+  // Try to extract from raw data if available
+  if (technicalIndicators.raw_data && Array.isArray(technicalIndicators.raw_data.close)) {
+    const prices = technicalIndicators.raw_data.close.filter((p: number) => p > 0);
+    if (prices.length > 0) {
+      const max = Math.max(...prices);
+      const min = Math.min(...prices);
+      const mean = prices.reduce((sum: number, price: number) => sum + price, 0) / prices.length;
+      
+      const distFromMean = currentPrice - mean;
+      const distFromMax = currentPrice - max;
+      const distFromMin = currentPrice - min;
+      
+      return {
+        mean,
+        max,
+        min,
+        current: currentPrice,
+        distFromMean,
+        distFromMax,
+        distFromMin,
+        distFromMeanPct: mean > 0 ? (distFromMean / mean) * 100 : 0,
+        distFromMaxPct: max > 0 ? (distFromMax / max) * 100 : 0,
+        distFromMinPct: min > 0 ? (distFromMin / min) * 100 : 0
+      };
+    }
+  }
+  
+  // Fallback: estimate from moving averages and current price
+  const movingAverages = technicalIndicators.moving_averages;
+  if (movingAverages) {
+    const sma20 = movingAverages.sma_20 || currentPrice;
+    const sma50 = movingAverages.sma_50 || currentPrice;
+    const sma200 = movingAverages.sma_200 || currentPrice;
+    
+    // Estimate mean as average of moving averages
+    const mean = (sma20 + sma50 + sma200) / 3;
+    
+    // Estimate range based on typical volatility (20% of mean)
+    const volatility = mean * 0.2;
+    const max = mean + volatility;
+    const min = mean - volatility;
+    
+    const distFromMean = currentPrice - mean;
+    const distFromMax = currentPrice - max;
+    const distFromMin = currentPrice - min;
+    
+    return {
+      mean,
+      max,
+      min,
+      current: currentPrice,
+      distFromMean,
+      distFromMax,
+      distFromMin,
+      distFromMeanPct: mean > 0 ? (distFromMean / mean) * 100 : 0,
+      distFromMaxPct: max > 0 ? (distFromMax / max) * 100 : 0,
+      distFromMinPct: min > 0 ? (distFromMin / min) * 100 : 0
+    };
+  }
+  
+  return null;
 } 

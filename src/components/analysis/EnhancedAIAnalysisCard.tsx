@@ -19,7 +19,7 @@ interface EnhancedAIAnalysisCardProps {
 }
 
 const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => {
-  if (!aiAnalysis) {
+  if (!aiAnalysis || !aiAnalysis.meta) {
     return (
       <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full">
         <CardHeader>
@@ -62,7 +62,7 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
           <Brain className="h-6 w-6 mr-3 text-purple-500" />
           Enhanced AI Analysis
           <Badge className="ml-2 bg-purple-100 text-purple-700">
-            {aiAnalysis.meta.overall_confidence}% Confidence
+            {aiAnalysis.meta?.overall_confidence || 0}% Confidence
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -76,40 +76,42 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
           </h3>
           
           {/* Primary Trend */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-blue-800">Primary Trend</h4>
-              <Badge className={getSignalColor(aiAnalysis.market_outlook.primary_trend.direction)}>
-                {aiAnalysis.market_outlook.primary_trend.direction.toUpperCase()}
-              </Badge>
+          {aiAnalysis.market_outlook?.primary_trend && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-blue-800">Primary Trend</h4>
+                <Badge className={getSignalColor(aiAnalysis.market_outlook.primary_trend.direction || 'neutral')}>
+                  {(aiAnalysis.market_outlook.primary_trend.direction || 'neutral').toUpperCase()}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-slate-600">Strength:</span>
+                  <span className={`ml-2 font-medium ${getStrengthColor(aiAnalysis.market_outlook.primary_trend.strength || 'weak')}`}>
+                    {aiAnalysis.market_outlook.primary_trend.strength || 'Weak'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-600">Duration:</span>
+                  <span className="ml-2 font-medium text-slate-800">
+                    {aiAnalysis.market_outlook.primary_trend.duration || 'Unknown'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-600">Confidence:</span>
+                  <span className={`ml-2 font-medium ${getConfidenceColor(aiAnalysis.market_outlook.primary_trend.confidence || 0)}`}>
+                    {aiAnalysis.market_outlook.primary_trend.confidence || 0}%
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-slate-600 mt-2">
+                {aiAnalysis.market_outlook.primary_trend.rationale || 'No rationale available'}
+              </p>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-slate-600">Strength:</span>
-                <span className={`ml-2 font-medium ${getStrengthColor(aiAnalysis.market_outlook.primary_trend.strength)}`}>
-                  {aiAnalysis.market_outlook.primary_trend.strength}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-600">Duration:</span>
-                <span className="ml-2 font-medium text-slate-800">
-                  {aiAnalysis.market_outlook.primary_trend.duration}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-600">Confidence:</span>
-                <span className={`ml-2 font-medium ${getConfidenceColor(aiAnalysis.market_outlook.primary_trend.confidence)}`}>
-                  {aiAnalysis.market_outlook.primary_trend.confidence}%
-                </span>
-              </div>
-            </div>
-            <p className="text-sm text-slate-600 mt-2">
-              {aiAnalysis.market_outlook.primary_trend.rationale}
-            </p>
-          </div>
+          )}
 
           {/* Key Drivers */}
-          {aiAnalysis.market_outlook.key_drivers && aiAnalysis.market_outlook.key_drivers.length > 0 && (
+          {aiAnalysis.market_outlook?.key_drivers && aiAnalysis.market_outlook.key_drivers.length > 0 && (
             <div className="space-y-2">
               <h4 className="font-medium text-slate-700">Key Drivers</h4>
               <div className="space-y-2">
@@ -130,122 +132,146 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
         </div>
 
         {/* Trading Strategy */}
-        <div className="space-y-4">
-          <h3 className="font-semibold text-slate-800 flex items-center">
-            <Target className="h-4 w-4 mr-2 text-green-500" />
-            Trading Strategy
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Short Term */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
-              <h4 className="font-medium text-green-800 mb-3 flex items-center">
-                <Clock className="h-4 w-4 mr-1" />
-                Short Term ({aiAnalysis.trading_strategy.short_term.horizon_days} days)
-              </h4>
+        {aiAnalysis.trading_strategy && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-slate-800 flex items-center">
+              <Target className="h-4 w-4 mr-2 text-green-500" />
+              Trading Strategy
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Short Term */}
+              {aiAnalysis.trading_strategy.short_term && (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                  <h4 className="font-medium text-green-800 mb-3 flex items-center">
+                    <Clock className="h-4 w-4 mr-1" />
+                    Short Term ({aiAnalysis.trading_strategy.short_term.horizon_days || 0} days)
+                  </h4>
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="text-slate-600">Bias:</span>
-                  <Badge className={`ml-2 ${getSignalColor(aiAnalysis.trading_strategy.short_term.bias)}`}>
-                    {aiAnalysis.trading_strategy.short_term.bias}
+                  <Badge className={`ml-2 ${getSignalColor(aiAnalysis.trading_strategy.short_term.bias || 'neutral')}`}>
+                    {aiAnalysis.trading_strategy.short_term.bias || 'Neutral'}
                   </Badge>
                 </div>
-                <div>
-                  <span className="text-slate-600">Entry Range:</span>
-                  <div className="text-slate-800 font-medium">
-                    ₹{aiAnalysis.trading_strategy.short_term.entry_strategy.entry_range[0] || 'N/A'} - 
-                    ₹{aiAnalysis.trading_strategy.short_term.entry_strategy.entry_range[1] || 'N/A'}
+                {aiAnalysis.trading_strategy.short_term.entry_strategy && (
+                  <div>
+                    <span className="text-slate-600">Entry Range:</span>
+                    <div className="text-slate-800 font-medium">
+                      ₹{(aiAnalysis.trading_strategy.short_term.entry_strategy.entry_range?.[0] || 0).toFixed(2)} - 
+                      ₹{(aiAnalysis.trading_strategy.short_term.entry_strategy.entry_range?.[1] || 0).toFixed(2)}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <span className="text-slate-600">Stop Loss:</span>
-                  <div className="text-slate-800 font-medium">
-                    ₹{aiAnalysis.trading_strategy.short_term.exit_strategy.stop_loss}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-slate-600">Targets:</span>
-                  <div className="text-slate-800 font-medium">
-                    {aiAnalysis.trading_strategy.short_term.exit_strategy.targets.map((target, idx) => (
-                      <div key={idx} className="text-xs">
-                        ₹{target.price} ({target.probability})
+                )}
+                {aiAnalysis.trading_strategy.short_term.exit_strategy && (
+                  <>
+                    <div>
+                      <span className="text-slate-600">Stop Loss:</span>
+                      <div className="text-slate-800 font-medium">
+                        ₹{(aiAnalysis.trading_strategy.short_term.exit_strategy.stop_loss || 0).toFixed(2)}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                    <div>
+                      <span className="text-slate-600">Targets:</span>
+                      <div className="text-slate-800 font-medium">
+                        {aiAnalysis.trading_strategy.short_term.exit_strategy.targets?.map((target, idx) => (
+                          <div key={idx} className="text-xs">
+                            ₹{(target.price || 0).toFixed(2)}
+                          </div>
+                        )) || 'No targets available'}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
+              )}
 
-            {/* Medium Term */}
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border border-blue-200">
-              <h4 className="font-medium text-blue-800 mb-3 flex items-center">
-                <Activity className="h-4 w-4 mr-1" />
-                Medium Term ({aiAnalysis.trading_strategy.medium_term.horizon_days} days)
-              </h4>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="text-slate-600">Bias:</span>
-                  <Badge className={`ml-2 ${getSignalColor(aiAnalysis.trading_strategy.medium_term.bias)}`}>
-                    {aiAnalysis.trading_strategy.medium_term.bias}
-                  </Badge>
-                </div>
-                <div>
-                  <span className="text-slate-600">Entry Range:</span>
-                  <div className="text-slate-800 font-medium">
-                    ₹{aiAnalysis.trading_strategy.medium_term.entry_strategy.entry_range[0] || 'N/A'} - 
-                    ₹{aiAnalysis.trading_strategy.medium_term.entry_strategy.entry_range[1] || 'N/A'}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-slate-600">Stop Loss:</span>
-                  <div className="text-slate-800 font-medium">
-                    ₹{aiAnalysis.trading_strategy.medium_term.exit_strategy.stop_loss}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-slate-600">Targets:</span>
-                  <div className="text-slate-800 font-medium">
-                    {aiAnalysis.trading_strategy.medium_term.exit_strategy.targets.map((target, idx) => (
-                      <div key={idx} className="text-xs">
-                        ₹{target.price} ({target.probability})
+              {/* Medium Term */}
+              {aiAnalysis.trading_strategy.medium_term && (
+                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border border-blue-200">
+                  <h4 className="font-medium text-blue-800 mb-3 flex items-center">
+                    <Activity className="h-4 w-4 mr-1" />
+                    Medium Term ({aiAnalysis.trading_strategy.medium_term.horizon_days || 0} days)
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="text-slate-600">Bias:</span>
+                      <Badge className={`ml-2 ${getSignalColor(aiAnalysis.trading_strategy.medium_term.bias || 'neutral')}`}>
+                        {aiAnalysis.trading_strategy.medium_term.bias || 'Neutral'}
+                      </Badge>
+                    </div>
+                    {aiAnalysis.trading_strategy.medium_term.entry_strategy && (
+                      <div>
+                        <span className="text-slate-600">Entry Range:</span>
+                        <div className="text-slate-800 font-medium">
+                          ₹{(aiAnalysis.trading_strategy.medium_term.entry_strategy.entry_range?.[0] || 0).toFixed(2)} - 
+                          ₹{(aiAnalysis.trading_strategy.medium_term.entry_strategy.entry_range?.[1] || 0).toFixed(2)}
+                        </div>
                       </div>
-                    ))}
+                    )}
+                    {aiAnalysis.trading_strategy.medium_term.exit_strategy && (
+                      <>
+                        <div>
+                          <span className="text-slate-600">Stop Loss:</span>
+                          <div className="text-slate-800 font-medium">
+                            ₹{(aiAnalysis.trading_strategy.medium_term.exit_strategy.stop_loss || 0).toFixed(2)}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-slate-600">Targets:</span>
+                          <div className="text-slate-800 font-medium">
+                            {aiAnalysis.trading_strategy.medium_term.exit_strategy.targets?.map((target, idx) => (
+                              <div key={idx} className="text-xs">
+                                ₹{(target.price || 0).toFixed(2)}
+                              </div>
+                            )) || 'No targets available'}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
-              </div>
-            </div>
+              )}
 
-            {/* Long Term */}
-            <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-4 rounded-lg border border-purple-200">
-              <h4 className="font-medium text-purple-800 mb-3 flex items-center">
-                <TrendingUp className="h-4 w-4 mr-1" />
-                Long Term ({aiAnalysis.trading_strategy.long_term.horizon_days} days)
-              </h4>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="text-slate-600">Rating:</span>
-                  <Badge className="ml-2 bg-purple-100 text-purple-700">
-                    {aiAnalysis.trading_strategy.long_term.investment_rating}
-                  </Badge>
-                </div>
-                <div>
-                  <span className="text-slate-600">Fair Value:</span>
-                  <div className="text-slate-800 font-medium">
-                    ₹{aiAnalysis.trading_strategy.long_term.fair_value_range[0]} - 
-                    ₹{aiAnalysis.trading_strategy.long_term.fair_value_range[1]}
+              {/* Long Term */}
+              {aiAnalysis.trading_strategy.long_term && (
+                <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-4 rounded-lg border border-purple-200">
+                  <h4 className="font-medium text-purple-800 mb-3 flex items-center">
+                    <TrendingUp className="h-4 w-4 mr-1" />
+                    Long Term ({aiAnalysis.trading_strategy.long_term.horizon_days || 0} days)
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="text-slate-600">Rating:</span>
+                      <Badge className="ml-2 bg-purple-100 text-purple-700">
+                        {aiAnalysis.trading_strategy.long_term.investment_rating || 'N/A'}
+                      </Badge>
+                    </div>
+                    {aiAnalysis.trading_strategy.long_term.fair_value_range && (
+                      <div>
+                        <span className="text-slate-600">Fair Value:</span>
+                        <div className="text-slate-800 font-medium">
+                          ₹{(aiAnalysis.trading_strategy.long_term.fair_value_range[0] || 0).toFixed(2)} - 
+                          ₹{(aiAnalysis.trading_strategy.long_term.fair_value_range[1] || 0).toFixed(2)}
+                        </div>
+                      </div>
+                    )}
+                    {aiAnalysis.trading_strategy.long_term.key_levels?.accumulation_zone && (
+                      <div>
+                        <span className="text-slate-600">Accumulation:</span>
+                        <div className="text-slate-800 font-medium">
+                          ₹{(aiAnalysis.trading_strategy.long_term.key_levels.accumulation_zone[0] || 0).toFixed(2)} - 
+                          ₹{(aiAnalysis.trading_strategy.long_term.key_levels.accumulation_zone[1] || 0).toFixed(2)}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div>
-                  <span className="text-slate-600">Accumulation:</span>
-                  <div className="text-slate-800 font-medium">
-                    ₹{aiAnalysis.trading_strategy.long_term.key_levels.accumulation_zone[0]} - 
-                    ₹{aiAnalysis.trading_strategy.long_term.key_levels.accumulation_zone[1]}
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Risk Management */}
         {aiAnalysis.risk_management && (
@@ -285,7 +311,7 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
             {aiAnalysis.risk_management.stop_loss_levels && aiAnalysis.risk_management.stop_loss_levels.length > 0 && (
               <div className="space-y-2">
                 <h4 className="font-medium text-slate-700">Stop Loss Levels</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="w-full space-y-2">
                   {aiAnalysis.risk_management.stop_loss_levels.map((level, index) => (
                     <div key={index} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <div className="flex items-center justify-between">
