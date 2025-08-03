@@ -109,7 +109,7 @@ export const useStockAnalyses = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch analyses';
       setError(errorMessage);
-      console.error('Error fetching analyses:', err);
+      // console.error('Error fetching analyses:', err);
       setAnalyses([]);
       return [];
     } finally {
@@ -149,7 +149,7 @@ export const useStockAnalyses = () => {
       }
       return null;
     } catch (err) {
-      console.error('Error fetching analysis by ID:', err);
+      // console.error('Error fetching analysis by ID:', err);
       return null;
     }
   };
@@ -184,7 +184,7 @@ export const useStockAnalyses = () => {
       }
       return [];
     } catch (err) {
-      console.error('Error fetching analyses by signal:', err);
+      // console.error('Error fetching analyses by signal:', err);
       return [];
     }
   };
@@ -219,7 +219,7 @@ export const useStockAnalyses = () => {
       }
       return [];
     } catch (err) {
-      console.error('Error fetching analyses by sector:', err);
+      // console.error('Error fetching analyses by sector:', err);
       return [];
     }
   };
@@ -254,7 +254,7 @@ export const useStockAnalyses = () => {
       }
       return [];
     } catch (err) {
-      console.error('Error fetching high confidence analyses:', err);
+      // console.error('Error fetching high confidence analyses:', err);
       return [];
     }
   };
@@ -266,12 +266,12 @@ export const useStockAnalyses = () => {
     try {
       // The analysis is already saved by the backend when the analysis is completed
       // This function is called after successful analysis in NewStockAnalysis.tsx
-      console.log('Analysis saved for:', stockSymbol);
+      // console.log('Analysis saved for:', stockSymbol);
       
       // Refresh the analyses list
       await fetchAnalyses();
     } catch (err) {
-      console.error('Error saving analysis:', err);
+      // console.error('Error saving analysis:', err);
     }
   };
 
@@ -281,7 +281,7 @@ export const useStockAnalyses = () => {
       // TODO: Implement sector performance fetching using new backend endpoint
       setSectorPerformance([]);
     } catch (err) {
-      console.error('Error fetching sector performance:', err);
+      // console.error('Error fetching sector performance:', err);
     }
   };
 

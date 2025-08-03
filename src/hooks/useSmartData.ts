@@ -64,7 +64,7 @@ export function useSmartData({
         forceRefresh
       });
     } catch (error) {
-      console.error('Error loading historical data:', error);
+      // console.error('Error loading historical data:', error);
     }
   }, [symbol, timeframe, exchange, limit, fetchHistoricalData]);
 
@@ -98,14 +98,14 @@ export function useSmartData({
     
     // Debug: Log the converted data
     if (historical.length > 0) {
-      console.log('🔍 useSmartData - Converted historical data sample:', {
-        originalCount: historicalCache.data.candles.length,
-        convertedCount: historical.length,
-        firstOriginal: historicalCache.data.candles[0],
-        firstConverted: historical[0],
-        lastOriginal: historicalCache.data.candles[historicalCache.data.candles.length - 1],
-        lastConverted: historical[historical.length - 1]
-      });
+      // console.log('�� useSmartData - Converted historical data sample:', {
+      //   originalCount: historicalCache.data.candles.length,
+      //   convertedCount: historical.length,
+      //   firstOriginal: historicalCache.data.candles[0],
+      //   firstConverted: historical[0],
+      //   lastOriginal: historicalCache.data.candles[historicalCache.data.candles.length - 1],
+      //   lastConverted: historical[historical.length - 1]
+      // });
     }
     
     if (!enableLive || !liveCache?.data) {

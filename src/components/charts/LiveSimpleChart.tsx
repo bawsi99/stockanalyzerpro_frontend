@@ -3,6 +3,7 @@ import { createChart, IChartApi, ISeriesApi, CandlestickData, LineData } from 'l
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { formatCurrency, formatPercentage } from '@/utils/numberFormatter';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TrendingUp, TrendingDown, Minus, Activity, Wifi, WifiOff, RefreshCw, Settings, ZoomIn, AlertTriangle } from 'lucide-react';
 import { toUTCTimestamp, validateChartDataForTradingView, initializeChartWithRetry, createChartTheme, safeChartCleanup, type ChartContainer } from '@/utils/chartUtils';
@@ -163,11 +164,9 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
       chartStateRef.current = currentState;
 
-      if (debug) {
-        console.log('💾 Chart state saved:', currentState);
-      }
+      // console.log('💾 Chart state saved:', currentState);
     } catch (error) {
-      console.warn('Error saving chart state:', error);
+      // console.warn('Error saving chart state:', error);
     }
   }, [debug]);
 
@@ -192,26 +191,22 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       // Restore visible range
       timeScale.setVisibleRange(chartStateRef.current.visibleRange as any);
 
-      if (debug) {
-        console.log('🔄 Chart state restored:', chartStateRef.current);
-      }
+      // console.log('🔄 Chart state restored:', chartStateRef.current);
     } catch (error) {
-      console.warn('Error restoring chart state:', error);
+      // console.warn('Error restoring chart state:', error);
     }
   }, [debug]);
 
   // Handle user interaction (zoom, pan, etc.)
   const handleUserInteraction = useCallback(() => {
     hasUserInteractedRef.current = true;
-    if (debug) {
-      console.log('👆 User interaction detected');
-    }
+    // console.log('👆 User interaction detected');
   }, [debug]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      console.log('🧹 Cleaning up LiveSimpleChart component');
+      // console.log('🧹 Cleaning up LiveSimpleChart component');
       isMountedRef.current = false;
       
       // Clear any pending timeouts
@@ -231,7 +226,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         try {
           safeChartCleanup(chartRef);
         } catch (error) {
-          console.warn('Error during chart cleanup:', error);
+          // console.warn('Error during chart cleanup:', error);
         }
         chartRef.current = null;
         candlestickSeriesRef.current = null;
@@ -246,22 +241,22 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
     const checkContainerReady = () => {
       const rect = container.getBoundingClientRect();
-      console.log('Checking container readiness:', {
-        clientWidth: container.clientWidth,
-        clientHeight: container.clientHeight,
-        offsetWidth: container.offsetWidth,
-        offsetHeight: container.offsetHeight,
-        rectWidth: rect.width,
-        rectHeight: rect.height,
-        isVisible: container.offsetParent !== null
-      });
+      // console.log('Checking container readiness:', {
+      //   clientWidth: container.clientWidth,
+      //   clientHeight: container.clientHeight,
+      //   offsetWidth: container.offsetWidth,
+      //   offsetHeight: container.offsetHeight,
+      //   rectWidth: rect.width,
+      //   rectHeight: rect.height,
+      //   isVisible: container.offsetParent !== null
+      // });
       
       // Check if container has dimensions and is visible - use multiple dimension sources
       const hasWidth = container.clientWidth > 0 || container.offsetWidth > 0 || rect.width > 0;
       const hasHeight = container.clientHeight > 0 || container.offsetHeight > 0 || rect.height > 0;
       
       if (container && hasWidth && hasHeight && container.offsetParent !== null) {
-        console.log('Container is ready, setting containerReady to true');
+        // console.log('Container is ready, setting containerReady to true');
         setContainerReady(true);
         return true;
       }
@@ -285,7 +280,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           const observer = new ResizeObserver((entries) => {
             for (const entry of entries) {
               if (entry.target === container && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-                console.log('ResizeObserver detected container ready');
+                // console.log('ResizeObserver detected container ready');
                 setContainerReady(true);
                 observer.disconnect();
                 return;
@@ -313,7 +308,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     if (data && data.length > 0 && chartContainerRef.current && !containerReady) {
       const container = chartContainerRef.current;
       if (container.clientWidth > 0 || container.offsetWidth > 0) {
-        console.log('Data available, forcing container ready state');
+        // console.log('Data available, forcing container ready state');
         setContainerReady(true);
       }
     }
@@ -322,7 +317,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
   // Detect symbol changes
   useEffect(() => {
     if (lastSymbolRef.current !== symbol) {
-      console.log('Symbol changed from', lastSymbolRef.current, 'to', symbol);
+      // console.log('Symbol changed from', lastSymbolRef.current, 'to', symbol);
       isNewSymbolRef.current = true;
       lastSymbolRef.current = symbol;
       
@@ -348,7 +343,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           
           safeChartCleanup(chartRef);
         } catch (error) {
-          console.warn('Error during symbol change cleanup:', error);
+          // console.warn('Error during symbol change cleanup:', error);
         }
         chartRef.current = null;
         candlestickSeriesRef.current = null;
@@ -359,7 +354,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
   // Detect timeframe changes
   useEffect(() => {
     if (lastTimeframeRef.current !== timeframe) {
-      console.log('Timeframe changed from', lastTimeframeRef.current, 'to', timeframe);
+      // console.log('Timeframe changed from', lastTimeframeRef.current, 'to', timeframe);
       lastTimeframeRef.current = timeframe;
       
       // Reset chart state for new timeframe
@@ -384,7 +379,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           
           safeChartCleanup(chartRef);
         } catch (error) {
-          console.warn('Error during timeframe change cleanup:', error);
+          // console.warn('Error during timeframe change cleanup:', error);
         }
         chartRef.current = null;
         candlestickSeriesRef.current = null;
@@ -396,19 +391,19 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
   const initializeChart = useCallback(async () => {
     // Prevent multiple simultaneous initializations
     if (isInitializingRef.current) {
-      console.log('Chart initialization already in progress, skipping...');
+      // console.log('Chart initialization already in progress, skipping...');
       return;
     }
 
     // Check if component is still mounted
     if (!isMountedRef.current) {
-      console.log('Component unmounted, skipping chart initialization');
+      // console.log('Component unmounted, skipping chart initialization');
       return;
     }
 
     // Check if container is ready with better validation
     if (!chartContainerRef.current) {
-      console.log('Container ref not available, will retry when available');
+      // console.log('Container ref not available, will retry when available');
       // Don't retry immediately - let the container readiness effect handle this
       return;
     }
@@ -421,29 +416,29 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     const containerHeight = container.clientHeight || container.offsetHeight || rect.height;
     
     if (containerWidth === 0 || containerHeight === 0) {
-      console.log('Container has no dimensions yet, waiting for container to be ready', {
-        clientWidth: container.clientWidth,
-        clientHeight: container.clientHeight,
-        offsetWidth: container.offsetWidth,
-        offsetHeight: container.offsetHeight,
-        rectWidth: rect.width,
-        rectHeight: rect.height
-      });
+      // console.log('Container has no dimensions yet, waiting for container to be ready', {
+      //   clientWidth: container.clientWidth,
+      //   clientHeight: container.clientHeight,
+      //   offsetWidth: container.offsetWidth,
+      //   offsetHeight: container.offsetHeight,
+      //   rectWidth: rect.width,
+      //   rectHeight: rect.height
+      // });
       // Don't retry immediately - let the container readiness effect handle this
       return;
     }
 
-    console.log('🚀 Starting chart initialization for:', symbol, timeframe);
-    console.log('Container dimensions:', {
-      width: containerWidth,
-      height: containerHeight,
-      clientWidth: container.clientWidth,
-      clientHeight: container.clientHeight,
-      offsetWidth: container.offsetWidth,
-      offsetHeight: container.offsetHeight,
-      rectWidth: rect.width,
-      rectHeight: rect.height
-    });
+    // console.log('🚀 Starting chart initialization for:', symbol, timeframe);
+    // console.log('Container dimensions:', {
+    //   width: containerWidth,
+    //   height: containerHeight,
+    //   clientWidth: container.clientWidth,
+    //   clientHeight: container.clientHeight,
+    //   offsetWidth: container.offsetWidth,
+    //   offsetHeight: container.offsetHeight,
+    //   rectWidth: rect.width,
+    //   rectHeight: rect.height
+    // });
 
     isInitializingRef.current = true;
     setChartError(null);
@@ -591,7 +586,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       // Store series reference
       candlestickSeriesRef.current = candlestickSeries;
 
-      console.log('Chart and candlestick series created successfully');
+      // console.log('Chart and candlestick series created successfully');
 
       // Set chart as ready
       setIsChartReady(true);
@@ -613,14 +608,14 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
             const newHeight = container.clientHeight || container.offsetHeight || container.getBoundingClientRect().height;
             
             if (newWidth > 0 && newHeight > 0) {
-              console.log('Resizing chart to:', { width: newWidth, height: newHeight });
+              // console.log('Resizing chart to:', { width: newWidth, height: newHeight });
               chart.applyOptions({
                 width: newWidth,
                 height: newHeight,
               });
             }
           } catch (error) {
-            console.warn('Error during chart resize:', error);
+            // console.warn('Error during chart resize:', error);
             // If chart is disposed, clean up the reference
             if (error instanceof Error && error.message.includes('disposed')) {
               chartRef.current = null;
@@ -648,7 +643,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       }
 
     } catch (error) {
-      console.error('Error during chart initialization:', error);
+      // console.error('Error during chart initialization:', error);
       setChartError(error instanceof Error ? error.message : 'Chart initialization failed');
       setIsChartReady(false);
     } finally {
@@ -664,19 +659,19 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       initializationTimeoutRef.current = null;
     }
 
-    console.log('Chart initialization trigger check:', {
-      isChartReady,
-      containerReady,
-      hasData: data && data.length > 0,
-      dataLength: data?.length || 0,
-      containerExists: !!chartContainerRef.current,
-      containerDimensions: chartContainerRef.current ? {
-        clientWidth: chartContainerRef.current.clientWidth,
-        clientHeight: chartContainerRef.current.clientHeight,
-        offsetWidth: chartContainerRef.current.offsetWidth,
-        offsetHeight: chartContainerRef.current.offsetHeight
-      } : null
-    });
+    // console.log('Chart initialization trigger check:', {
+    //   isChartReady,
+    //   containerReady,
+    //   hasData: data && data.length > 0,
+    //   dataLength: data?.length || 0,
+    //   containerExists: !!chartContainerRef.current,
+    //   containerDimensions: chartContainerRef.current ? {
+    //     clientWidth: chartContainerRef.current.clientWidth,
+    //     clientHeight: chartContainerRef.current.clientHeight,
+    //     offsetWidth: chartContainerRef.current.offsetWidth,
+    //     offsetHeight: chartContainerRef.current.offsetHeight
+    //   } : null
+    // });
 
     // Start initialization if chart is not ready and container is ready
     if (!isChartReady && containerReady && chartContainerRef.current) {
@@ -686,34 +681,34 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
                            (container.clientHeight > 0 || container.offsetHeight > 0 || rect.height > 0);
       
       if (hasDimensions) {
-        console.log('Starting chart initialization with dimensions:', {
-          clientWidth: container.clientWidth,
-          clientHeight: container.clientHeight,
-          offsetWidth: container.offsetWidth,
-          offsetHeight: container.offsetHeight,
-          rectWidth: rect.width,
-          rectHeight: rect.height
-        });
+        // console.log('Starting chart initialization with dimensions:', {
+        //   clientWidth: container.clientWidth,
+        //   clientHeight: container.clientHeight,
+        //   offsetWidth: container.offsetWidth,
+        //   offsetHeight: container.offsetHeight,
+        //   rectWidth: rect.width,
+        //   rectHeight: rect.height
+        // });
         initializeChart();
       } else {
-        console.log('Container ready but no dimensions yet, waiting...');
+        // console.log('Container ready but no dimensions yet, waiting...');
       }
     } else {
-      console.log('Chart initialization conditions not met:', {
-        isChartReady,
-        containerReady,
-        containerExists: !!chartContainerRef.current,
-        hasDimensions: chartContainerRef.current ? 
-          ((chartContainerRef.current.clientWidth > 0 || chartContainerRef.current.offsetWidth > 0 || chartContainerRef.current.getBoundingClientRect().width > 0) && 
-           (chartContainerRef.current.clientHeight > 0 || chartContainerRef.current.offsetHeight > 0 || chartContainerRef.current.getBoundingClientRect().height > 0)) : false
-      });
+      // console.log('Chart initialization conditions not met:', {
+      //   isChartReady,
+      //   containerReady,
+      //   containerExists: !!chartContainerRef.current,
+      //   hasDimensions: chartContainerRef.current ? 
+      //     ((chartContainerRef.current.clientWidth > 0 || chartContainerRef.current.offsetWidth > 0 || chartContainerRef.current.getBoundingClientRect().width > 0) && 
+      //      (chartContainerRef.current.clientHeight > 0 || chartContainerRef.current.offsetHeight > 0 || chartContainerRef.current.getBoundingClientRect().height > 0)) : false
+      // });
     }
   }, [initializeChart, containerReady, isChartReady]);
 
   // Handle data updates when chart is ready
   useEffect(() => {
     if (isChartReady && data && data.length > 0 && chartRef.current && candlestickSeriesRef.current) {
-      console.log('Data received after chart initialization, updating...');
+      // console.log('Data received after chart initialization, updating...');
       // Force a data update
       const validatedData = validateChartDataForTradingView(data);
       const candlestickData = validatedData.map(d => ({
@@ -726,7 +721,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       
       candlestickSeriesRef.current.setData(candlestickData as any);
       lastDataRef.current = candlestickData as any;
-      console.log('Initial data set:', candlestickData.length, 'candles');
+      // console.log('Initial data set:', candlestickData.length, 'candles');
       
       // Only fit content for initial load or new symbol, preserve user's view otherwise
       if (isInitialLoadRef.current || isNewSymbolRef.current) {
@@ -752,7 +747,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       
       // If we have data and container exists but chart isn't ready, try to initialize
       if (hasDimensions && !isInitializingRef.current) {
-        console.log('Fallback: Attempting chart initialization with data available');
+        // console.log('Fallback: Attempting chart initialization with data available');
         initializeChart();
       }
     }
@@ -769,7 +764,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         const newHeight = container.clientHeight || container.offsetHeight || container.getBoundingClientRect().height;
         
         if (newWidth > 0 && newHeight > 0) {
-          console.log('Resize effect - updating chart dimensions:', { width: newWidth, height: newHeight });
+          // console.log('Resize effect - updating chart dimensions:', { width: newWidth, height: newHeight });
           chartRef.current.applyOptions({
             width: newWidth,
             height: newHeight,
@@ -795,7 +790,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
     // Handle case when data is cleared (empty array)
     if (!data || data.length === 0) {
-      console.log('Data cleared, resetting chart state');
+      // console.log('Data cleared, resetting chart state');
       lastDataRef.current = [];
       return;
     }
@@ -804,11 +799,11 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       const validatedData = validateChartDataForTradingView(data);
       
       // Debug timestamp values
-      console.log('Raw data timestamps:', data.slice(0, 5).map(d => ({
-        date: d.date,
-        time: d.time,
-        convertedDate: new Date(d.time * 1000).toISOString()
-      })));
+      // console.log('Raw data timestamps:', data.slice(0, 5).map(d => ({
+      //   date: d.date,
+      //   time: d.time,
+      //   convertedDate: new Date(d.time * 1000).toISOString()
+      // })));
       
       const candlestickData = validatedData.map(d => ({
         time: d.time as any, // Cast to any to satisfy TradingView's Time type
@@ -819,11 +814,11 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       })) as any; // Cast the entire array to satisfy TradingView's type requirements
 
       // Debug processed timestamps
-      console.log('Processed candlestick timestamps:', candlestickData.slice(0, 5).map(d => ({
-        time: d.time,
-        date: new Date(d.time * 1000).toISOString(),
-        localTime: new Date(d.time * 1000).toLocaleString()
-      })));
+      // console.log('Processed candlestick timestamps:', candlestickData.slice(0, 5).map(d => ({
+      //   time: d.time,
+      //   date: new Date(d.time * 1000).toISOString(),
+      //   localTime: new Date(d.time * 1000).toLocaleString()
+      // })));
 
       // Check if this is a new dataset (symbol change or completely different data)
       const isNewDataset = lastDataRef.current.length === 0 || 
@@ -840,15 +835,15 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         lastDataRef.current[0]?.time && candlestickData[0]?.time &&
         lastDataRef.current[0].time === candlestickData[0].time;
 
-      console.log('Chart data update analysis:', {
-        dataLength: candlestickData.length,
-        lastDataLength: lastDataRef.current.length,
-        isNewDataset,
-        isTickUpdate,
-        isNewSymbol: isNewSymbolRef.current,
-        firstTime: candlestickData[0]?.time,
-        lastDataFirstTime: lastDataRef.current[0]?.time
-      });
+      // console.log('Chart data update analysis:', {
+      //   dataLength: candlestickData.length,
+      //   lastDataLength: lastDataRef.current.length,
+      //   isNewDataset,
+      //   isTickUpdate,
+      //   isNewSymbol: isNewSymbolRef.current,
+      //   firstTime: candlestickData[0]?.time,
+      //   lastDataFirstTime: lastDataRef.current[0]?.time
+      // });
 
       if (isNewDataset || isNewSymbolRef.current) {
         // Save current chart state before updating data
@@ -859,7 +854,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         // Full dataset update
         candlestickSeriesRef.current.setData(candlestickData as any);
         lastDataRef.current = candlestickData as any;
-        console.log('Full dataset updated:', candlestickData.length, 'candles');
+        // console.log('Full dataset updated:', candlestickData.length, 'candles');
         
         // Only fit content for new symbol, preserve user's view for same symbol
         if (isNewSymbolRef.current) {
@@ -886,14 +881,14 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           if (hasPriceChange || hasHighChange || hasLowChange) {
             // Update the last candle with new tick data
             candlestickSeriesRef.current.update(newLastCandle as any);
-            console.log('Live tick update:', {
-              oldClose: lastStoredCandle.close,
-              newClose: newLastCandle.close,
-              oldHigh: lastStoredCandle.high,
-              newHigh: newLastCandle.high,
-              oldLow: lastStoredCandle.low,
-              newLow: newLastCandle.low
-            });
+            // console.log('Live tick update:', {
+            //   oldClose: lastStoredCandle.close,
+            //   newClose: newLastCandle.close,
+            //   oldHigh: lastStoredCandle.high,
+            //   newHigh: newLastCandle.high,
+            //   oldLow: lastStoredCandle.low,
+            //   newLow: newLastCandle.low
+            // });
           }
         }
         
@@ -907,7 +902,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         if (lastStoredCandle && newLastCandle && candlestickData.length > lastDataRef.current.length) {
           // New candle added
           candlestickSeriesRef.current.update(newLastCandle as any);
-          console.log('New candle added:', newLastCandle);
+          // console.log('New candle added:', newLastCandle);
         }
         
         // Update the stored data reference
@@ -916,20 +911,20 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
       setLastChartUpdate(Date.now());
     } catch (error) {
-      console.error('Error updating chart data:', error);
+      // console.error('Error updating chart data:', error);
     }
   }, [data, isChartReady, saveChartState, restoreChartState]); // Added chart state functions to dependencies
 
   // Handle chart reset
   const handleChartReset = useCallback(() => {
-    console.log('🔄 Manual chart reset triggered');
+    // console.log('🔄 Manual chart reset triggered');
     
     // Cleanup existing chart
     if (chartRef.current) {
       try {
         safeChartCleanup(chartRef);
       } catch (error) {
-        console.warn('Error during manual chart cleanup:', error);
+        // console.warn('Error during manual chart cleanup:', error);
       }
     }
     
@@ -957,10 +952,10 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
                              (container.clientHeight > 0 || container.offsetHeight > 0);
         
         if (hasDimensions) {
-          console.log('Container ready after reset, initializing chart');
+          // console.log('Container ready after reset, initializing chart');
           setContainerReady(true);
         } else {
-          console.log('Container not ready after reset, will wait for container detection');
+          // console.log('Container not ready after reset, will wait for container detection');
         }
       }
     }, 100);
@@ -1122,7 +1117,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         <div className="flex items-center gap-2">
           <div className="text-sm font-medium">{symbol}</div>
           <div className={`text-lg font-bold transition-colors duration-300 ${getPriceColor()} ${isUpdating ? 'animate-pulse' : ''}`}>
-            ₹{currentPrice.toFixed(2)}
+                            {formatCurrency(currentPrice)}
           </div>
           {isLive && (
             <div className="flex items-center gap-1">
@@ -1232,7 +1227,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
               onClick={() => {
                 if (chartRef.current) {
                   saveChartState();
-                  console.log('Chart state saved manually');
+                  // console.log('Chart state saved manually');
                 }
               }}
               className="mt-1 ml-1"
@@ -1245,7 +1240,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
               onClick={() => {
                 if (chartRef.current) {
                   restoreChartState();
-                  console.log('Chart state restored manually');
+                  // console.log('Chart state restored manually');
                 }
               }}
               className="mt-1 ml-1"

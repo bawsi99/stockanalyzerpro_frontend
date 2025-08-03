@@ -568,7 +568,7 @@ export class LivePatternRecognition {
   updatePatterns(token: string, newCandle: ChartData): void {
     const state = this.patternState.get(token);
     if (!state) {
-      console.warn('LivePatternRecognition: No state found for token', token);
+      // console.warn('LivePatternRecognition: No state found for token', token);
       return;
     }
 
@@ -750,7 +750,7 @@ export function useLivePatterns(token: string, data: ChartData[]) {
       setLatestPatterns(currentLatest);
 
     } catch (error) {
-      console.error('Error detecting live patterns:', error);
+      // console.error('Error detecting live patterns:', error);
     } finally {
       setIsDetecting(false);
     }

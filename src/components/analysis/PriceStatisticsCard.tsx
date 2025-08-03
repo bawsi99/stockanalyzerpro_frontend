@@ -2,6 +2,7 @@ import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, BarChart3, Target, Activity, Loader2 } from "lucide-react";
+import { formatCurrency, formatPercentage, formatNumber } from "@/utils/numberFormatter";
 
 interface PriceStatisticsProps {
   summaryStats: {
@@ -60,19 +61,7 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
     return isNaN(position) ? 50 : Math.max(0, Math.min(100, position));
   };
 
-  const formatCurrency = (value: number | null | undefined) => {
-    if (value === null || value === undefined || isNaN(value)) {
-      return '₹0.00';
-    }
-    return `₹${value.toFixed(2)}`;
-  };
-
-  const formatPercentage = (value: number | null | undefined) => {
-    if (value === null || value === undefined || isNaN(value)) {
-      return '+0.00%';
-    }
-    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-  };
+  // Using centralized number formatting utilities
 
   // If no valid data, show loading state
   if (!summaryStats || stats.current === 0) {

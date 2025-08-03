@@ -13,6 +13,7 @@ import {
   Activity
 } from "lucide-react";
 import { AIAnalysis } from "@/types/analysis";
+import { formatCurrency } from "@/utils/numberFormatter";
 
 interface EnhancedAIAnalysisCardProps {
   aiAnalysis: AIAnalysis | null | undefined;
@@ -158,8 +159,8 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
                   <div>
                     <span className="text-slate-600">Entry Range:</span>
                     <div className="text-slate-800 font-medium">
-                      ₹{(aiAnalysis.trading_strategy.short_term.entry_strategy.entry_range?.[0] || 0).toFixed(2)} - 
-                      ₹{(aiAnalysis.trading_strategy.short_term.entry_strategy.entry_range?.[1] || 0).toFixed(2)}
+                      {formatCurrency(aiAnalysis.trading_strategy.short_term.entry_strategy.entry_range?.[0] || 0)} - 
+                      {formatCurrency(aiAnalysis.trading_strategy.short_term.entry_strategy.entry_range?.[1] || 0)}
                     </div>
                   </div>
                 )}
@@ -168,7 +169,7 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
                     <div>
                       <span className="text-slate-600">Stop Loss:</span>
                       <div className="text-slate-800 font-medium">
-                        ₹{(aiAnalysis.trading_strategy.short_term.exit_strategy.stop_loss || 0).toFixed(2)}
+                        {formatCurrency(aiAnalysis.trading_strategy.short_term.exit_strategy.stop_loss || 0)}
                       </div>
                     </div>
                     <div>
@@ -176,7 +177,7 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
                       <div className="text-slate-800 font-medium">
                         {aiAnalysis.trading_strategy.short_term.exit_strategy.targets?.map((target, idx) => (
                           <div key={idx} className="text-xs">
-                            ₹{(target.price || 0).toFixed(2)}
+                            {formatCurrency(target.price || 0)}
                           </div>
                         )) || 'No targets available'}
                       </div>
@@ -205,8 +206,8 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
                       <div>
                         <span className="text-slate-600">Entry Range:</span>
                         <div className="text-slate-800 font-medium">
-                          ₹{(aiAnalysis.trading_strategy.medium_term.entry_strategy.entry_range?.[0] || 0).toFixed(2)} - 
-                          ₹{(aiAnalysis.trading_strategy.medium_term.entry_strategy.entry_range?.[1] || 0).toFixed(2)}
+                          {formatCurrency(aiAnalysis.trading_strategy.medium_term.entry_strategy.entry_range?.[0] || 0)} - 
+                          {formatCurrency(aiAnalysis.trading_strategy.medium_term.entry_strategy.entry_range?.[1] || 0)}
                         </div>
                       </div>
                     )}
@@ -215,7 +216,7 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
                         <div>
                           <span className="text-slate-600">Stop Loss:</span>
                           <div className="text-slate-800 font-medium">
-                            ₹{(aiAnalysis.trading_strategy.medium_term.exit_strategy.stop_loss || 0).toFixed(2)}
+                            {formatCurrency(aiAnalysis.trading_strategy.medium_term.exit_strategy.stop_loss || 0)}
                           </div>
                         </div>
                         <div>
@@ -223,7 +224,7 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
                           <div className="text-slate-800 font-medium">
                             {aiAnalysis.trading_strategy.medium_term.exit_strategy.targets?.map((target, idx) => (
                               <div key={idx} className="text-xs">
-                                ₹{(target.price || 0).toFixed(2)}
+                                {formatCurrency(target.price || 0)}
                               </div>
                             )) || 'No targets available'}
                           </div>
@@ -252,8 +253,8 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
                       <div>
                         <span className="text-slate-600">Fair Value:</span>
                         <div className="text-slate-800 font-medium">
-                          ₹{(aiAnalysis.trading_strategy.long_term.fair_value_range[0] || 0).toFixed(2)} - 
-                          ₹{(aiAnalysis.trading_strategy.long_term.fair_value_range[1] || 0).toFixed(2)}
+                          {formatCurrency(aiAnalysis.trading_strategy.long_term.fair_value_range[0] || 0)} - 
+                          {formatCurrency(aiAnalysis.trading_strategy.long_term.fair_value_range[1] || 0)}
                         </div>
                       </div>
                     )}
@@ -261,8 +262,8 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
                       <div>
                         <span className="text-slate-600">Accumulation:</span>
                         <div className="text-slate-800 font-medium">
-                          ₹{(aiAnalysis.trading_strategy.long_term.key_levels.accumulation_zone[0] || 0).toFixed(2)} - 
-                          ₹{(aiAnalysis.trading_strategy.long_term.key_levels.accumulation_zone[1] || 0).toFixed(2)}
+                          {formatCurrency(aiAnalysis.trading_strategy.long_term.key_levels.accumulation_zone[0] || 0)} - 
+                          {formatCurrency(aiAnalysis.trading_strategy.long_term.key_levels.accumulation_zone[1] || 0)}
                         </div>
                       </div>
                     )}
@@ -316,7 +317,7 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
                     <div key={index} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-medium text-yellow-800">₹{level.level}</div>
+                          <div className="font-medium text-yellow-800">{formatCurrency(level.level)}</div>
                           <div className="text-sm text-yellow-600">{level.type}</div>
                         </div>
                         <div className="text-xs text-yellow-700 text-right">
@@ -349,7 +350,7 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
                     <div key={index} className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-medium text-orange-800">₹{level.level}</div>
+                          <div className="font-medium text-orange-800">{formatCurrency(level.level)}</div>
                           <div className="text-sm text-orange-600">{level.type}</div>
                         </div>
                         <Badge className="bg-orange-100 text-orange-700">

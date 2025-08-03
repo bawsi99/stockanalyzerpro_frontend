@@ -277,7 +277,7 @@ export class LiveIndicatorCalculator {
   updateIndicators(token: string, newCandle: ChartData): void {
     const state = this.indicatorState.get(token);
     if (!state) {
-      console.warn('LiveIndicatorCalculator: No state found for token', token);
+      // console.warn('LiveIndicatorCalculator: No state found for token', token);
       return;
     }
 
@@ -518,7 +518,7 @@ export function useLiveIndicators(token: string, data: ChartData[]) {
       }
 
     } catch (error) {
-      console.error('Error calculating live indicators:', error);
+      // console.error('Error calculating live indicators:', error);
     } finally {
       setIsCalculating(false);
     }

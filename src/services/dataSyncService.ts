@@ -38,7 +38,7 @@ class DataSyncService {
     }
 
     if (!this.fetchDataCallback) {
-      console.warn('DataSyncService: fetchDataCallback not set, cannot start sync');
+      // console.warn('DataSyncService: fetchDataCallback not set, cannot start sync');
       return;
     }
 
@@ -54,12 +54,12 @@ class DataSyncService {
           forceRefresh: true
         });
       } catch (error) {
-        console.error(`Background sync failed for ${key}:`, error);
+        // console.error(`Background sync failed for ${key}:`, error);
       }
     }, interval);
 
     this.syncIntervals.set(key, syncInterval);
-    console.log(`🔄 Started background sync for ${key} (${interval}ms)`);
+    // console.log(`🔄 Started background sync for ${key} (${interval}ms)`);
   }
 
   stopSync(symbol: string, timeframe: string, exchange: string = 'NSE') {
@@ -69,14 +69,14 @@ class DataSyncService {
     if (interval) {
       clearInterval(interval);
       this.syncIntervals.delete(key);
-      console.log(`⏹️ Stopped background sync for ${key}`);
+      // console.log(`⏹️ Stopped background sync for ${key}`);
     }
   }
 
   stopAllSync() {
     this.syncIntervals.forEach((interval, key) => {
       clearInterval(interval);
-      console.log(`⏹️ Stopped background sync for ${key}`);
+      // console.log(`⏹️ Stopped background sync for ${key}`);
     });
     this.syncIntervals.clear();
   }

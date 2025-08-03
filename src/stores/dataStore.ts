@@ -65,7 +65,7 @@ export const useDataStore = create<DataState>()(
         !forceRefresh;
       
       if (isCacheValid) {
-        console.log(`📦 Using cached data for ${symbol}`);
+        // console.log(`📦 Using cached data for ${symbol}`);
         return;
       }
       

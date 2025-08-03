@@ -1,5 +1,6 @@
 import { ChartData } from "@/types/analysis";
 import { createChart, IChartApi } from 'lightweight-charts';
+import { formatPrice as formatPriceUtil } from './numberFormatter';
 
 export interface ValidatedChartData {
   date: string;
@@ -286,11 +287,7 @@ export function filterDataByTimeframe<T extends { date: string }>(data: T[], tim
  * Formats price for display
  */
 export function formatPrice(price: number, currency: string = '₹'): string {
-  if (price >= 1) {
-    return `${currency}${price.toFixed(2)}`;
-  } else {
-    return `${currency}${price.toPrecision(4)}`;
-  }
+  return formatPriceUtil(price, currency);
 }
 
 /**
@@ -729,18 +726,18 @@ export const initializeChartWithRetry = async (
       // Check if container exists and has proper dimensions
       const container = containerRef.current;
       if (!container) {
-        if (debug) console.log('Container ref is null');
+        // if (debug) console.log('Container ref is null');
         return null;
       }
 
       if (!container.clientWidth || !container.clientHeight) {
-        if (debug) {
-          console.log('Container not properly sized, retrying...', {
-            retryCount,
-            width: container.clientWidth,
-            height: container.clientHeight
-          });
-        }
+        // if (debug) {
+        //   console.log('Container not properly sized, retrying...', {
+        //     retryCount,
+        //     width: container.clientWidth,
+        //     height: container.clientHeight
+        //   });
+        // }
         
         // Retry after a short delay
         if (retryCount < maxRetries) {
@@ -754,11 +751,11 @@ export const initializeChartWithRetry = async (
       // Import the library dynamically
       const { createChart } = await import('lightweight-charts');
       
-      if (debug) console.log('Library imported successfully');
+      // if (debug) console.log('Library imported successfully');
 
       // Ensure container is clean before creating chart
       if (container.children.length > 0) {
-        if (debug) console.log('Cleaning container before chart creation');
+        // if (debug) console.log('Cleaning container before chart creation');
         container.innerHTML = '';
       }
 
@@ -769,17 +766,17 @@ export const initializeChartWithRetry = async (
         height: container.clientHeight
       };
       
-      if (debug) console.log('Final chart config:', finalConfig);
+      // if (debug) console.log('Final chart config:', finalConfig);
 
       // Create chart
       const chart = createChart(container, finalConfig);
       
-      if (debug) console.log('Chart created successfully:', chart);
+      // if (debug) console.log('Chart created successfully:', chart);
       
       return chart;
 
     } catch (error) {
-      if (debug) console.error('Error in chart initialization attempt:', error);
+      // if (debug) console.error('Error in chart initialization attempt:', error);
       
       if (retryCount < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 200)); // Increased delay
@@ -839,7 +836,7 @@ export const safeChartCleanup = (chartRef: React.MutableRefObject<IChartApi | nu
       chart.remove();
       chartRef.current = null;
     } catch (error) {
-      console.warn('Error during chart cleanup:', error);
+      // console.warn('Error during chart cleanup:', error);
       // Force null even if cleanup fails
       chartRef.current = null;
     }
@@ -875,7 +872,7 @@ export function toUTCTimestamp(input: string | number | Date): number {
     if (typeof input === 'number') {
       // Check if it's a valid Unix timestamp (not too small)
       if (input < 1000000000) { // Less than 2001-09-09 (reasonable minimum)
-        console.warn(`Suspiciously small timestamp: ${input}, using current time as fallback`);
+        // console.warn(`Suspiciously small timestamp: ${input}, using current time as fallback`);
         return Math.floor(Date.now() / 1000);
       }
       // If it's already a Unix timestamp (seconds), convert to milliseconds
@@ -896,14 +893,14 @@ export function toUTCTimestamp(input: string | number | Date): number {
     }
     
     if (isNaN(timestamp)) {
-      console.warn(`Invalid timestamp format: ${input}, using current time as fallback`);
+      // console.warn(`Invalid timestamp format: ${input}, using current time as fallback`);
       return Math.floor(Date.now() / 1000);
     }
     
     // Return UTC timestamp in seconds (chart library format)
     return Math.floor(timestamp / 1000);
   } catch (error) {
-    console.warn(`Error parsing timestamp: ${input}, using current time as fallback`, error);
+    // console.warn(`Error parsing timestamp: ${input}, using current time as fallback`, error);
     return Math.floor(Date.now() / 1000);
   }
 }
@@ -917,7 +914,7 @@ export function fromUTCTimestamp(utcTimestamp: number): string {
     const date = new Date(utcTimestamp * 1000);
     return date.toISOString();
   } catch (error) {
-    console.warn(`Error converting UTC timestamp: ${utcTimestamp}`, error);
+    // console.warn(`Error converting UTC timestamp: ${utcTimestamp}`, error);
     return new Date().toISOString();
   }
 }
@@ -951,7 +948,7 @@ export function validateChartDataForTradingView<T extends { date: string; open: 
     const isValidRange = item.high >= Math.max(item.open, item.close) && item.low <= Math.min(item.open, item.close);
     
     if (!isValidDate || !isValidOHLC || !isValidRange) {
-      console.warn('Invalid data point filtered out:', item);
+      // console.warn('Invalid data point filtered out:', item);
       return false;
     }
     return true;
@@ -969,7 +966,7 @@ export function validateChartDataForTradingView<T extends { date: string; open: 
     return currentTime !== previousTime;
   });
 
-  console.log(`Chart data validation: ${data.length} input -> ${uniqueData.length} valid points`);
+  // console.log(`Chart data validation: ${data.length} input -> ${uniqueData.length} valid points`);
   return uniqueData;
 }
 
@@ -1014,7 +1011,7 @@ export function formatTimestampForDisplay(utcTimestamp: number, timeframe: strin
       });
     }
   } catch (error) {
-    console.warn(`Error formatting timestamp: ${utcTimestamp}`, error);
+    // console.warn(`Error formatting timestamp: ${utcTimestamp}`, error);
     return 'Invalid';
   }
 }
@@ -1059,7 +1056,7 @@ export function createTickMarkFormatter(timeframe: string) {
         });
       }
     } catch (error) {
-      console.warn(`Error formatting tick mark: ${time}`, error);
+      // console.warn(`Error formatting tick mark: ${time}`, error);
       return 'Invalid';
     }
   };

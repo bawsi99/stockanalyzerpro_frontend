@@ -538,12 +538,12 @@ class ApiService {
 
   // Legacy method for backward compatibility
   async getRealtimeAnalysis(token: string, timeframe: string): Promise<RealtimeAnalysisResponse> {
-    console.warn('getRealtimeAnalysis is deprecated. Use getHistoricalData instead.');
+    // console.warn('getRealtimeAnalysis is deprecated. Use getHistoricalData instead.');
     return this.getHistoricalData('RELIANCE', timeframe);
   }
 
   async getAnalysisHistory(token: string, timeframe: string, limit: number = 10): Promise<AnalysisHistoryResponse> {
-    console.warn('getAnalysisHistory is deprecated. Use getHistoricalData instead.');
+    // console.warn('getAnalysisHistory is deprecated. Use getHistoricalData instead.');
     return this.getHistoricalData('RELIANCE', timeframe);
   }
 
@@ -562,7 +562,7 @@ class ApiService {
       );
       return response;
     } catch (error) {
-      console.error('Error fetching analysis by ID:', error);
+      // console.error('Error fetching analysis by ID:', error);
       return null;
     }
   }

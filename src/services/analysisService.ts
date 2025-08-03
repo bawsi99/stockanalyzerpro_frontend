@@ -99,7 +99,7 @@ export interface HealthResponse {
 
 class AnalysisService {
   constructor() {
-    console.log('AnalysisService initialized with split backend architecture');
+    // console.log('AnalysisService initialized with split backend architecture');
   }
 
   // ===== STOCK ANALYSIS =====
@@ -150,7 +150,7 @@ class AnalysisService {
 
         return data;
       } catch (error) {
-        console.error(`Error analyzing stock (attempt ${attempt}/${maxRetries}):`, error);
+        // console.error(`Error analyzing stock (attempt ${attempt}/${maxRetries}):`, error);
         
         if (attempt === maxRetries) {
           throw error;
@@ -158,7 +158,7 @@ class AnalysisService {
         
         // Wait before retrying (exponential backoff)
         const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
-        console.log(`Retrying in ${waitTime}ms...`);
+        // console.log(`Retrying in ${waitTime}ms...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
@@ -212,7 +212,7 @@ class AnalysisService {
 
         return data;
       } catch (error) {
-        console.error(`Error in enhanced analysis (attempt ${attempt}/${maxRetries}):`, error);
+        // console.error(`Error in enhanced analysis (attempt ${attempt}/${maxRetries}):`, error);
         
         if (attempt === maxRetries) {
           throw error;
@@ -220,7 +220,7 @@ class AnalysisService {
         
         // Wait before retrying (exponential backoff)
         const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
-        console.log(`Retrying in ${waitTime}ms...`);
+        // console.log(`Retrying in ${waitTime}ms...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
@@ -261,7 +261,7 @@ class AnalysisService {
 
       return data;
     } catch (error) {
-      console.error('Error in enhanced multi-timeframe analysis:', error);
+      // console.error('Error in enhanced multi-timeframe analysis:', error);
       throw error;
     }
   }
@@ -299,7 +299,7 @@ class AnalysisService {
 
       return data;
     } catch (error) {
-      console.error('Error analyzing stock with async index data:', error);
+      // console.error('Error analyzing stock with async index data:', error);
       throw error;
     }
   }
@@ -348,7 +348,7 @@ class AnalysisService {
 
       return data;
     } catch (error) {
-      console.error('Error fetching indicators:', error);
+      // console.error('Error fetching indicators:', error);
       throw error;
     }
   }
@@ -397,7 +397,7 @@ class AnalysisService {
 
       return data;
     } catch (error) {
-      console.error('Error fetching patterns:', error);
+      // console.error('Error fetching patterns:', error);
       throw error;
     }
   }
@@ -446,7 +446,7 @@ class AnalysisService {
 
       return data;
     } catch (error) {
-      console.error('Error fetching charts:', error);
+      // console.error('Error fetching charts:', error);
       throw error;
     }
   }
@@ -484,7 +484,7 @@ class AnalysisService {
 
       return data;
     } catch (error) {
-      console.error('Error fetching sectors:', error);
+      // console.error('Error fetching sectors:', error);
       throw error;
     }
   }
@@ -522,7 +522,7 @@ class AnalysisService {
 
       return data.results;
     } catch (error) {
-      console.error('Error fetching sector benchmark:', error);
+      // console.error('Error fetching sector benchmark:', error);
       throw error;
     }
   }
@@ -560,7 +560,7 @@ class AnalysisService {
 
       return data;
     } catch (error) {
-      console.error('Error getting sector benchmarking with async index data:', error);
+      // console.error('Error getting sector benchmarking with async index data:', error);
       throw error;
     }
   }
@@ -598,7 +598,7 @@ class AnalysisService {
 
       return data;
     } catch (error) {
-      console.error('Error fetching sector stocks:', error);
+      // console.error('Error fetching sector stocks:', error);
       throw error;
     }
   }
@@ -636,7 +636,7 @@ class AnalysisService {
 
       return data;
     } catch (error) {
-      console.error('Error fetching sector performance:', error);
+      // console.error('Error fetching sector performance:', error);
       throw error;
     }
   }
@@ -674,7 +674,7 @@ class AnalysisService {
 
       return data;
     } catch (error) {
-      console.error('Error comparing sectors:', error);
+      // console.error('Error comparing sectors:', error);
       throw error;
     }
   }
@@ -712,7 +712,7 @@ class AnalysisService {
 
       return data;
     } catch (error) {
-      console.error('Error fetching stock sector:', error);
+      // console.error('Error fetching stock sector:', error);
       throw error;
     }
   }
@@ -740,7 +740,7 @@ class AnalysisService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching analysis service health:', error);
+      // console.error('Error fetching analysis service health:', error);
       throw error;
     }
   }

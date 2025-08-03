@@ -86,10 +86,10 @@ export const CONFIG = {
 
 // Log configuration in development
 if (IS_DEVELOPMENT) {
-  console.log('🔧 Frontend Configuration:', {
-    DATA_SERVICE_URL,
-    ANALYSIS_SERVICE_URL,
-    WEBSOCKET_URL,
-    NODE_ENV
-  });
+  // console.log('🔧 Frontend Configuration:', {
+  //   DATA_SERVICE_URL,
+  //   ANALYSIS_SERVICE_URL,
+  //   WEBSOCKET_URL,
+  //   NODE_ENV
+  // });
 } 

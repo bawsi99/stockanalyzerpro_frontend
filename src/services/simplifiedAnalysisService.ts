@@ -33,7 +33,7 @@ class SimplifiedAnalysisServiceImpl implements SimplifiedAnalysisService {
 
       return transformDatabaseRecord(data as SimplifiedDatabaseRecord);
     } catch (error) {
-      console.error('Error fetching analysis by ID:', error);
+      // console.error('Error fetching analysis by ID:', error);
       return null;
     }
   }
@@ -52,7 +52,7 @@ class SimplifiedAnalysisServiceImpl implements SimplifiedAnalysisService {
 
       return data.map(record => transformDatabaseRecord(record as SimplifiedDatabaseRecord));
     } catch (error) {
-      console.error('Error fetching user analyses:', error);
+      // console.error('Error fetching user analyses:', error);
       return [];
     }
   }
@@ -71,7 +71,7 @@ class SimplifiedAnalysisServiceImpl implements SimplifiedAnalysisService {
 
       return data.map(record => transformDatabaseRecord(record as SimplifiedDatabaseRecord));
     } catch (error) {
-      console.error('Error fetching stock analyses:', error);
+      // console.error('Error fetching stock analyses:', error);
       return [];
     }
   }
@@ -121,7 +121,7 @@ class SimplifiedAnalysisServiceImpl implements SimplifiedAnalysisService {
         } as AnalysisData;
       });
     } catch (error) {
-      console.error('Error fetching analyses by signal:', error);
+      // console.error('Error fetching analyses by signal:', error);
       return [];
     }
   }
@@ -170,7 +170,7 @@ class SimplifiedAnalysisServiceImpl implements SimplifiedAnalysisService {
         } as AnalysisData;
       });
     } catch (error) {
-      console.error('Error fetching analyses by sector:', error);
+      // console.error('Error fetching analyses by sector:', error);
       return [];
     }
   }
@@ -219,7 +219,7 @@ class SimplifiedAnalysisServiceImpl implements SimplifiedAnalysisService {
         } as AnalysisData;
       });
     } catch (error) {
-      console.error('Error fetching high confidence analyses:', error);
+      // console.error('Error fetching high confidence analyses:', error);
       return [];
     }
   }
@@ -237,7 +237,7 @@ class SimplifiedAnalysisServiceImpl implements SimplifiedAnalysisService {
 
       return data;
     } catch (error) {
-      console.error('Error fetching user analysis summary:', error);
+      // console.error('Error fetching user analysis summary:', error);
       return [];
     }
   }

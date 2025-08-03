@@ -68,9 +68,9 @@ interface AdvancedRiskAssessmentCardProps {
 
 const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({ riskMetrics, symbol }) => {
   // Debug: Log the risk metrics received by the component
-  console.log('🔍 DEBUG: AdvancedRiskAssessmentCard received riskMetrics:', riskMetrics);
-  console.log('🔍 DEBUG: AdvancedRiskAssessmentCard liquidity_analysis:', riskMetrics?.liquidity_analysis);
-  console.log('🔍 DEBUG: AdvancedRiskAssessmentCard correlation_analysis:', riskMetrics?.correlation_analysis);
+  // console.log('🔍 DEBUG: AdvancedRiskAssessmentCard received riskMetrics:', riskMetrics);
+  // console.log('🔍 DEBUG: AdvancedRiskAssessmentCard liquidity_analysis:', riskMetrics?.liquidity_analysis);
+  // console.log('🔍 DEBUG: AdvancedRiskAssessmentCard correlation_analysis:', riskMetrics?.correlation_analysis);
   const getRiskLevelColor = (level: string) => {
     switch (level) {
       case 'high':

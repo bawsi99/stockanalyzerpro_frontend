@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TrendingUp, TrendingDown, Minus, Activity, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { formatCurrency, formatPercentage } from '@/utils/numberFormatter';
 
 interface ChartData {
   date: string;
@@ -89,15 +90,15 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
 
   // Initialize chart
   const initializeChart = useCallback(() => {
-    console.log('🚀 initializeChart called:', {
-      hasContainer: !!chartContainerRef.current,
-      isMounted: isMountedRef.current,
-      symbol,
-      timeframe
-    });
+    // console.log('🚀 initializeChart called:', {
+    //   hasContainer: !!chartContainerRef.current,
+    //   isMounted: isMountedRef.current,
+    //   symbol,
+    //   timeframe
+    // });
     
     if (!chartContainerRef.current || !isMountedRef.current) {
-      console.log('❌ Cannot initialize chart - missing container or not mounted');
+      // console.log('❌ Cannot initialize chart - missing container or not mounted');
       return;
     }
 
@@ -108,14 +109,14 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
     const hasHeight = container.clientHeight > 0 || container.offsetHeight > 0 || rect.height > 0;
     
     if (!hasWidth || !hasHeight) {
-      console.log('❌ Container has no dimensions, retrying in 100ms', {
-        clientWidth: container.clientWidth,
-        clientHeight: container.clientHeight,
-        offsetWidth: container.offsetWidth,
-        offsetHeight: container.offsetHeight,
-        rectWidth: rect.width,
-        rectHeight: rect.height
-      });
+      // console.log('❌ Container has no dimensions, retrying in 100ms', {
+      //   clientWidth: container.clientWidth,
+      //   clientHeight: container.clientHeight,
+      //   offsetWidth: container.offsetWidth,
+      //   offsetHeight: container.offsetHeight,
+      //   rectWidth: rect.width,
+      //   rectHeight: rect.height
+      // });
       setTimeout(() => {
         if (isMountedRef.current) {
           initializeChart();
@@ -125,7 +126,7 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
     }
 
     try {
-      console.log('🚀 Initializing SimpleChart for:', symbol, timeframe);
+      // console.log('🚀 Initializing SimpleChart for:', symbol, timeframe);
       
       // Cleanup existing chart
       cleanupChart();
@@ -247,10 +248,10 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
       setIsChartReady(true);
       setChartError(null);
       
-      console.log('✅ Chart initialized successfully');
+      // console.log('✅ Chart initialized successfully');
 
     } catch (error) {
-      console.error('❌ Chart initialization failed:', error);
+      // console.error('❌ Chart initialization failed:', error);
       setChartError(error instanceof Error ? error.message : 'Chart initialization failed');
       onError?.(error instanceof Error ? error.message : 'Chart initialization failed');
     }
@@ -271,10 +272,10 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
         
         // Check for reasonable price values
         if (lastCandle.close < 1 || lastCandle.close > 1000000) {
-          console.warn('⚠️ Suspicious price values detected, skipping data:', {
-            lastClose: lastCandle.close,
-            symbol: symbol
-          });
+          // console.warn('⚠️ Suspicious price values detected, skipping data:', {
+          //   lastClose: lastCandle.close,
+          //   symbol: symbol
+          // });
           return;
         }
       }
@@ -282,14 +283,14 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
       candlestickSeriesRef.current.setData(candlestickData);
       setLastChartUpdate(Date.now());
       
-      console.log('📊 Chart data updated:', {
-        symbol: symbol,
-        timeframe: timeframe,
-        dataPoints: candlestickData.length
-      });
+      // console.log('📊 Chart data updated:', {
+      //   symbol: symbol,
+      //   timeframe: timeframe,
+      //   dataPoints: candlestickData.length
+      // });
       
     } catch (error) {
-      console.error('❌ Chart data update failed:', error);
+      // console.error('❌ Chart data update failed:', error);
       setChartError(error instanceof Error ? error.message : 'Chart data update failed');
     }
   }, [convertToCandlestickData, symbol, timeframe]);
@@ -329,7 +330,7 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
   // Handle symbol/timeframe changes
   useEffect(() => {
     if (lastSymbolRef.current !== symbol || lastTimeframeRef.current !== timeframe) {
-      console.log('🔄 Symbol/timeframe changed, reinitializing chart');
+      // console.log('🔄 Symbol/timeframe changed, reinitializing chart');
       lastSymbolRef.current = symbol;
       lastTimeframeRef.current = timeframe;
       initializeChart();
@@ -338,22 +339,22 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
 
   // Update data when it changes
   useEffect(() => {
-    console.log('🔄 SimpleChart data effect triggered:', {
-      isChartReady,
-      hasData: !!data,
-      dataLength: data?.length || 0,
-      isLoading,
-      symbol,
-      timeframe
-    });
+    // console.log('🔄 SimpleChart data effect triggered:', {
+    //   isChartReady,
+    //   hasData: !!data,
+    //   dataLength: data?.length || 0,
+    //   isLoading,
+    //   symbol,
+    //   timeframe
+    // });
     
     if (isChartReady && data) {
       if (data.length > 0) {
-        console.log('📊 Setting chart data:', data.length, 'points');
+        // console.log('📊 Setting chart data:', data.length, 'points');
         updateChartData(data);
       } else {
         // Clear chart data when data is empty
-        console.log('🧹 Clearing chart data - empty data received');
+        // console.log('🧹 Clearing chart data - empty data received');
         if (candlestickSeriesRef.current) {
           candlestickSeriesRef.current.setData([]);
         }
@@ -480,9 +481,9 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
       <div className="absolute top-2 left-2 z-10">
         <div className={`flex items-center gap-2 ${getPriceColor()} transition-colors duration-300 ${isUpdating ? 'animate-pulse' : ''}`}>
           {getPriceIcon()}
-          <span className="font-semibold">₹{currentPrice.toFixed(2)}</span>
+                          <span className="font-semibold">{formatCurrency(currentPrice)}</span>
           <span className="text-sm">
-            {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePercent > 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%)
+                          {formatCurrency(priceChange, '', priceChange > 0 ? '+' : '')} ({formatPercentage(priceChangePercent, true)})
           </span>
         </div>
       </div>

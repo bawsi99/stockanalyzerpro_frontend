@@ -128,10 +128,10 @@ export const logConfiguration = (): void => {
   if (CONFIG.IS_DEVELOPMENT) {
     const summary = getConfigurationSummary();
     console.group('🔧 Frontend Configuration');
-    console.log('Environment:', summary.environment);
-    console.log('URLs:', summary.urls);
+    // console.log('Environment:', summary.environment);
+    // console.log('URLs:', summary.urls);
     if (!summary.validation.isValid) {
-      console.warn('Configuration Issues:', summary.validation.errors);
+      // console.warn('Configuration Issues:', summary.validation.errors);
     }
     console.groupEnd();
   }

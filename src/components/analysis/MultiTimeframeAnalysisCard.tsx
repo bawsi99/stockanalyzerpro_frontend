@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { TrendingUp, TrendingDown, Minus, Clock, Target, AlertTriangle, BarChart3 } from 'lucide-react';
+import { formatStrength, formatNumber, formatConfidence } from '@/utils/numberFormatter';
 
 // Updated interface to match actual backend data structure
 interface TimeframeAnalysis {
@@ -107,7 +108,7 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
           <div>
             <div className="flex justify-between text-sm mb-1">
               <span>Strength</span>
-              <span>{consensus.strength?.toFixed(0) || 0}%</span>
+              <span>{formatStrength(consensus.strength)}</span>
             </div>
             <Progress 
               value={consensus.strength || 0} 
@@ -135,7 +136,7 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
 
           {consensus.score && (
             <div className="text-sm">
-              <span className="font-medium">Score:</span> {consensus.score.toFixed(1)}
+                              <span className="font-medium">Score:</span> {formatNumber(consensus.score, 1)}
             </div>
           )}
 
@@ -217,7 +218,7 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span>Strength</span>
-                  <span>{analysis.overall_consensus.strength.toFixed(0)}%</span>
+                  <span>{formatStrength(analysis.overall_consensus.strength)}</span>
                 </div>
                 <Progress 
                   value={analysis.overall_consensus.strength} 
@@ -230,7 +231,7 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">Score:</span> {analysis.overall_consensus.score.toFixed(1)}
+                  <span className="font-medium">Score:</span> {formatNumber(analysis.overall_consensus.score, 1)}
                 </div>
                 <div>
                   <span className="font-medium">Alignment:</span>
@@ -265,7 +266,7 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
                 <Target className="h-4 w-4 text-blue-500" />
                 <span>
                   <strong>Primary Trend:</strong> {analysis.overall_consensus.direction} 
-                  with {analysis.overall_consensus.strength.toFixed(0)}% strength
+                  with {formatStrength(analysis.overall_consensus.strength)} strength
                 </span>
               </div>
             )}
@@ -275,7 +276,7 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
                 <TrendingUp className="h-4 w-4 text-green-500" />
                 <span>
                   <strong>Short-term:</strong> {analysis.short_term.consensus.direction} 
-                  ({analysis.short_term.consensus.strength?.toFixed(0) || 0}%)
+                  ({formatStrength(analysis.short_term.consensus.strength)})
                 </span>
               </div>
             )}
@@ -285,7 +286,7 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
                 <BarChart3 className="h-4 w-4 text-blue-500" />
                 <span>
                   <strong>Medium-term:</strong> {analysis.medium_term.consensus.direction} 
-                  ({analysis.medium_term.consensus.strength?.toFixed(0) || 0}%)
+                  ({formatStrength(analysis.medium_term.consensus.strength)})
                 </span>
               </div>
             )}
@@ -295,7 +296,7 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
                 <TrendingDown className="h-4 w-4 text-purple-500" />
                 <span>
                   <strong>Long-term:</strong> {analysis.long_term.consensus.direction} 
-                  ({analysis.long_term.consensus.strength?.toFixed(0) || 0}%)
+                  ({formatStrength(analysis.long_term.consensus.strength)})
                 </span>
               </div>
             )}

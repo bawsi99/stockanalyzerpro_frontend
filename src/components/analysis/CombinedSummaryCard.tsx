@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Target, AlertTriangle } from "lucide-react";
 import { AnalysisData } from "@/types/analysis";
+import { formatNumber, formatCurrency, formatPercentage } from "@/utils/numberFormatter";
 
 interface CombinedSummaryCardProps {
   consensus: AnalysisData["consensus"];
@@ -22,8 +23,7 @@ interface CombinedSummaryCardProps {
   } | null;
 }
 
-const formatNumber = (value: number | null | undefined, digits = 2) =>
-  value != null && Number.isFinite(value) ? value.toFixed(digits) : "N/A";
+// Using centralized number formatting utilities
 
 // Reusable metric card component
 const MetricCard = ({

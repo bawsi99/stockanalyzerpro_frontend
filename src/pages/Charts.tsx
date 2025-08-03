@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatCurrency, formatPercentage } from '@/utils/numberFormatter';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ArrowLeft, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, Loader2, BarChart3, Activity, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -206,8 +207,8 @@ const Charts = React.memo(function Charts() {
 
   // Debug lastTickPrice changes
   useEffect(() => {
-    console.log('🔄 lastTickPrice changed:', lastTickPrice, 'at', new Date().toLocaleTimeString());
-    console.log('🔄 lastTickPrice type:', typeof lastTickPrice, 'isNaN:', isNaN(lastTickPrice || 0));
+    // console.log('🔄 lastTickPrice changed:', lastTickPrice, 'at', new Date().toLocaleTimeString());
+    // console.log('🔄 lastTickPrice type:', typeof lastTickPrice, 'isNaN:', isNaN(lastTickPrice || 0));
   }, [lastTickPrice]);
 
   // Initialize authentication
@@ -218,7 +219,7 @@ const Charts = React.memo(function Charts() {
         const token = await authService.ensureAuthenticated();
         if (token) {
           setAuthStatus('authenticated');
-          console.log('✅ Authentication successful');
+          // console.log('✅ Authentication successful');
         } else {
           setAuthStatus('error');
           setAuthError('Failed to authenticate');
@@ -226,7 +227,7 @@ const Charts = React.memo(function Charts() {
       } catch (error) {
         setAuthStatus('error');
         setAuthError(error instanceof Error ? error.message : 'Authentication failed');
-        console.error('❌ Authentication error:', error);
+        // console.error('❌ Authentication error:', error);
       }
     };
 
@@ -360,7 +361,7 @@ const Charts = React.memo(function Charts() {
           }
         }
       } catch (err) {
-        console.error('Error loading analysis data:', err);
+        // console.error('Error loading analysis data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load analysis data');
       } finally {
         setAnalysisLoading(false);
@@ -373,7 +374,7 @@ const Charts = React.memo(function Charts() {
   // Update live chart when stock symbol changes
   useEffect(() => {
     if (stockSymbol) {
-      console.log('🔄 Stock symbol changed to:', stockSymbol, 'at', new Date().toISOString());
+      // console.log('🔄 Stock symbol changed to:', stockSymbol, 'at', new Date().toISOString());
       // Set loading state immediately when symbol changes
       setChartDataLoaded(false);
       // Clear any existing data immediately
@@ -385,7 +386,7 @@ const Charts = React.memo(function Charts() {
   // Update live chart when timeframe changes
   useEffect(() => {
     if (selectedTimeframe) {
-      console.log('🔄 Timeframe changed to:', selectedTimeframe, 'at', new Date().toISOString());
+      // console.log('🔄 Timeframe changed to:', selectedTimeframe, 'at', new Date().toISOString());
       // Set loading state immediately when timeframe changes
       setChartDataLoaded(false);
       // Clear any existing data immediately
@@ -396,7 +397,7 @@ const Charts = React.memo(function Charts() {
 
   // Handle chart data loaded
   const handleChartDataLoaded = useCallback((data: ChartData[]) => {
-    console.log('Chart data loaded:', data.length, 'points');
+    // console.log('Chart data loaded:', data.length, 'points');
     setChartData(data);
     
     // Chart stats will be calculated automatically by the memoized function
@@ -406,41 +407,41 @@ const Charts = React.memo(function Charts() {
   useEffect(() => {
     if (liveData && liveData.length > 0) {
       setChartDataLoaded(true);
-      console.log('📈 Live data updated in Charts page:', {
-        dataLength: liveData.length,
-        lastCandle: liveData[liveData.length - 1],
-        lastUpdate: new Date(lastUpdate).toLocaleTimeString()
-      });
+      // console.log('📈 Live data updated in Charts page:', {
+      //   dataLength: liveData.length,
+      //   lastCandle: liveData[liveData.length - 1],
+      //   lastUpdate: new Date(lastUpdate).toLocaleTimeString()
+      // });
     }
   }, [liveData?.length, lastUpdate]); // Only depend on length and lastUpdate, not the entire liveData array
 
   // Handle chart error
   const handleChartError = useCallback((error: string) => {
-    console.error('Chart error:', error);
+    // console.error('Chart error:', error);
     setError(error);
   }, []);
 
   // Handle live chart errors
   useEffect(() => {
     if (liveError) {
-      console.error('Live chart error:', liveError);
+      // console.error('Live chart error:', liveError);
       setError(liveError);
     }
   }, [liveError]);
 
   // Handle connection status change
   const handleConnectionChange = useCallback((isConnected: boolean) => {
-    console.log('Connection status changed:', isConnected);
+    // console.log('Connection status changed:', isConnected);
   }, []);
 
   // Handle validation result
   const handleValidationResult = useCallback((result: any) => {
-    console.log('Chart validation result:', result);
+    // console.log('Chart validation result:', result);
   }, []);
 
   // Handle stats calculated
   const handleStatsCalculated = useCallback((stats: any) => {
-    console.log('Chart stats calculated:', stats);
+    // console.log('Chart stats calculated:', stats);
   }, []);
 
   // Show charts immediately when stock symbol is available, regardless of analysis loading
@@ -474,7 +475,7 @@ const Charts = React.memo(function Charts() {
         // New candle added
         setIsPriceStatsUpdating(true);
         setTimeout(() => setIsPriceStatsUpdating(false), 1000); // Show animation for 1 second
-        console.log('🕯️ New candle detected, updating Price Statistics Card');
+        // console.log('🕯️ New candle detected, updating Price Statistics Card');
       }
       setLastCandleCount(liveData.length);
     }
@@ -670,7 +671,7 @@ const Charts = React.memo(function Charts() {
           hour12: false 
         });
       } catch (error) {
-        console.error('Error formatting timestamp:', error);
+        // console.error('Error formatting timestamp:', error);
         return '';
       }
     };
@@ -720,7 +721,7 @@ const Charts = React.memo(function Charts() {
                          isNegative ? 'text-red-800' :
                          'text-gray-900'
                        }`}>
-                         ₹{(stablePrice || price || 0).toFixed(2)}
+                         {formatCurrency(stablePrice || price || 0)}
                        </span>
                 </div>
                 
@@ -753,11 +754,11 @@ const Charts = React.memo(function Charts() {
             <div className="space-y-1">
               <div className="font-medium">Live Price Data</div>
               <div className="text-xs text-gray-500">
-                <div>Current Price: ₹{(stablePrice || price || 0).toFixed(2)}</div>
+                <div>Current Price: {formatCurrency(stablePrice || price || 0)}</div>
                 {hasPriceChange && (
                   <>
-                    <div>Previous Price: ₹{previousPrice?.toFixed(2)}</div>
-                    <div>Change: {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)} ({percentageChange > 0 ? '+' : ''}{percentageChange.toFixed(2)}%)</div>
+                    <div>Previous Price: {formatCurrency(previousPrice)}</div>
+                                          <div>Change: {formatCurrency(priceChange, '', priceChange > 0 ? '+' : '')} ({formatPercentage(percentageChange, true)})</div>
                     <div>Direction: {isPositive ? '🟢 UP' : isNegative ? '🔴 DOWN' : '⚪ NO CHANGE'}</div>
                   </>
                 )}

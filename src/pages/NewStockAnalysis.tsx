@@ -82,7 +82,7 @@ const NewStockAnalysis = () => {
         setSectors(data.sectors);
       }
     } catch (error) {
-      console.error('Error fetching sectors:', error);
+      // console.error('Error fetching sectors:', error);
     }
   };
 
@@ -101,7 +101,7 @@ const NewStockAnalysis = () => {
         setFormData(prev => ({ ...prev, sector: null }));
       }
     } catch (error) {
-      console.error('Error fetching stock sector:', error);
+      // console.error('Error fetching stock sector:', error);
       setDetectedSector("");
       setFormData(prev => ({ ...prev, sector: null }));
     } finally {
@@ -195,7 +195,7 @@ const NewStockAnalysis = () => {
           // The saveAnalysis function now handles the normalized data extraction
           await saveAnalysis(data.stock_symbol, data);
         } catch (saveError) {
-          console.error("Error saving analysis to Supabase:", saveError);
+          // console.error("Error saving analysis to Supabase:", saveError);
         }
       }
 
@@ -451,14 +451,14 @@ const NewStockAnalysis = () => {
                             Elapsed Time: {String(Math.floor(timer / 60)).padStart(2, '0')}:{String(timer % 60).padStart(2, '0')}
                           </div>
                           <div className="text-sm text-slate-500">
-                            Analysis typically takes 3-4 minutes to complete
+                            Analysis typically takes 2-3 minutes to complete
                           </div>
                         </div>
                       )}
                       
                       {!isLoading && (
                         <div className="text-center text-sm text-slate-500">
-                          Analysis typically takes 3-4 minutes to complete
+                          Analysis typically takes 2-3 minutes to complete
                         </div>
                       )}
                     </div>
@@ -469,14 +469,12 @@ const NewStockAnalysis = () => {
 
             {/* Previous Analyses Sidebar */}
             <div className="xl:col-span-1">
-              <div className="sticky top-8">
-                <PreviousAnalyses 
-                  analyses={analyses}
-                  onAnalysisSelect={handleSelectAnalysis}
-                  loading={loading}
-                  error={error}
-                />
-              </div>
+              <PreviousAnalyses 
+                analyses={analyses}
+                onAnalysisSelect={handleSelectAnalysis}
+                loading={loading}
+                error={error}
+              />
             </div>
           </div>
         </div>

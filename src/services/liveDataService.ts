@@ -76,7 +76,7 @@ class LiveDataService {
 
   constructor() {
     // Use the data service URL for WebSocket connections
-    console.log('LiveDataService initialized with split backend architecture');
+    // console.log('LiveDataService initialized with split backend architecture');
   }
 
   // Get historical data for a stock (Data Service - Port 8000)
@@ -98,14 +98,14 @@ class LiveDataService {
         const backendInterval = INTERVAL_MAPPING[interval as keyof typeof INTERVAL_MAPPING] || '1day';
         
         const url = `${ENDPOINTS.DATA.STOCK_HISTORY}/${symbol}/history?interval=${backendInterval}&exchange=${exchange}&limit=${limit}`;
-        console.log('🔗 Calling historical data API:', {
-          symbol,
-          interval,
-          backendInterval,
-          exchange,
-          limit,
-          url
-        });
+        // console.log('🔗 Calling historical data API:', {
+        //   symbol,
+        //   interval,
+        //   backendInterval,
+        //   exchange,
+        //   limit,
+        //   url
+        // });
         
         const response = await fetch(url, {
           headers: {
@@ -132,7 +132,7 @@ class LiveDataService {
 
         return data;
       } catch (error) {
-        console.error('Error fetching historical data:', error);
+        // console.error('Error fetching historical data:', error);
         throw error;
       }
     });
@@ -182,7 +182,7 @@ class LiveDataService {
         sector: 'N/A' // You can add sector information if available
       };
     } catch (error) {
-      console.error('Error fetching stock info:', error);
+      // console.error('Error fetching stock info:', error);
       throw error;
     }
   }
@@ -205,7 +205,7 @@ class LiveDataService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching market status:', error);
+      // console.error('Error fetching market status:', error);
       throw error;
     }
   }
@@ -236,7 +236,7 @@ class LiveDataService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching optimized data:', error);
+      // console.error('Error fetching optimized data:', error);
       throw error;
     }
   }
@@ -251,7 +251,7 @@ class LiveDataService {
   ): Promise<WebSocket> {
     // Close existing connection if any
     if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
-      console.log('Closing existing WebSocket connection');
+      // console.log('Closing existing WebSocket connection');
       this.wsConnection.close();
       this.wsConnection = null;
     }
@@ -264,12 +264,12 @@ class LiveDataService {
         throw new Error('Authentication token not available for WebSocket connection');
       }
     } catch (error) {
-      console.error('Failed to get authentication token:', error);
+      // console.error('Failed to get authentication token:', error);
       throw new Error('Authentication failed for WebSocket connection');
     }
     
     const wsUrl = `${ENDPOINTS.DATA.WEBSOCKET}?token=${token}`;
-    console.log('Connecting to WebSocket:', wsUrl);
+    // console.log('Connecting to WebSocket:', wsUrl);
     
     try {
       this.wsConnection = new WebSocket(wsUrl);
@@ -277,14 +277,14 @@ class LiveDataService {
       // Set up connection timeout
       const connectionTimeout = setTimeout(() => {
         if (this.wsConnection && this.wsConnection.readyState === WebSocket.CONNECTING) {
-          console.error('WebSocket connection timeout');
+          // console.error('WebSocket connection timeout');
           this.wsConnection.close();
           onError?.(new Error('Connection timeout'));
         }
       }, 10000); // 10 second timeout
 
       this.wsConnection.onopen = () => {
-        console.log('WebSocket connected to Data Service');
+        // console.log('WebSocket connected to Data Service');
         clearTimeout(connectionTimeout);
         this.reconnectAttempts = 0;
         
@@ -296,10 +296,10 @@ class LiveDataService {
               symbols: symbols, // Send symbols instead of tokens
               timeframes: timeframes
             };
-            console.log('Sending subscription message:', subscriptionMessage);
+            // console.log('Sending subscription message:', subscriptionMessage);
             this.wsConnection.send(JSON.stringify(subscriptionMessage));
           } catch (error) {
-            console.error('Error sending subscription message:', error);
+            // console.error('Error sending subscription message:', error);
             onError?.(error as Error);
           }
         }
@@ -309,7 +309,7 @@ class LiveDataService {
         try {
           // Validate message data
           if (!event.data) {
-            console.warn('Received empty WebSocket message');
+            // console.warn('Received empty WebSocket message');
             return;
           }
 
@@ -317,39 +317,39 @@ class LiveDataService {
           
           // Validate message structure
           if (!data || typeof data !== 'object') {
-            console.warn('Invalid message format received:', event.data);
+            // console.warn('Invalid message format received:', event.data);
             return;
           }
 
-          console.log('WebSocket message received:', {
-            type: data.type,
-            timestamp: new Date().toISOString(),
-            dataLength: JSON.stringify(data).length,
-            fullData: data // Log the full data to see structure
-          });
+          // console.log('WebSocket message received:', {
+          //   type: data.type,
+          //   timestamp: new Date().toISOString(),
+          //   dataLength: JSON.stringify(data).length,
+          //   fullData: data // Log the full data to see structure
+          // });
 
           // Process the message
           onData(data);
           
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error, 'Raw data:', event.data);
+          // console.error('Error parsing WebSocket message:', error, 'Raw data:', event.data);
           onError?.(error as Error);
         }
       };
 
       this.wsConnection.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        // console.error('WebSocket error:', error);
         clearTimeout(connectionTimeout);
         onError?.(error as Error);
       };
 
       this.wsConnection.onclose = (event) => {
-        console.log('WebSocket closed:', {
-          code: event.code,
-          reason: event.reason,
-          wasClean: event.wasClean,
-          timestamp: new Date().toISOString()
-        });
+        // console.log('WebSocket closed:', {
+        //   code: event.code,
+        //   reason: event.reason,
+        //   wasClean: event.wasClean,
+        //   timestamp: new Date().toISOString()
+        // });
         
         clearTimeout(connectionTimeout);
         onClose?.();
@@ -358,17 +358,17 @@ class LiveDataService {
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++;
           const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-          console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms...`);
+          // console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms...`);
           
           setTimeout(() => {
             this.connectWebSocket(symbols, onData, onError, onClose, timeframes)
               .catch(error => {
-                console.error('Reconnection failed:', error);
+                // console.error('Reconnection failed:', error);
                 onError?.(error as Error);
               });
           }, delay);
         } else {
-          console.log('Max reconnection attempts reached');
+          // console.log('Max reconnection attempts reached');
           onError?.(new Error('Max reconnection attempts reached'));
         }
       };
@@ -376,7 +376,7 @@ class LiveDataService {
       return this.wsConnection;
       
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
+      // console.error('Failed to create WebSocket connection:', error);
       throw error;
     }
   }
@@ -384,7 +384,7 @@ class LiveDataService {
   // Enhanced disconnect with better cleanup
   disconnectWebSocket(): void {
     if (this.wsConnection) {
-      console.log('Disconnecting WebSocket...');
+      // console.log('Disconnecting WebSocket...');
       
       // Remove event listeners to prevent memory leaks
       this.wsConnection.onopen = null;
@@ -420,7 +420,7 @@ class LiveDataService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching WebSocket health:', error);
+      // console.error('Error fetching WebSocket health:', error);
       throw error;
     }
   }
@@ -443,7 +443,7 @@ class LiveDataService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching WebSocket test:', error);
+      // console.error('Error fetching WebSocket test:', error);
       throw error;
     }
   }
@@ -491,11 +491,11 @@ class LiveDataService {
         sector: stock.sector
       }));
       
-      console.log(`Loaded ${availableStocks.length} stocks from stockList.json`);
+      // console.log(`Loaded ${availableStocks.length} stocks from stockList.json`);
       return availableStocks;
       
     } catch (error) {
-      console.error('Error loading stock list from JSON:', error);
+      // console.error('Error loading stock list from JSON:', error);
       
       // Fallback to hardcoded list if JSON loading fails
       const majorStocks = [
@@ -530,7 +530,7 @@ class LiveDataService {
     return backendData.map(candle => {
       // Validate that time is a valid number
       if (typeof candle.time !== 'number' || isNaN(candle.time) || candle.time <= 0) {
-        console.warn('Invalid timestamp in candle data:', candle.time, 'using current time as fallback');
+        // console.warn('Invalid timestamp in candle data:', candle.time, 'using current time as fallback');
         candle.time = Math.floor(Date.now() / 1000);
       }
       
@@ -564,7 +564,7 @@ class LiveDataService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching real-time status:', error);
+      // console.error('Error fetching real-time status:', error);
       throw error;
     }
   }
@@ -597,7 +597,7 @@ class LiveDataService {
         throw new Error(errorData.detail || `Failed to clear interval cache for ${symbol}`);
       }
     } catch (error) {
-      console.error('Error clearing interval cache:', error);
+      // console.error('Error clearing interval cache:', error);
       throw error;
     }
   }
@@ -651,7 +651,7 @@ export function useLiveData(token: string, timeframe: string) {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch historical data');
-      console.error('Error fetching historical data:', err);
+      // console.error('Error fetching historical data:', err);
     } finally {
       setIsLoading(false);
     }
@@ -695,13 +695,13 @@ export function useLiveData(token: string, timeframe: string) {
         }
       },
       (wsError) => {
-        console.error('WebSocket error:', wsError);
+        // console.error('WebSocket error:', wsError);
         setError('WebSocket connection error');
         setIsConnected(false);
         setIsLive(false);
       },
       () => {
-        console.log('WebSocket closed');
+        // console.log('WebSocket closed');
         setIsConnected(false);
         setIsLive(false);
         
@@ -717,7 +717,7 @@ export function useLiveData(token: string, timeframe: string) {
     
     setIsConnected(true);
     } catch (error) {
-      console.error('Error connecting to WebSocket:', error);
+      // console.error('Error connecting to WebSocket:', error);
       setError('Failed to connect to WebSocket');
       setIsConnected(false);
     }
@@ -754,7 +754,7 @@ export function useLiveData(token: string, timeframe: string) {
     if (token) {
       fetchHistoricalData();
       connectWebSocket().catch(error => {
-        console.error('Failed to connect WebSocket:', error);
+        // console.error('Failed to connect WebSocket:', error);
       });
     }
     

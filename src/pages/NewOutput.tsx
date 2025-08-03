@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { formatCurrency, formatPercentage, formatNumber } from "@/utils/numberFormatter";
 
 // Icons
 import { 
@@ -74,6 +75,7 @@ interface ChartData {
   low: number;
   close: number;
   volume: number;
+  price?: number; // Optional price field for compatibility
 }
 
 interface ExtendedIndicators {
@@ -167,14 +169,14 @@ const NewOutput: React.FC = () => {
       const storedAnalysis = localStorage.getItem('analysisResult');
       if (storedAnalysis) {
         const parsed = JSON.parse(storedAnalysis);
-        console.log('Parsed analysis data:', parsed);
+        // console.log('Parsed analysis data:', parsed);
         
         // Check if the response has a 'results' field (new backend structure)
         const analysisData = parsed.results || parsed;
         const stockSymbol = parsed.stock_symbol || analysisData.symbol || "RELIANCE";
         
-        console.log('Analysis data after extraction:', analysisData);
-        console.log('Stock symbol:', stockSymbol);
+        // console.log('Analysis data after extraction:', analysisData);
+        // console.log('Stock symbol:', stockSymbol);
         
         // Check if this is the new enhanced structure
         const isEnhancedStructure = analysisData && (
@@ -198,7 +200,7 @@ const NewOutput: React.FC = () => {
             created_at: analysisData.analysis_timestamp || new Date().toISOString(),
             updated_at: analysisData.analysis_timestamp || new Date().toISOString()
           });
-          console.log('Transformed data:', transformedData);
+          // console.log('Transformed data:', transformedData);
           setAnalysisData(transformedData);
         } else {
           // Handle legacy structure
@@ -211,7 +213,7 @@ const NewOutput: React.FC = () => {
             updated_at: analysisData.updated_at || new Date().toISOString()
           });
           
-          console.log('Transformed legacy data:', transformedData);
+          // console.log('Transformed legacy data:', transformedData);
           setAnalysisData(transformedData);
           setStockSymbol(stockSymbol);
         }
@@ -346,7 +348,7 @@ const NewOutput: React.FC = () => {
           .finally(() => setAnalysisLoading(false));
       }
     } catch (err) {
-      console.error('Error loading analysis data:', err);
+      // console.error('Error loading analysis data:', err);
       setError("Failed to load analysis data.");
       setAnalysisLoading(false);
     }
@@ -445,9 +447,9 @@ const NewOutput: React.FC = () => {
     }
     
     // Debug: Log the backend risk metrics to see what data is available
-    console.log('🔍 DEBUG: Backend risk metrics:', backendRiskMetrics);
-    console.log('🔍 DEBUG: Backend risk metrics liquidity_analysis:', backendRiskMetrics?.liquidity_analysis);
-    console.log('🔍 DEBUG: Backend risk metrics correlation_analysis:', backendRiskMetrics?.correlation_analysis);
+    // console.log('🔍 DEBUG: Backend risk metrics:', backendRiskMetrics);
+    // console.log('🔍 DEBUG: Backend risk metrics liquidity_analysis:', backendRiskMetrics?.liquidity_analysis);
+    // console.log('🔍 DEBUG: Backend risk metrics correlation_analysis:', backendRiskMetrics?.correlation_analysis);
     
     // If it's already in frontend format, return as is
     if (backendRiskMetrics.basic_metrics && backendRiskMetrics.risk_assessment) {
@@ -539,7 +541,7 @@ const NewOutput: React.FC = () => {
     const transformedScenarioAnalysis = transformScenarioAnalysis(backendScenarioAnalysis);
     
     // Debug: Log the transformed scenario analysis
-    console.log('🔍 DEBUG: Transformed scenario analysis:', transformedScenarioAnalysis);
+    // console.log('🔍 DEBUG: Transformed scenario analysis:', transformedScenarioAnalysis);
     
     // Map advanced components from enhanced data structure
     return {
@@ -875,19 +877,19 @@ const NewOutput: React.FC = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-slate-800">
-                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : `₹${currentPrice?.toFixed(2) || "0.00"}`}
+                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : formatCurrency(currentPrice)}
                 </div>
                 <div className="text-sm text-slate-600">Current Price</div>
               </div>
               <div className="text-center">
                 <div className={`text-2xl font-bold flex items-center justify-center ${priceChange?.changePercent && priceChange.changePercent > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : `₹${priceChange?.change.toFixed(2) || "0.00"}`}
+                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : formatCurrency(priceChange?.change)}
                 </div>
                 <div className="text-sm text-slate-600">Change</div>
               </div>
               <div className="text-center">
                 <div className={`text-2xl font-bold ${priceChange?.changePercent && priceChange.changePercent > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : `${priceChange?.changePercent.toFixed(2) || "0.00"}%`}
+                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : formatPercentage(priceChange?.changePercent)}
                 </div>
                 <div className="text-sm text-slate-600">Change %</div>
               </div>
@@ -1478,12 +1480,12 @@ const NewOutput: React.FC = () => {
               </>
             ) : (
               <>
-                {console.log('🔍 DEBUG: Advanced tab rendering check:', {
+                {/* console.log('🔍 DEBUG: Advanced tab rendering check:', {
                   hasAdvancedRisk: !!(indicators as ExtendedIndicators)?.advanced_risk,
                   hasAdvancedRiskError: (indicators as ExtendedIndicators)?.advanced_risk?.error,
                   hasStressTesting: !!(indicators as ExtendedIndicators)?.stress_testing,
                   hasScenarioAnalysis: !!(indicators as ExtendedIndicators)?.scenario_analysis
-                })}
+                })} */}
                 
                 <div className="space-y-6">
                   {(indicators as ExtendedIndicators)?.advanced_risk && !(indicators as ExtendedIndicators).advanced_risk.error && (

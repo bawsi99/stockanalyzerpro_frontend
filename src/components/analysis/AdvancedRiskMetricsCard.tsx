@@ -137,7 +137,7 @@ const AdvancedRiskMetricsCard: React.FC<AdvancedRiskMetricsCardProps> = ({
     }
     
     // If we can't convert it, log a warning and return empty array
-    console.warn('stress_scenarios is not in expected format:', stress_testing.stress_scenarios);
+    // console.warn('stress_scenarios is not in expected format:', stress_testing.stress_scenarios);
     return [];
   };
 
@@ -146,7 +146,7 @@ const AdvancedRiskMetricsCard: React.FC<AdvancedRiskMetricsCardProps> = ({
     if (!scenario_analysis?.scenario_results) return [];
     
     // Debug: Log the scenario_results to see what we're working with
-    console.log('🔍 DEBUG: scenario_results:', scenario_analysis.scenario_results);
+    // console.log('🔍 DEBUG: scenario_results:', scenario_analysis.scenario_results);
     
     // If it's already an array, return it
     if (isArray(scenario_analysis.scenario_results)) {
@@ -180,7 +180,7 @@ const AdvancedRiskMetricsCard: React.FC<AdvancedRiskMetricsCardProps> = ({
     }
     
     // If we can't convert it, log a warning and return empty array
-    console.warn('scenario_results is not in expected format:', scenario_analysis.scenario_results);
+    // console.warn('scenario_results is not in expected format:', scenario_analysis.scenario_results);
     return [];
   };
 
@@ -520,7 +520,7 @@ const AdvancedRiskMetricsCard: React.FC<AdvancedRiskMetricsCardProps> = ({
                 ) && (
                   <div className="space-y-4">
                     <h4 className="font-semibold text-lg">Detailed Scenario Results</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       {getScenarioResults().map((result, index) => (
                         <div key={index} className="p-4 bg-white rounded-lg border border-gray-200">
                           <div className="flex items-center justify-between mb-2">

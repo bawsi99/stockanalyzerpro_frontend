@@ -15,7 +15,7 @@ class PerformanceMonitor {
       // Don't log warning for operations that might have been cleared due to component unmount
       // Only log if it's a genuine issue (operation exists but no start time)
       if (this.timers.has(operation)) {
-        console.warn(`Timer for operation "${operation}" was not started`);
+        // console.warn(`Timer for operation "${operation}" was not started`);
       }
       return 0;
     }
@@ -84,25 +84,25 @@ class PerformanceMonitor {
   // Log performance report
   logReport(): void {
     const metrics = this.getAllMetrics();
-    console.group('🚀 Stock Selector Performance Report');
+    // console.group('🚀 Stock Selector Performance Report');
     
     Object.entries(metrics).forEach(([operation, data]) => {
-      console.log(`${operation}:`, {
-        average: `${data.avg}ms`,
-        count: data.count,
-        min: `${data.min}ms`,
-        max: `${data.max}ms`
-      });
+      // console.log(`${operation}:`, {
+      //   average: `${data.avg}ms`,
+      //   count: data.count,
+      //   min: `${data.min}ms`,
+      //   max: `${data.max}ms`
+      // });
     });
     
-    console.groupEnd();
+    // console.groupEnd();
   }
 
   // Monitor API calls specifically
   monitorApiCall<T>(key: string, apiCall: () => Promise<T>): Promise<T> {
     // Check if timer already exists (race condition)
     if (this.timers.has(key)) {
-      console.warn(`Timer for operation "${key}" already exists, clearing previous timer`);
+      // console.warn(`Timer for operation "${key}" already exists, clearing previous timer`);
       this.timers.delete(key);
     }
     

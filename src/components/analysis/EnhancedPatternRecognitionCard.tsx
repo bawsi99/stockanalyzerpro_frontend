@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { EnhancedOverlays } from "@/types/analysis";
 import AdvancedPatternAnalysisCard from "./AdvancedPatternAnalysisCard";
+import { formatCurrency, formatConfidence } from "@/utils/numberFormatter";
 
 interface EnhancedPatternRecognitionCardProps {
   overlays: EnhancedOverlays;
@@ -186,18 +187,18 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
           <div>
             <span className="font-medium">Start Price:</span>
             <div className="text-xs text-gray-600">
-              ₹{pattern.start_price?.toFixed(2)}
+              {formatCurrency(pattern.start_price)}
             </div>
           </div>
           <div>
             <span className="font-medium">End Price:</span>
             <div className="text-xs text-gray-600">
-              ₹{pattern.end_price?.toFixed(2)}
+              {formatCurrency(pattern.end_price)}
             </div>
           </div>
         </div>
         <div className="text-sm">
-          <span className="font-medium">Confidence:</span> {pattern.confidence?.toFixed(1)}%
+          <span className="font-medium">Confidence:</span> {formatConfidence(pattern.confidence)}
         </div>
         <div className="text-sm">
           <span className="font-medium">Description:</span> {pattern.description}
@@ -296,7 +297,7 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
                     support_resistance.support.slice(0, 5).map((level, index) => (
                       <div key={index} className="flex justify-between text-sm">
                         <span className="text-green-700">Level {index + 1}:</span>
-                        <span className="font-medium text-green-800">₹{level.level.toFixed(2)}</span>
+                        <span className="font-medium text-green-800">{formatCurrency(level.level)}</span>
                       </div>
                     ))
                   ) : (
@@ -314,7 +315,7 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
                     support_resistance.resistance.slice(0, 5).map((level, index) => (
                       <div key={index} className="flex justify-between text-sm">
                         <span className="text-red-700">Level {index + 1}:</span>
-                        <span className="font-medium text-red-800">₹{level.level.toFixed(2)}</span>
+                        <span className="font-medium text-red-800">{formatCurrency(level.level)}</span>
                       </div>
                     ))
                   ) : (

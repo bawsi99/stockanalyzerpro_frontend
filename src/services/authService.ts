@@ -29,7 +29,7 @@ class AuthService {
         this.userId = storedUserId;
       }
     } catch (error) {
-      console.warn('Failed to load token from localStorage:', error);
+      // console.warn('Failed to load token from localStorage:', error);
     }
   }
 
@@ -40,7 +40,7 @@ class AuthService {
       this.token = token;
       this.userId = userId;
     } catch (error) {
-      console.warn('Failed to save token to localStorage:', error);
+      // console.warn('Failed to save token to localStorage:', error);
     }
   }
 
@@ -61,7 +61,7 @@ class AuthService {
       this.saveToken(data.token, data.user_id);
       return data;
     } catch (error) {
-      console.error('Error creating token:', error);
+      // console.error('Error creating token:', error);
       throw error;
     }
   }
@@ -82,7 +82,7 @@ class AuthService {
       const data: VerifyResponse = await response.json();
       return data;
     } catch (error) {
-      console.error('Error verifying token:', error);
+      // console.error('Error verifying token:', error);
       return { valid: false };
     }
   }
@@ -106,7 +106,7 @@ class AuthService {
       this.token = null;
       this.userId = null;
     } catch (error) {
-      console.warn('Failed to clear token from localStorage:', error);
+      // console.warn('Failed to clear token from localStorage:', error);
     }
   }
 

@@ -14,7 +14,7 @@ interface PreviousAnalysesProps {
 
 const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error = null }: PreviousAnalysesProps) => {
   return (
-    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm h-full flex flex-col">
+    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm max-h-[900px] flex flex-col">
       <CardHeader className="flex-shrink-0">
         <CardTitle className="flex items-center text-slate-800">
           <History className="h-5 w-5 mr-2 text-blue-500" />
@@ -24,7 +24,7 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
           View your past stock analysis reports
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto p-4">
+      <CardContent className="flex-1 overflow-y-auto p-4 min-h-0">
         {loading ? (
           <div className="text-center py-8">
             <Loader2 className="h-8 w-8 text-blue-500 mx-auto mb-4 animate-spin" />
