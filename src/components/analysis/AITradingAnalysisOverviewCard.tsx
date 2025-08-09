@@ -58,8 +58,8 @@ const AITradingAnalysisOverviewCard = ({ aiAnalysis, analysisDate, analysisPerio
           </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto space-y-4 pb-4">
-          {/* Key Metrics - Compact Grid */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Key Metrics - Compact Grid (Targets removed) */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="text-center p-3 bg-emerald-50 rounded-lg">
               <div className="text-xl font-bold text-emerald-600">{newAnalysis.meta?.overall_confidence || 0}%</div>
               <div className="text-xs text-slate-600">Confidence</div>
@@ -67,10 +67,6 @@ const AITradingAnalysisOverviewCard = ({ aiAnalysis, analysisDate, analysisPerio
             <div className="text-center p-3 bg-blue-50 rounded-lg">
               <div className="text-xl font-bold text-blue-600">{newAnalysis.market_outlook?.primary_trend?.direction || 'N/A'}</div>
               <div className="text-xs text-slate-600">Primary Trend</div>
-            </div>
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <div className="text-xl font-bold text-purple-600">{newAnalysis.trading_strategy?.short_term?.exit_strategy?.targets?.length || 0}</div>
-              <div className="text-xs text-slate-600">Targets</div>
             </div>
           </div>
           
@@ -169,8 +165,8 @@ const AITradingAnalysisOverviewCard = ({ aiAnalysis, analysisDate, analysisPerio
           </div>
         )}
         
-        {/* Key Metrics - Compact Grid */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Key Metrics - Compact Grid (Targets removed) */}
+        <div className="grid grid-cols-2 gap-3">
           <div className="text-center p-3 bg-emerald-50 rounded-lg">
             <div className="text-xl font-bold text-emerald-600">{legacyAnalysis.confidence_pct}%</div>
             <div className="text-xs text-slate-600">Confidence</div>
@@ -178,10 +174,6 @@ const AITradingAnalysisOverviewCard = ({ aiAnalysis, analysisDate, analysisPerio
           <div className="text-center p-3 bg-blue-50 rounded-lg">
             <div className="text-xl font-bold text-blue-600">{legacyAnalysis.trend}</div>
             <div className="text-xs text-slate-600">Trend</div>
-          </div>
-          <div className="text-center p-3 bg-purple-50 rounded-lg">
-            <div className="text-xl font-bold text-purple-600">{legacyAnalysis.short_term?.targets?.length || 0}</div>
-            <div className="text-xs text-slate-600">Targets</div>
           </div>
         </div>
         

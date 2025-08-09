@@ -18,7 +18,7 @@ import { useDataStore } from '@/stores/dataStore';
 import LiveSimpleChart from '@/components/charts/LiveSimpleChart';
 
 // Analysis Components
-import PriceStatisticsCard from '@/components/analysis/PriceStatisticsCard';
+import PriceStatisticsCardCharts from '@/components/analysis/PriceStatisticsCardCharts';
 
 // UI Components
 import { StockSelector } from '@/components/ui/stock-selector';
@@ -779,6 +779,7 @@ const Charts = React.memo(function Charts() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <Header />
+      <div className="h-16" />
       <div className="container mx-auto px-2 py-8 max-w-[1920px]">
 
 
@@ -922,7 +923,7 @@ const Charts = React.memo(function Charts() {
                 />
               ) : (
                 <div className={`h-full transition-all duration-300 ${isPriceStatsUpdating ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}>
-                  <PriceStatisticsCard 
+                  <PriceStatisticsCardCharts 
                     summaryStats={transformChartStatsForPriceCard(memoizedLiveChartStats)}
                     latestPrice={liveData[liveData.length - 1].close || liveData[liveData.length - 1].price}
                     timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}

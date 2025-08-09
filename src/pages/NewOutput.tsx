@@ -49,7 +49,7 @@ import AdvancedRiskMetricsCard from "@/components/analysis/AdvancedRiskMetricsCa
 import SectorAnalysisCard from "@/components/analysis/SectorAnalysisCard";
 import SectorBenchmarkingCard from "@/components/analysis/SectorBenchmarkingCard";
 import EnhancedPatternRecognitionCard from "@/components/analysis/EnhancedPatternRecognitionCard";
-import PriceStatisticsCard from "@/components/analysis/PriceStatisticsCard";
+import PriceStatisticsCardOutput from "@/components/analysis/PriceStatisticsCardOutput";
 import ActionButtonsSection from "@/components/analysis/ActionButtonsSection";
 import DisclaimerCard from "@/components/analysis/DisclaimerCard";
 import TradingLevelsCard from "@/components/analysis/TradingLevelsCard";
@@ -837,7 +837,7 @@ const NewOutput: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <Header />
-      
+      <div className="h-16" />
       <div className="w-full px-4 py-8">
         {/* Cache Clear Button */}
         <div className="flex justify-end mb-4">
@@ -1002,7 +1002,7 @@ const NewOutput: React.FC = () => {
                     description="Loading price statistics..." 
                   />
                 ) : (
-                  <PriceStatisticsCard 
+                  <PriceStatisticsCardOutput 
                     summaryStats={priceStats || {
                       mean: 0,
                       max: 0,

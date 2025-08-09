@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, BarChart3, Shield, Zap, ArrowRight, LogIn } from "lucide-react";
+import { TrendingUp, BarChart3, Shield, Zap, ArrowRight, LogIn, User, Mail, Phone } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
@@ -11,7 +11,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
-      <header className="bg-gradient-to-r from-slate-900 to-slate-800 border-b border-slate-700 shadow-lg">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-slate-900 to-slate-800 border-b border-slate-700 shadow-lg">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -32,6 +32,7 @@ const Index = () => {
         </div>
       </header>
 
+      <div className="h-16" />
       {/* Hero Section */}
       <section className="py-20">
         <div className="container mx-auto px-4 text-center">
@@ -109,30 +110,30 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-16 bg-gradient-to-r from-slate-900 to-slate-800">
+      {/* Founder's Profile Section */}
+      <section className="pt-2 pb-16 bg-gradient-to-r from-slate-900 to-slate-800">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold text-white mb-6">
-            Ready to Start Analyzing?
-          </h2>
-          <p className="text-xl text-slate-300 mb-8">
-            Join thousands of investors making smarter decisions with our platform.
-          </p>
-          {user ? (
-            <Link to="/analysis">
-              <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white text-lg px-8 py-4">
-                Go to Dashboard
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-          ) : (
-            <Link to="/auth">
-              <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white text-lg px-8 py-4">
-                Sign Up Now
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-          )}
+          <div className="mx-auto max-w-3xl rounded-lg p-6 bg-transparent">
+            <div className="flex flex-nowrap items-center justify-center gap-8 whitespace-nowrap">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
+                  <User className="h-5 w-5 text-emerald-300" />
+                </div>
+                <div className="text-left">
+                  <p className="text-white text-lg font-semibold leading-tight">Aaryan Manawat</p>
+                  <p className="text-slate-300 text-xs">Founder</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Phone className="h-5 w-5 text-emerald-300" />
+                <a href="tel:+919321536130" className="text-slate-200 hover:text-white">+91 9321536130</a>
+              </div>
+              <div className="flex items-center gap-3">
+                <Mail className="h-5 w-5 text-emerald-300" />
+                <a href="mailto:aaryanmanawar99@gmail.com" className="text-slate-200 hover:text-white">aaryanmanawar99@gmail.com</a>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>

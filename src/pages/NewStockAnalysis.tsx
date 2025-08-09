@@ -139,6 +139,7 @@ const NewStockAnalysis = () => {
   }, [formData.sector]);
 
   // Effects
+
   useEffect(() => {
     fetchSectors();
   }, []);
@@ -281,25 +282,18 @@ const NewStockAnalysis = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <Header />
+      <div className="h-16" />
       
       <div className="container mx-auto px-4 py-8">
-        {/* Page Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-slate-800 mb-4">
-            Stock Analysis Dashboard
-          </h1>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Configure your technical analysis parameters and run comprehensive stock analysis
-          </p>
-        </div>
+        {/* Page Header removed */}
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 items-stretch">
             
             {/* Analysis Configuration Panel */}
-            <div className="xl:col-span-3">
-              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
+            <div className="xl:col-span-3 h-full">
+              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm h-[850px] grid grid-rows-[auto,1fr]">
                 <CardHeader className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-t-xl">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 bg-white/20 rounded-lg">
@@ -314,7 +308,7 @@ const NewStockAnalysis = () => {
                   </div>
                 </CardHeader>
                 
-                <CardContent className="p-8">
+                <CardContent className="p-8 overflow-y-auto min-h-0">
                   <form onSubmit={handleSubmit} className="space-y-8">
                     
                     {/* Stock Selection Section */}
@@ -488,7 +482,7 @@ const NewStockAnalysis = () => {
             </div>
 
             {/* Previous Analyses Sidebar */}
-            <div className="xl:col-span-1">
+            <div className="xl:col-span-1 h-full">
               <PreviousAnalyses 
                 analyses={analyses}
                 onAnalysisSelect={handleSelectAnalysis}
