@@ -43,16 +43,8 @@ const ConsensusSummaryCard = ({ consensus, analysisDate, analysisPeriod }: Conse
     return 'text-red-600';
   };
 
-  const getStrengthColor = (strength: string) => {
-    const strengthLower = strength.toLowerCase();
-    if (strengthLower === 'strong') return 'text-emerald-600';
-    if (strengthLower === 'moderate') return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
   // Safe access to properties with defaults
   const overallSignal = consensus.overall_signal || 'Neutral';
-  const signalStrength = consensus.signal_strength || 'Weak';
   const confidence = consensus.confidence || 0;
   const bullishPercentage = consensus.bullish_percentage || 0;
   const bearishPercentage = consensus.bearish_percentage || 0;
@@ -94,9 +86,6 @@ const ConsensusSummaryCard = ({ consensus, analysisDate, analysisPeriod }: Conse
                       >
                         {signal.signal?.toUpperCase() || 'NEUTRAL'}
                       </Badge>
-                      <span className={`text-xs font-medium px-2 py-1 rounded flex-shrink-0 ${getStrengthColor(signal.strength || 'weak')}`}>
-                        {signal.strength?.toUpperCase() || 'WEAK'}
-                      </span>
                     </div>
                   </div>
                   <div className="text-sm text-slate-600 leading-relaxed break-words">
