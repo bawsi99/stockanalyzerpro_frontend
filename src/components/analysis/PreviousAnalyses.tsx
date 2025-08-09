@@ -52,10 +52,31 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-1">
                         <h3 className="font-semibold text-slate-800 truncate">{analysis.stock_symbol}</h3>
-                        <Badge variant="outline" className="text-xs flex-shrink-0">
-                          {analysis.analysis_data?.results?.ai_analysis?.trend || 
-                           analysis.analysis_data?.summary?.overall_signal || 'N/A'}
-                        </Badge>
+                        {(() => {
+                          const getSignalClasses = (signal: string) => {
+                            const s = (signal || '').toLowerCase();
+                            if (s === 'bullish' || s.includes('buy')) return 'bg-green-100 text-green-700 border-green-200';
+                            if (s === 'bearish' || s.includes('sell')) return 'bg-red-100 text-red-700 border-red-200';
+                            return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+                          };
+
+                          // Prefer enhanced AI primary trend → legacy AI trend → normalized overall_signal → summary/consensus
+                          const aiSignal: string =
+                            (analysis as any)?.analysis_data?.results?.ai_analysis?.market_outlook?.primary_trend?.direction ||
+                            (analysis as any)?.analysis_data?.results?.ai_analysis?.trend ||
+                            analysis.overall_signal ||
+                            (analysis as any)?.analysis_data?.results?.summary?.overall_signal ||
+                            (analysis as any)?.analysis_data?.results?.consensus?.overall_signal ||
+                            'N/A';
+
+                          const badgeClass = getSignalClasses(aiSignal);
+
+                          return (
+                            <Badge variant="outline" className={`text-xs flex-shrink-0 ${badgeClass}`}>
+                              {aiSignal}
+                            </Badge>
+                          );
+                        })()}
                       </div>
                       <div className="flex items-center text-xs text-slate-600">
                         <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
@@ -73,32 +94,9 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
                   </div>
 
                   {/* Consensus data */}
-                  {analysis.analysis_data?.results?.consensus && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge 
-                        variant="outline"
-                        className={`text-xs flex-shrink-0 ${
-                          analysis.analysis_data.results.consensus.overall_signal?.toLowerCase() === 'bullish' 
-                            ? 'bg-green-100 text-green-700 border-green-200' :
-                          analysis.analysis_data.results.consensus.overall_signal?.toLowerCase() === 'bearish' 
-                            ? 'bg-red-100 text-red-700 border-red-200' : 
-                            'bg-yellow-100 text-yellow-700 border-yellow-200'
-                        }`}
-                      >
-                        {analysis.analysis_data.results.consensus.overall_signal || 'N/A'}
-                      </Badge>
-                      <span className="text-xs text-slate-500 flex-shrink-0">
-                        {analysis.analysis_data.results.consensus.signal_strength}
-                      </span>
-                    </div>
-                  )}
+                  {/* Consensus badge removed per requirement to show only AI trading signal */}
 
-                  {/* AI Analysis confidence */}
-                  {analysis.analysis_data?.results?.ai_analysis && (
-                    <div className="text-xs text-slate-500">
-                      Confidence: {analysis.analysis_data.results.ai_analysis.confidence_pct}%
-                    </div>
-                  )}
+
                 </div>
               </div>
             ))}

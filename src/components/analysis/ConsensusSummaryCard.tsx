@@ -59,6 +59,7 @@ const ConsensusSummaryCard = ({ consensus, analysisDate, analysisPeriod }: Conse
   const neutralPercentage = consensus.neutral_percentage || 0;
   const warnings = consensus.warnings || [];
   const signalDetails = consensus.signal_details || [];
+  const total_signals = signalDetails.length;
 
   return (
     <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[99%] flex flex-col">
@@ -70,6 +71,8 @@ const ConsensusSummaryCard = ({ consensus, analysisDate, analysisPeriod }: Conse
       </CardHeader>
       <CardContent className="pt-0 flex-1 overflow-y-auto max-h-[calc(90vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="space-y-6">
+
+
           {/* Signal Details */}
           <div className="space-y-3">
             <div className="grid grid-cols-1 gap-3">

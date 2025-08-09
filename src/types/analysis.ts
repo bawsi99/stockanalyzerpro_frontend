@@ -27,6 +27,7 @@ export interface ConsensusSignal {
   strength: string;
   weight: number;
   score: number;
+  value?: number;  // Add optional value field for frontend display
   description: string;
 }
 

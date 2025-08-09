@@ -162,6 +162,12 @@ const NewOutput: React.FC = () => {
   // Enhanced data state
   const [enhancedData, setEnhancedData] = useState<AnalysisResults | null>(null);
 
+  // Function to clear cache and force fresh analysis
+  const clearCacheAndRefresh = () => {
+    localStorage.removeItem('analysisResult');
+    window.location.reload();
+  };
+
   // Load analysis data and stock symbol from localStorage or route params
   useEffect(() => {
     try {
@@ -378,8 +384,8 @@ const NewOutput: React.FC = () => {
             <AlertTriangle className="h-12 w-12 text-red-400" />
           </div>
           <h1 className="text-3xl font-bold text-red-800 mb-4">{error}</h1>
-          <Button onClick={() => window.location.reload()} className="mt-4">
-            Retry
+          <Button onClick={clearCacheAndRefresh} className="mt-4">
+            Clear Cache & Retry
           </Button>
         </div>
       </div>
@@ -833,6 +839,19 @@ const NewOutput: React.FC = () => {
       <Header />
       
       <div className="w-full px-4 py-8">
+        {/* Cache Clear Button */}
+        <div className="flex justify-end mb-4">
+          <Button 
+            onClick={clearCacheAndRefresh} 
+            variant="outline" 
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Clear Cache & Refresh
+          </Button>
+        </div>
+        
         {/* Stock Header */}
         <div className="mb-8">
           <div className="text-center mb-6">
