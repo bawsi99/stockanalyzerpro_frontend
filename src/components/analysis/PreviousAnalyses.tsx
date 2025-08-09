@@ -1,18 +1,40 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, Clock, History, Loader2 } from 'lucide-react';
 import { StoredAnalysis } from '@/hooks/useStockAnalyses';
 import { format } from "date-fns";
 
+export interface RunningAnalysisItem {
+  id: string;
+  stock: string;
+  exchange: string;
+  period: number;
+  interval: string;
+  sector: string | null;
+  startedAt: number; // epoch ms
+  status?: 'running' | 'success' | 'error';
+  error?: string;
+}
+
 interface PreviousAnalysesProps {
   analyses: StoredAnalysis[];
   onAnalysisSelect?: (analysis: StoredAnalysis) => void;
   loading?: boolean;
   error?: string | null;
+  runningAnalyses?: RunningAnalysisItem[];
 }
 
-const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error = null }: PreviousAnalysesProps) => {
+const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error = null, runningAnalyses = [] }: PreviousAnalysesProps) => {
+  // local clock to tick running timers
+  const [now, setNow] = useState<number>(Date.now());
+
+  useEffect(() => {
+    if (!runningAnalyses || runningAnalyses.length === 0) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [runningAnalyses?.length]);
+
   return (
     <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm max-h-[900px] flex flex-col">
       <CardHeader className="flex-shrink-0">
@@ -36,7 +58,7 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
             <p className="text-red-600 mb-2">Error loading analyses</p>
             <p className="text-sm text-slate-500 break-words">{error}</p>
           </div>
-        ) : analyses.length === 0 ? (
+        ) : analyses.length === 0 && (runningAnalyses?.length ?? 0) === 0 ? (
           <div className="text-center py-8">
             <TrendingUp className="h-12 w-12 text-slate-300 mx-auto mb-4" />
             <p className="text-slate-500">No previous analyses found</p>
@@ -44,6 +66,35 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
           </div>
         ) : (
           <div className="space-y-3">
+            {/* Running analyses at the top */}
+            {runningAnalyses && runningAnalyses.length > 0 && (
+              <div className="space-y-2">
+                {runningAnalyses.map((run) => {
+                  const elapsedSec = Math.max(0, Math.floor((now - run.startedAt) / 1000));
+                  return (
+                    <div key={run.id} className="border rounded-lg p-3 bg-amber-50/80 hover:bg-amber-100 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h3 className="font-semibold text-slate-800 truncate">{run.stock}</h3>
+                            <Badge variant="outline" className="text-xs flex-shrink-0 bg-blue-100 text-blue-700 border-blue-200 flex items-center">
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Running
+                            </Badge>
+                          </div>
+                          <div className="flex items-center text-xs text-slate-600">
+                            <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
+                            <span className="truncate">
+                              Elapsed {String(Math.floor(elapsedSec / 60)).padStart(2, '0')}:{String(elapsedSec % 60).padStart(2, '0')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             {analyses.map((analysis) => (
               <div key={analysis.id} className="border rounded-lg p-3 bg-slate-50 hover:bg-slate-100 transition-colors">
                 <div className="space-y-2">

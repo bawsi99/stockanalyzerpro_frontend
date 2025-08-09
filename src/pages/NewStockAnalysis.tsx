@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
-import PreviousAnalyses from "@/components/analysis/PreviousAnalyses";
+import PreviousAnalyses, { RunningAnalysisItem } from "@/components/analysis/PreviousAnalyses";
 import { Play, Settings, TrendingUp, Clock, BarChart3, Target, AlertTriangle } from "lucide-react";
 import { useStockAnalyses, StoredAnalysis } from "@/hooks/useStockAnalyses";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,7 +59,7 @@ const NewStockAnalysis = () => {
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [timer, setTimer] = useState(0);
+  const [runningAnalyses, setRunningAnalyses] = useState<RunningAnalysisItem[]>([]);
 
   // Sector state
   const [sectors, setSectors] = useState<SectorInfo[]>([]);
@@ -73,6 +73,35 @@ const NewStockAnalysis = () => {
   const { toast } = useToast();
   const { saveAnalysis, analyses, loading, error } = useStockAnalyses();
   const { user } = useAuth();
+
+  // Persistence helpers for running analyses
+  const STORAGE_KEY = 'runningAnalyses_v1';
+  const loadRunningFromStorage = (): RunningAnalysisItem[] => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as RunningAnalysisItem[];
+      // Optional prune: drop very old entries (> 2 hours)
+      const twoHoursMs = 2 * 60 * 60 * 1000;
+      const now = Date.now();
+      return parsed.filter(item => now - item.startedAt < twoHoursMs);
+    } catch {
+      return [];
+    }
+  };
+  const saveRunningToStorage = (items: RunningAnalysisItem[]) => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {}
+  };
+  const addRunningToStorage = (item: RunningAnalysisItem) => {
+    const current = loadRunningFromStorage();
+    const updated = [item, ...current.filter(r => r.id !== item.id)];
+    saveRunningToStorage(updated);
+  };
+  const removeRunningFromStorage = (id: string) => {
+    const current = loadRunningFromStorage();
+    const updated = current.filter(r => r.id !== id);
+    saveRunningToStorage(updated);
+  };
 
   // API functions
   const fetchSectors = async () => {
@@ -114,27 +143,21 @@ const NewStockAnalysis = () => {
     fetchSectors();
   }, []);
 
+  // Rehydrate running analyses from storage on mount
+  useEffect(() => {
+    const hydrated = loadRunningFromStorage();
+    if (hydrated.length) {
+      setRunningAnalyses(hydrated);
+    }
+  }, []);
+
   useEffect(() => {
     if (formData.stock) {
       fetchStockSector(formData.stock);
     }
   }, [formData.stock, fetchStockSector]);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isLoading) {
-      setTimer(0);
-      interval = setInterval(() => {
-        setTimer((prev) => prev + 1);
-      }, 1000);
-    } else {
-      if (interval) clearInterval(interval);
-      setTimer(0);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isLoading]);
+  // Removed local timer; timers are now shown in PreviousAnalyses for running items
 
   // Event handlers
   const handleInputChange = (field: string, value: string) => {
@@ -175,7 +198,6 @@ const NewStockAnalysis = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setFormError(null);
 
     try {
@@ -188,42 +210,63 @@ const NewStockAnalysis = () => {
         email: user?.email // Include user email for backend user ID mapping
       };
 
-      const data = await apiService.enhancedAnalyzeStock(payload);
+      // Create a running item and start async request
+      const runId = `${payload.stock}-${Date.now()}`;
+      const runningItem: RunningAnalysisItem = {
+        id: runId,
+        stock: payload.stock,
+        exchange: payload.exchange,
+        period: payload.period,
+        interval: payload.interval,
+        sector: payload.sector ?? null,
+        startedAt: Date.now(),
+        status: 'running',
+      };
+      setRunningAnalyses((prev) => [runningItem, ...prev]);
+      addRunningToStorage(runningItem);
 
-      if (user) {
-        try {
-          // The saveAnalysis function now handles the normalized data extraction
-          await saveAnalysis(data.stock_symbol, data);
-        } catch (saveError) {
-          // console.error("Error saving analysis to Supabase:", saveError);
-        }
-      }
-
-      // Store the complete response in localStorage for the output page
-      localStorage.setItem('analysisResult', JSON.stringify(data));
-
-      // Request JWT token for WebSocket authentication and store in localStorage
-      try {
-        const userId = user?.id || 'anonymous';
-        const resp = await fetch(`/auth/token?user_id=${encodeURIComponent(userId)}`, {
-          method: 'POST'
-        });
-        if (resp.ok) {
-          const tokenData = await resp.json();
-          if (tokenData.token) {
-            localStorage.setItem('jwt_token', tokenData.token);
+      setIsLoading(true);
+      apiService
+        .enhancedAnalyzeStock(payload)
+        .then(async (data) => {
+          if (user) {
+            try {
+              await saveAnalysis(data.stock_symbol, data);
+            } catch (_) {}
           }
-        }
-      } catch (err) {
-        // Ignore token errors for now
-      }
+          localStorage.setItem('analysisResult', JSON.stringify(data));
+          try {
+            const userId = user?.id || 'anonymous';
+            const resp = await fetch(`/auth/token?user_id=${encodeURIComponent(userId)}`, { method: 'POST' });
+            if (resp.ok) {
+              const tokenData = await resp.json();
+              if (tokenData.token) localStorage.setItem('jwt_token', tokenData.token);
+            }
+          } catch (_) {}
 
-      toast({
-        title: "Analysis Complete",
-        description: `Analysis completed for ${data.stock_symbol}`,
-      });
+          setRunningAnalyses((prev) => prev.filter((r) => r.id !== runId));
+          removeRunningFromStorage(runId);
 
-      navigate('/output');
+          toast({
+            title: "Analysis Complete",
+            description: `Analysis completed for ${data.stock_symbol}`,
+          });
+          // Only navigate if still on analysis page
+          if (window.location.pathname.includes('/analysis')) {
+            navigate('/output');
+          }
+        })
+        .catch((err: unknown) => {
+          const errorMessage = err instanceof Error ? err.message : 'An error occurred during analysis';
+          setFormError(errorMessage);
+          setRunningAnalyses((prev) => prev.map((r) => (r.id === runId ? { ...r, status: 'error', error: errorMessage } : r)));
+          setTimeout(() => {
+            setRunningAnalyses((prev) => prev.filter((r) => r.id !== runId));
+            removeRunningFromStorage(runId);
+          }, 2000);
+          toast({ title: 'Analysis Failed', description: errorMessage, variant: 'destructive' });
+        })
+        .finally(() => setIsLoading(false));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred during analysis";
       setFormError(errorMessage);
@@ -232,8 +275,6 @@ const NewStockAnalysis = () => {
         description: errorMessage,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -430,37 +471,16 @@ const NewStockAnalysis = () => {
                       <Button 
                         type="submit" 
                         className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
-                        disabled={isLoading}
                       >
-                        {isLoading ? (
-                          <div className="flex items-center space-x-2">
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                            <span>Running Analysis...</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center space-x-2">
-                            <Play className="h-5 w-5" />
-                            <span>Start Analysis</span>
-                          </div>
-                        )}
+                        <div className="flex items-center space-x-2">
+                          <Play className="h-5 w-5" />
+                          <span>Start Analysis</span>
+                        </div>
                       </Button>
-                      
-                      {isLoading && (
-                        <div className="text-center space-y-2">
-                          <div className="text-lg font-medium text-slate-700">
-                            Elapsed Time: {String(Math.floor(timer / 60)).padStart(2, '0')}:{String(timer % 60).padStart(2, '0')}
-                          </div>
-                          <div className="text-sm text-slate-500">
-                            Analysis typically takes 2-3 minutes to complete
-                          </div>
-                        </div>
-                      )}
-                      
-                      {!isLoading && (
-                        <div className="text-center text-sm text-slate-500">
-                          Analysis typically takes 2-3 minutes to complete
-                        </div>
-                      )}
+
+                      <div className="text-center text-sm text-slate-500">
+                        You can start another analysis while the current one runs. Typical duration 2–3 minutes.
+                      </div>
                     </div>
                   </form>
                 </CardContent>
@@ -474,6 +494,7 @@ const NewStockAnalysis = () => {
                 onAnalysisSelect={handleSelectAnalysis}
                 loading={loading}
                 error={error}
+                runningAnalyses={runningAnalyses}
               />
             </div>
           </div>
