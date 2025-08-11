@@ -91,7 +91,10 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
   };
 
   const formatPercentage = (value: number) => {
-    return `${(value * 100).toFixed(2)}%`;
+    const numeric = typeof value === 'number' ? value : 0;
+    const isAlreadyPercent = Math.abs(numeric) > 1; // treat values >1 as already percent units
+    const pct = isAlreadyPercent ? numeric : numeric * 100;
+    return `${pct.toFixed(2)}%`;
   };
 
   const formatNumber = (value: number, decimals: number = 2) => {

@@ -41,6 +41,7 @@ import {
 
 // Analysis Components
 import ConsensusSummaryCard from "@/components/analysis/ConsensusSummaryCard";
+import SignalsSummaryCard from "@/components/analysis/SignalsSummaryCard";
 import AITradingAnalysisOverviewCard from "@/components/analysis/AITradingAnalysisOverviewCard";
 
 import MultiTimeframeAnalysisCard from "@/components/analysis/MultiTimeframeAnalysisCard";
@@ -465,49 +466,49 @@ const NewOutput: React.FC = () => {
     // Transform flat backend structure to nested frontend structure
     return {
       basic_metrics: {
-        volatility: backendRiskMetrics.volatility || 0,
-        annualized_volatility: backendRiskMetrics.annualized_volatility || 0,
-        mean_return: backendRiskMetrics.mean_return || 0,
-        annualized_return: backendRiskMetrics.annualized_return || 0
+        volatility: backendRiskMetrics.volatility ?? backendRiskMetrics.current_volatility ?? 0,
+        annualized_volatility: backendRiskMetrics.annualized_volatility ?? backendRiskMetrics.volatility_annualized ?? 0,
+        mean_return: backendRiskMetrics.mean_return ?? backendRiskMetrics.avg_return ?? 0,
+        annualized_return: backendRiskMetrics.annualized_return ?? backendRiskMetrics.return_annualized ?? 0
       },
       var_metrics: {
-        var_95: backendRiskMetrics.var_95 || 0,
-        var_99: backendRiskMetrics.var_99 || 0,
-        es_95: backendRiskMetrics.expected_shortfall_95 || 0,
-        es_99: backendRiskMetrics.expected_shortfall_99 || 0
+        var_95: backendRiskMetrics.var_95 ?? backendRiskMetrics.value_at_risk_95 ?? 0,
+        var_99: backendRiskMetrics.var_99 ?? backendRiskMetrics.value_at_risk_99 ?? 0,
+        es_95: backendRiskMetrics.expected_shortfall_95 ?? backendRiskMetrics.es_95 ?? 0,
+        es_99: backendRiskMetrics.expected_shortfall_99 ?? backendRiskMetrics.es_99 ?? 0
       },
       drawdown_metrics: {
-        max_drawdown: backendRiskMetrics.max_drawdown || 0,
-        current_drawdown: backendRiskMetrics.current_drawdown || 0,
-        drawdown_duration: backendRiskMetrics.drawdown_duration || 0
+        max_drawdown: backendRiskMetrics.max_drawdown ?? backendRiskMetrics.dd_max ?? 0,
+        current_drawdown: backendRiskMetrics.current_drawdown ?? backendRiskMetrics.dd_current ?? 0,
+        drawdown_duration: backendRiskMetrics.drawdown_duration ?? backendRiskMetrics.dd_duration ?? 0
       },
       risk_adjusted_metrics: {
-        sharpe_ratio: backendRiskMetrics.sharpe_ratio || 0,
-        sortino_ratio: backendRiskMetrics.sortino_ratio || 0,
-        calmar_ratio: backendRiskMetrics.calmar_ratio || 0,
-        risk_adjusted_return: backendRiskMetrics.annualized_return || 0
+        sharpe_ratio: backendRiskMetrics.sharpe_ratio ?? backendRiskMetrics.ratio_sharpe ?? 0,
+        sortino_ratio: backendRiskMetrics.sortino_ratio ?? backendRiskMetrics.ratio_sortino ?? 0,
+        calmar_ratio: backendRiskMetrics.calmar_ratio ?? backendRiskMetrics.ratio_calmar ?? 0,
+        risk_adjusted_return: backendRiskMetrics.annualized_return ?? backendRiskMetrics.return_annualized ?? 0
       },
       distribution_metrics: {
-        skewness: backendRiskMetrics.skewness || 0,
-        kurtosis: backendRiskMetrics.kurtosis || 0,
-        tail_frequency: backendRiskMetrics.tail_frequency || 0
+        skewness: backendRiskMetrics.skewness ?? 0,
+        kurtosis: backendRiskMetrics.kurtosis ?? 0,
+        tail_frequency: backendRiskMetrics.tail_frequency ?? backendRiskMetrics.tail_freq ?? 0
       },
       volatility_analysis: {
-        current_volatility: backendRiskMetrics.annualized_volatility || 0,
+        current_volatility: backendRiskMetrics.current_volatility ?? backendRiskMetrics.annualized_volatility ?? 0,
         volatility_percentile: 50, // Not provided in backend
-        volatility_regime: backendRiskMetrics.annualized_volatility > 0.3 ? 'high' : 
-                          backendRiskMetrics.annualized_volatility > 0.2 ? 'medium' : 'low'
+        volatility_regime: (backendRiskMetrics.current_volatility ?? backendRiskMetrics.annualized_volatility ?? 0) > 0.3 ? 'high' : 
+                          (backendRiskMetrics.current_volatility ?? backendRiskMetrics.annualized_volatility ?? 0) > 0.2 ? 'medium' : 'low'
       },
       liquidity_analysis: {
         liquidity_score: backendRiskMetrics.liquidity_analysis?.liquidity_score || backendRiskMetrics.liquidity_score || 50,
-        volume_volatility: backendRiskMetrics.liquidity_analysis?.volume_volatility || backendRiskMetrics.volume_volatility || 0
+        volume_volatility: backendRiskMetrics.liquidity_analysis?.volume_volatility ?? backendRiskMetrics.volume_volatility ?? null
       },
       correlation_analysis: {
         market_correlation: backendRiskMetrics.correlation_analysis?.market_correlation || backendRiskMetrics.market_correlation || 0.5,
         beta: backendRiskMetrics.correlation_analysis?.beta || backendRiskMetrics.beta || 1.0
       },
       risk_assessment: {
-        overall_risk_score: backendRiskMetrics.risk_score || 50,
+        overall_risk_score: backendRiskMetrics.risk_score ?? backendRiskMetrics.overall_risk_score ?? 50,
         risk_level: backendRiskMetrics.risk_level || 'medium',
         risk_components: backendRiskMetrics.risk_components ? 
           Object.fromEntries(
@@ -537,6 +538,8 @@ const NewOutput: React.FC = () => {
     // Transform advanced risk metrics
     const backendRiskMetrics = enhancedData?.enhanced_metadata?.advanced_risk_metrics || 
                                enhancedData?.technical_indicators?.advanced_risk_metrics ||
+                               enhancedData?.advanced_risk_metrics ||
+                               enhancedData?.risk_metrics ||
                                baseIndicators?.advanced_risk;
     const transformedRiskMetrics = transformAdvancedRiskMetrics(backendRiskMetrics);
     
@@ -575,6 +578,7 @@ const NewOutput: React.FC = () => {
   const indicator_summary_md = enhancedData?.indicator_summary || analysisData?.indicator_summary_md;
   const chart_insights = enhancedData?.chart_insights || analysisData?.chart_insights;
   const ai_analysis = enhancedData?.ai_analysis || analysisData?.ai_analysis;
+  const deterministicSignals = (enhancedData as any)?.signals || (analysisData as any)?.signals || null;
   // Transform backend sector benchmarking data to frontend format
   const transformSectorBenchmarking = (backendData: any) => {
     if (!backendData) return null;
@@ -990,6 +994,20 @@ const NewOutput: React.FC = () => {
                     consensus={consensus} 
                     analysisDate={enhancedData?.analysis_timestamp}
                     analysisPeriod={enhancedData?.analysis_period}
+                  />
+                )}
+              </div>
+
+              {/* Deterministic Signals */}
+              <div className="xl:col-span-1">
+                {analysisLoading ? (
+                  <AnalysisCardSkeleton 
+                    title="Deterministic Signals" 
+                    description="Loading signals..." 
+                  />
+                ) : (
+                  <SignalsSummaryCard 
+                    signals={deterministicSignals}
                   />
                 )}
               </div>

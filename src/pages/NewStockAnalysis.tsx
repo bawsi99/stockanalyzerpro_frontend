@@ -14,6 +14,7 @@ import { useStockAnalyses, StoredAnalysis } from "@/hooks/useStockAnalyses";
 import { useAuth } from "@/contexts/AuthContext";
 import { AnalysisResponse, ErrorResponse, isAnalysisResponse, isErrorResponse } from "@/types/analysis";
 import { apiService } from "@/services/api";
+import { authService } from "@/services/authService";
 import { StockSelector } from "@/components/ui/stock-selector";
 
 // Type definitions
@@ -238,11 +239,8 @@ const NewStockAnalysis = () => {
           localStorage.setItem('analysisResult', JSON.stringify(data));
           try {
             const userId = user?.id || 'anonymous';
-            const resp = await fetch(`/auth/token?user_id=${encodeURIComponent(userId)}`, { method: 'POST' });
-            if (resp.ok) {
-              const tokenData = await resp.json();
-              if (tokenData.token) localStorage.setItem('jwt_token', tokenData.token);
-            }
+            const { token } = await authService.createToken(userId);
+            if (token) localStorage.setItem('jwt_token', token);
           } catch (_) {}
 
           setRunningAnalyses((prev) => prev.filter((r) => r.id !== runId));

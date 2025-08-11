@@ -18,7 +18,8 @@ import {
   Summary,
   SectorBenchmarking,
   SectorContext,
-  Overlays,
+    Overlays,
+    EnhancedOverlays,
   ChartData,
   LegacyAIAnalysis,
   AnalysisResults,
@@ -50,7 +51,7 @@ export interface TransformedAnalysisData {
   triangle_patterns?: unknown[];
   flag_patterns?: unknown[];
   volume_anomalies_detailed?: unknown[];
-  overlays: Overlays;
+  overlays: EnhancedOverlays;
   trading_guidance?: Record<string, unknown>;
   multi_timeframe_analysis?: MultiTimeframeAnalysis;
   
@@ -102,46 +103,50 @@ export function transformDatabaseRecord(record: SimplifiedDatabaseRecord): Trans
  * Transform enhanced JSON structure (new format)
  */
 function transformEnhancedStructure(data: Record<string, unknown> | AnalysisResults): TransformedAnalysisData {
+  // Some API responses return the full object with `results` nested. Flatten when present.
+  // Prefer `results` as the base for all extractions to avoid missing fields in cards.
+  const base: any = (data as any).results ? (data as any).results : (data as any);
+
   return {
     // Enhanced fields
-    symbol: data.symbol,
-    exchange: data.exchange,
-    analysis_timestamp: data.analysis_timestamp,
-    analysis_type: data.analysis_type,
-    mathematical_validation: data.mathematical_validation,
-    calculation_method: data.calculation_method,
-    accuracy_improvement: data.accuracy_improvement,
-    current_price: data.current_price,
-    price_change: data.price_change,
-    price_change_percentage: data.price_change_percentage,
-    analysis_period: data.analysis_period,
-    interval: data.interval,
-    technical_indicators: data.technical_indicators,
-    risk_level: data.risk_level,
-    recommendation: data.recommendation,
-    sector_context: data.sector_context,
-    enhanced_metadata: data.enhanced_metadata,
-    mathematical_validation_results: data.mathematical_validation_results,
-    code_execution_metadata: data.code_execution_metadata,
+    symbol: base.symbol,
+    exchange: base.exchange,
+    analysis_timestamp: base.analysis_timestamp,
+    analysis_type: base.analysis_type,
+    mathematical_validation: base.mathematical_validation,
+    calculation_method: base.calculation_method,
+    accuracy_improvement: base.accuracy_improvement,
+    current_price: base.current_price,
+    price_change: base.price_change,
+    price_change_percentage: base.price_change_percentage,
+    analysis_period: base.analysis_period,
+    interval: base.interval,
+    technical_indicators: base.technical_indicators,
+    risk_level: base.risk_level,
+    recommendation: base.recommendation,
+    sector_context: base.sector_context,
+    enhanced_metadata: base.enhanced_metadata,
+    mathematical_validation_results: base.mathematical_validation_results,
+    code_execution_metadata: base.code_execution_metadata,
     
     // Core analysis components
-    consensus: extractConsensusFromEnhanced(data),
-    indicators: extractIndicatorsFromEnhanced(data),
-    charts: extractCharts(data),
-    ai_analysis: extractAIAnalysisFromEnhanced(data),
-    indicator_summary_md: data.indicator_summary || '',
-    indicator_summary: data.indicator_summary || '', // Add missing property
-    chart_insights: data.chart_insights || '',
-    sector_benchmarking: extractSectorBenchmarkingFromEnhanced(data),
-    summary: extractSummaryFromEnhanced(data),
-    support_levels: extractSupportLevels(data),
-    resistance_levels: extractResistanceLevels(data),
-    triangle_patterns: extractTrianglePatterns(data),
-    flag_patterns: extractFlagPatterns(data),
-    volume_anomalies_detailed: extractVolumeAnomalies(data),
-    overlays: extractOverlays(data),
-    trading_guidance: extractTradingGuidance(data),
-    multi_timeframe_analysis: data.multi_timeframe_analysis
+    consensus: extractConsensusFromEnhanced(base),
+    indicators: extractIndicatorsFromEnhanced(base),
+    charts: extractCharts(base),
+    ai_analysis: extractAIAnalysisFromEnhanced(base),
+    indicator_summary_md: base.indicator_summary_md || base.indicator_summary || '',
+    indicator_summary: base.indicator_summary || '',
+    chart_insights: base.chart_insights || '',
+    sector_benchmarking: extractSectorBenchmarkingFromEnhanced(base),
+    summary: extractSummaryFromEnhanced(base),
+    support_levels: extractSupportLevels(base),
+    resistance_levels: extractResistanceLevels(base),
+    triangle_patterns: extractTrianglePatterns(base),
+    flag_patterns: extractFlagPatterns(base),
+    volume_anomalies_detailed: extractVolumeAnomalies(base),
+    overlays: extractOverlays(base),
+    trading_guidance: extractTradingGuidance(base),
+    multi_timeframe_analysis: base.multi_timeframe_analysis
   };
 }
 
@@ -232,6 +237,103 @@ function extractConsensusFromEnhanced(data: Record<string, unknown> | AnalysisRe
 function extractIndicatorsFromEnhanced(data: Record<string, unknown> | AnalysisResults): Indicators {
   const technicalIndicators = data.technical_indicators || {};
   
+  // Normalize backend advanced risk metrics (flat) into the nested shape the UI expects
+  const normalizeAdvancedRisk = (raw: any) => {
+    if (!raw || typeof raw !== 'object') return null;
+
+    // Map flat fields into grouped metrics
+    const basic_metrics = {
+      volatility: Number(raw.volatility || 0),
+      annualized_volatility: Number(raw.annualized_volatility || 0),
+      mean_return: Number(raw.mean_return || 0),
+      annualized_return: Number(raw.annualized_return || 0),
+    };
+
+    const var_metrics = {
+      var_95: Number(raw.var_95 || 0),
+      var_99: Number(raw.var_99 || 0),
+      es_95: Number(raw.expected_shortfall_95 || raw.es_95 || 0),
+      es_99: Number(raw.expected_shortfall_99 || raw.es_99 || 0),
+    };
+
+    const drawdown_metrics = {
+      max_drawdown: Number(raw.max_drawdown || 0),
+      current_drawdown: Number(raw.current_drawdown || 0),
+      drawdown_duration: Number(raw.drawdown_duration || 0),
+    };
+
+    const risk_adjusted_metrics = {
+      sharpe_ratio: Number(raw.sharpe_ratio || 0),
+      sortino_ratio: Number(raw.sortino_ratio || 0),
+      calmar_ratio: Number(raw.calmar_ratio || 0),
+      // If no explicit risk_adjusted_return, fall back to annualized_return
+      risk_adjusted_return: Number(raw.risk_adjusted_return ?? raw.annualized_return ?? 0),
+    };
+
+    const distribution_metrics = {
+      skewness: Number(raw.skewness || 0),
+      kurtosis: Number(raw.kurtosis || 0),
+      tail_frequency: Number(raw.tail_frequency || 0),
+    };
+
+    const annualVol = Number(raw.annualized_volatility || 0);
+    const volatility_regime = annualVol > 0.3 ? 'high' : annualVol > 0.2 ? 'medium' : 'normal';
+    const volatility_analysis = {
+      current_volatility: Number(raw.volatility || 0),
+      volatility_percentile: Number(raw.volatility_percentile || 0),
+      volatility_regime,
+    };
+
+    // Liquidity score heuristic mapping from categorical risk to a 0-100 score
+    const liquidityRisk = (raw.risk_components && raw.risk_components.liquidity_risk) || '';
+    const liquidity_score = liquidityRisk === 'High' ? 30 : liquidityRisk === 'Medium' ? 60 : liquidityRisk === 'Low' ? 85 : 50;
+    const liquidity_analysis = {
+      liquidity_score,
+      // If backend later provides volume_volatility, it will show here; otherwise N/A in UI
+      volume_volatility: typeof raw.volume_volatility === 'number' ? Number(raw.volume_volatility) : undefined,
+    };
+
+    // Correlation analysis may not be available from this block; default to zeros
+    const correlation_analysis = {
+      market_correlation: Number(raw.market_correlation || 0),
+      beta: Number(raw.beta || 0),
+    };
+
+    // Risk assessment aggregation
+    const risk_score = Number(raw.risk_score || 0);
+    const risk_level = String(raw.risk_level || 'Medium').toLowerCase();
+
+    // Convert categorical components to numeric scores for UI bars
+    const toScore = (val: any) => (val === 'High' ? 80 : val === 'Medium' ? 50 : val === 'Low' ? 20 : Number(val || 0));
+    const risk_components_raw = raw.risk_components || {};
+    const risk_components = {
+      volatility_risk: toScore(risk_components_raw.volatility_risk),
+      drawdown_risk: toScore(risk_components_raw.drawdown_risk),
+      tail_risk: toScore(risk_components_raw.tail_risk),
+      liquidity_risk: toScore(risk_components_raw.liquidity_risk),
+      correlation_risk: toScore(risk_components_raw.correlation_risk ?? risk_components_raw.sector_risk),
+    };
+
+    const mitigation_strategies: string[] = Array.isArray(raw.mitigation_strategies) ? raw.mitigation_strategies : [];
+
+    return {
+      basic_metrics,
+      var_metrics,
+      drawdown_metrics,
+      risk_adjusted_metrics,
+      distribution_metrics,
+      volatility_analysis,
+      liquidity_analysis,
+      correlation_analysis,
+      risk_assessment: {
+        overall_risk_score: risk_score,
+        risk_level,
+        risk_components,
+        mitigation_strategies,
+      },
+    } as any;
+  };
+  
   return {
     moving_averages: {
       sma_20: technicalIndicators.moving_averages?.sma_20 || 0,
@@ -287,7 +389,7 @@ function extractIndicatorsFromEnhanced(data: Record<string, unknown> | AnalysisR
       volume: []
     },
     advanced_patterns: data.overlays?.advanced_patterns || null,
-    advanced_risk: data.enhanced_metadata?.advanced_risk_metrics || null,
+    advanced_risk: normalizeAdvancedRisk((data as any).enhanced_metadata?.advanced_risk_metrics) || null,
     stress_testing: data.enhanced_metadata?.stress_testing_metrics || null,
     scenario_analysis: data.enhanced_metadata?.scenario_analysis_metrics || null,
     metadata: {
@@ -428,12 +530,12 @@ function extractSectorBenchmarkingFromEnhanced(data: Record<string, unknown> | A
     market_benchmarking: {
       beta: marketBenchmarking?.beta as number || 1.0,
       correlation: marketBenchmarking?.correlation as number || 0.5,
-      sharpe_ratio: marketBenchmarking?.stock_sharpe as number || 0,
+      sharpe_ratio: (marketBenchmarking?.market_sharpe as number) ?? (marketBenchmarking?.stock_sharpe as number) ?? 0,
       volatility: marketBenchmarking?.volatility as number || 0,
       max_drawdown: marketBenchmarking?.max_drawdown as number || 0,
       cumulative_return: marketBenchmarking?.cumulative_return as number || 0,
       annualized_return: marketBenchmarking?.annualized_return as number || 0,
-      risk_free_rate: 0.05,
+      risk_free_rate: (marketBenchmarking?.risk_free_rate as number) || 0.05,
       current_vix: 20,
       data_source: 'NSE',
       data_points: marketBenchmarking?.data_points as number || 0
@@ -508,11 +610,13 @@ function extractSummaryFromEnhanced(data: Record<string, unknown> | AnalysisResu
 }
 
 /**
- * Extract overlays data for pattern analysis
+ * Extract overlays data for pattern analysis (including advanced patterns when present)
  */
-function extractOverlays(data: Record<string, unknown>): Overlays {
-  const overlays = data.overlays || {};
-  
+function extractOverlays(data: Record<string, unknown>): EnhancedOverlays {
+  const overlays = (data as any).overlays || {};
+
+  const advanced = overlays.advanced_patterns || (data as any).advanced_patterns || (data as any).technical_indicators?.advanced_patterns || null;
+
   return {
     triangles: overlays.triangles || [],
     flags: overlays.flags || [],
@@ -520,7 +624,16 @@ function extractOverlays(data: Record<string, unknown>): Overlays {
     double_tops: overlays.double_tops || [],
     double_bottoms: overlays.double_bottoms || [],
     divergences: overlays.divergences || [],
-    volume_anomalies: overlays.volume_anomalies || []
+    volume_anomalies: overlays.volume_anomalies || [],
+    advanced_patterns: advanced || {
+      head_and_shoulders: [],
+      inverse_head_and_shoulders: [],
+      cup_and_handle: [],
+      triple_tops: [],
+      triple_bottoms: [],
+      wedge_patterns: [],
+      channel_patterns: []
+    }
   };
 }
 
