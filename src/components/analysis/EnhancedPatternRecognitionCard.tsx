@@ -55,12 +55,6 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
     channel_patterns: []
   };
 
-  const triangles = overlays.triangles || [];
-  const flags = overlays.flags || [];
-  const double_tops = overlays.double_tops || [];
-  const double_bottoms = overlays.double_bottoms || [];
-  const divergences = overlays.divergences || [];
-  const volume_anomalies = overlays.volume_anomalies || [];
   const support_resistance = overlays.support_resistance || { support: [], resistance: [] };
 
   const getPatternIcon = (patternType: string) => {
@@ -140,28 +134,28 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
     });
   };
 
+  // Filter to ensure cards have meaningful data (non-empty)
+  const hasLevels = (p: any) => p && (p.target_level !== undefined || p.stop_level !== undefined);
+  const filteredTripleTops = (advanced_patterns.triple_tops || []).filter(hasLevels);
+  const filteredTripleBottoms = (advanced_patterns.triple_bottoms || []).filter(hasLevels);
+  const filteredChannelPatterns = (advanced_patterns.channel_patterns || []).filter(hasLevels);
+
   const allPatterns = [
-    ...formatPatternData(advanced_patterns.head_and_shoulders, 'head_and_shoulders') || [],
-    ...formatPatternData(advanced_patterns.inverse_head_and_shoulders, 'inverse_head_and_shoulders') || [],
-    ...formatPatternData(advanced_patterns.cup_and_handle, 'cup_and_handle') || [],
-    ...formatPatternData(advanced_patterns.triple_tops, 'triple_tops') || [],
-    ...formatPatternData(advanced_patterns.triple_bottoms, 'triple_bottoms') || [],
-    ...formatPatternData(advanced_patterns.wedge_patterns, 'wedge') || [],
-    ...formatPatternData(advanced_patterns.channel_patterns, 'channel') || []
+    ...formatPatternData(filteredTripleTops, 'triple_tops') || [],
+    ...formatPatternData(filteredTripleBottoms, 'triple_bottoms') || [],
+    ...formatPatternData(filteredChannelPatterns, 'channel') || []
   ];
 
   const basicPatterns = [
-    { name: 'Triangles', count: triangles.length, type: 'triangle' },
-    { name: 'Flags', count: flags.length, type: 'flag' },
-    { name: 'Double Tops', count: double_tops.length, type: 'double_top' },
-    { name: 'Double Bottoms', count: double_bottoms.length, type: 'double_bottom' },
-    { name: 'Divergences', count: divergences.length, type: 'divergence' },
-    { name: 'Volume Anomalies', count: volume_anomalies.length, type: 'volume_anomaly' },
-    { name: 'Triple Tops', count: advanced_patterns.triple_tops?.length || 0, type: 'triple_top' },
-    { name: 'Triple Bottoms', count: advanced_patterns.triple_bottoms?.length || 0, type: 'triple_bottom' },
-    { name: 'Wedge Patterns', count: advanced_patterns.wedge_patterns?.length || 0, type: 'wedge_pattern' },
-    { name: 'Channel Patterns', count: advanced_patterns.channel_patterns?.length || 0, type: 'channel_pattern' }
+    { name: 'Triple Tops', count: filteredTripleTops.length, type: 'triple_top' },
+    { name: 'Triple Bottoms', count: filteredTripleBottoms.length, type: 'triple_bottom' },
+    { name: 'Channel Patterns', count: filteredChannelPatterns.length, type: 'channel_pattern' }
   ];
+
+  const nonEmptyBasicPatterns = basicPatterns.filter(p => p.count > 0);
+  const hasAnyAdvanced = filteredTripleTops.length > 0
+    || filteredTripleBottoms.length > 0
+    || filteredChannelPatterns.length > 0;
 
   const supportResistance = {
     support: support_resistance.support.length,
@@ -244,44 +238,45 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
           </div>
 
           {/* Advanced Pattern Analysis Card */}
-          <div className="mb-6">
-            <AdvancedPatternAnalysisCard 
-              patterns={advanced_patterns}
-              symbol={symbol}
-            />
-          </div>
+          {hasAnyAdvanced && (
+            <div className="mb-6">
+              <AdvancedPatternAnalysisCard 
+                patterns={{
+                  triple_tops: filteredTripleTops as any,
+                  triple_bottoms: filteredTripleBottoms as any,
+                  channel_patterns: filteredChannelPatterns as any
+                }}
+                symbol={symbol}
+              />
+            </div>
+          )}
 
 
 
-          {/* Basic Patterns */}
-          <div className="mb-6">
-            <h4 className="font-semibold text-slate-700 mb-3">Basic Pattern Analysis</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {basicPatterns.map((pattern) => (
-                <div key={pattern.type} className="p-3 border border-slate-200 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-700">{pattern.name}</span>
-                    <Badge variant={pattern.count > 0 ? "default" : "secondary"}>
-                      {pattern.count}
-                    </Badge>
-                  </div>
-                  <div className="mt-2">
-                    {pattern.count > 0 ? (
+          {/* Basic Patterns (curated) */}
+          {nonEmptyBasicPatterns.length > 0 && (
+            <div className="mb-6">
+              <h4 className="font-semibold text-slate-700 mb-3">Key Patterns</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {nonEmptyBasicPatterns.map((pattern) => (
+                  <div key={pattern.type} className="p-3 border border-slate-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">{pattern.name}</span>
+                      <Badge variant={"default"}>
+                        {pattern.count}
+                      </Badge>
+                    </div>
+                    <div className="mt-2">
                       <div className="flex items-center space-x-1">
                         <CheckCircle className="h-3 w-3 text-green-500" />
                         <span className="text-xs text-green-600">Detected</span>
                       </div>
-                    ) : (
-                      <div className="flex items-center space-x-1">
-                        <XCircle className="h-3 w-3 text-gray-400" />
-                        <span className="text-xs text-gray-500">Not detected</span>
-                      </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Support and Resistance */}
           <div>
