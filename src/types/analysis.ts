@@ -49,6 +49,54 @@ export interface Consensus {
   bullish_count: number;
   bearish_count: number;
   neutral_count: number;
+  technical_indicators?: {
+    adx?: {
+      adx: number;
+      plus_di: number;
+      minus_di: number;
+      trend_direction: string;
+    };
+    rsi?: {
+      trend: string;
+      rsi_14: number;
+      status: string;
+    };
+    macd?: {
+      histogram: number;
+      macd_line: number;
+      signal_line: number;
+    };
+    volume?: {
+      obv: number;
+      obv_trend: string;
+      volume_ratio: number;
+    };
+    bollinger_bands?: {
+      bandwidth: number;
+      percent_b: number;
+      lower_band: number;
+      upper_band: number;
+      middle_band: number;
+    };
+    moving_averages?: {
+      ema_20: number;
+      ema_50: number;
+      sma_20: number;
+      sma_50: number;
+      sma_200: number;
+      death_cross: boolean;
+      golden_cross: boolean;
+      price_to_sma_200: number;
+      sma_20_to_sma_50: number;
+    };
+    trend_data?: {
+      adx: number;
+      plus_di: number;
+      minus_di: number;
+      strength: string;
+      direction: string;
+    };
+  };
 }
 
 export interface MovingAverages {

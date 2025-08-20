@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { formatCurrency, formatPercentage, formatNumber } from "@/utils/numberFormatter";
+import { formatCurrency, formatPercentage, formatPercentageValue, formatNumber } from "@/utils/numberFormatter";
 
 // Icons
 import { 
@@ -61,6 +61,7 @@ import VolumeAnalysisCard from "@/components/analysis/VolumeAnalysisCard";
 import EnhancedAIAnalysisCard from "@/components/analysis/EnhancedAIAnalysisCard";
 import EnhancedMultiTimeframeCard from "@/components/analysis/EnhancedMultiTimeframeCard";
 import EnhancedSectorContextCard from "@/components/analysis/EnhancedSectorContextCard";
+import CorrelationMatrixCard from "@/components/analysis/CorrelationMatrixCard";
 
 // Services and Utils
 import { apiService } from "@/services/api";
@@ -395,6 +396,25 @@ const NewOutput: React.FC = () => {
 
   // Extract data with proper fallbacks
   const consensus = analysisData?.consensus;
+  const consensusForCard = consensus || (enhancedData ? {
+    overall_signal: enhancedData.recommendation || 'Neutral',
+    signal_strength: enhancedData.risk_level || 'Medium',
+    bullish_percentage: 0,
+    bearish_percentage: 0,
+    neutral_percentage: 100,
+    bullish_score: 0,
+    bearish_score: 0,
+    neutral_score: 0,
+    total_weight: 0,
+    confidence: (enhancedData as any)?.ai_analysis?.meta?.overall_confidence || 0,
+    signal_details: [],
+    data_quality_flags: [],
+    warnings: [],
+    bullish_count: 0,
+    bearish_count: 0,
+    neutral_count: 0,
+    technical_indicators: enhancedData?.technical_indicators || null
+  } : null);
   // Extract indicators data with advanced components mapping
   // Transform backend scenario analysis to frontend format
   const transformScenarioAnalysis = (backendScenarioAnalysis: any) => {
@@ -583,9 +603,16 @@ const NewOutput: React.FC = () => {
   const transformSectorBenchmarking = (backendData: any) => {
     if (!backendData) return null;
     
-    // If it's already in frontend format, return as is
+
+    
+    // If it's already in frontend format, ensure proper field mapping
     if (backendData.sector_info && backendData.market_benchmarking) {
-      return backendData;
+      // Still need to map stock_sharpe to sharpe_ratio if not already mapped
+      const result = { ...backendData };
+      if (result.market_benchmarking && result.market_benchmarking.stock_sharpe !== undefined && result.market_benchmarking.sharpe_ratio === undefined) {
+        result.market_benchmarking.sharpe_ratio = result.market_benchmarking.stock_sharpe;
+      }
+      return result;
     }
     
     // Transform backend format to frontend format - using the correct structure from your JSON
@@ -664,6 +691,8 @@ const NewOutput: React.FC = () => {
         sector_data_points: backendData.data_points?.sector_data_points || 0
       }
     };
+    
+    return result;
   };
 
   // The sector_context contains multiple components including sector_benchmarking
@@ -674,6 +703,8 @@ const NewOutput: React.FC = () => {
                        analysisData?.sector_benchmarking;
   
   const sector_benchmarking = transformSectorBenchmarking(rawSectorData);
+  
+
   
   // Transform backend sector_context to frontend SectorContext format
   const transformSectorContext = (backendSectorContext: any) => {
@@ -702,38 +733,15 @@ const NewOutput: React.FC = () => {
         average_correlation: backendSectorContext.sector_correlation?.average_correlation || 0,
         diversification_quality: backendSectorContext.sector_correlation?.diversification_insights?.diversification_quality || 'unknown',
         sector_volatility: backendSectorContext.sector_correlation?.sector_volatility?.[backendSectorContext.sector] || 0,
-        high_correlation_sectors: (() => {
-          const pairs = backendSectorContext.sector_correlation?.high_correlation_pairs || [];
-          const sectorMap = new Map(); // Use Map to track highest correlation per sector
-          
-          pairs.forEach((p: any) => {
-            const sector = p.sector1 === backendSectorContext.sector ? p.sector2 : p.sector1;
-            const correlation = p.correlation;
-            
-            // Keep the highest correlation value for each sector
-            if (!sectorMap.has(sector) || sectorMap.get(sector).correlation < correlation) {
-              sectorMap.set(sector, { sector, correlation });
-            }
-          });
-          
-          return Array.from(sectorMap.values());
-        })(),
-        low_correlation_sectors: (() => {
-          const pairs = backendSectorContext.sector_correlation?.low_correlation_pairs || [];
-          const sectorMap = new Map(); // Use Map to track lowest correlation per sector
-          
-          pairs.forEach((p: any) => {
-            const sector = p.sector1 === backendSectorContext.sector ? p.sector2 : p.sector1;
-            const correlation = p.correlation;
-            
-            // Keep the lowest correlation value for each sector (for low correlation sectors)
-            if (!sectorMap.has(sector) || sectorMap.get(sector).correlation > correlation) {
-              sectorMap.set(sector, { sector, correlation });
-            }
-          });
-          
-          return Array.from(sectorMap.values());
-        })()
+        // Store raw correlation data for the new component
+        correlation_matrix: backendSectorContext.sector_correlation?.correlation_matrix || {},
+        high_correlation_pairs: backendSectorContext.sector_correlation?.high_correlation_pairs || [],
+        low_correlation_pairs: backendSectorContext.sector_correlation?.low_correlation_pairs || [],
+        // Include the full diversification insights for the new component
+        diversification_insights: backendSectorContext.sector_correlation?.diversification_insights || {
+          diversification_quality: 'unknown',
+          recommendations: []
+        }
       },
       trading_recommendations: [
         ...(backendSectorContext.sector_rotation?.recommendations?.map((r: any) => ({
@@ -912,7 +920,7 @@ const NewOutput: React.FC = () => {
               </div>
               <div className="text-center">
                 <div className={`text-2xl font-bold ${priceChange?.changePercent && priceChange.changePercent > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : formatPercentage(priceChange?.changePercent)}
+                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : formatPercentageValue(priceChange?.changePercent)}
                 </div>
                 <div className="text-sm text-slate-600">Change %</div>
               </div>
@@ -964,7 +972,7 @@ const NewOutput: React.FC = () => {
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-0.001">
             {/* Top Row - AI Trading Analysis, Indicator Consensus, and Price Statistics */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-2 h-[99%]">
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-[99%]">
               {/* AI Trading Analysis */}
               <div className="xl:col-span-1">
                 {analysisLoading ? (
@@ -991,7 +999,7 @@ const NewOutput: React.FC = () => {
                   />
                 ) : (
                   <ConsensusSummaryCard 
-                    consensus={consensus} 
+                    consensus={consensusForCard as any} 
                     analysisDate={enhancedData?.analysis_timestamp}
                     analysisPeriod={enhancedData?.analysis_period}
                   />
@@ -1041,7 +1049,7 @@ const NewOutput: React.FC = () => {
             </div>
 
             {/* Second Row - Four Cards: Sector Benchmarking, Volume Analysis, Performance Comparison, Risk Analysis */}
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-full">
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-[1%] mt-4">
               {/* Sector Benchmarking */}
               <div className="xl:col-span-1 h-full">
                 {analysisLoading ? (
@@ -1217,7 +1225,7 @@ const NewOutput: React.FC = () => {
                               </div>
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-slate-600">Volatility:</span>
-                                <span className="font-medium">{((sector_benchmarking.sector_benchmarking?.sector_volatility || 0) * 100).toFixed(2)}%</span>
+                                <span className="font-medium">{(sector_benchmarking.sector_benchmarking?.sector_volatility || 0).toFixed(2)}%</span>
                               </div>
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-slate-600">Sharpe Ratio:</span>
@@ -1490,10 +1498,21 @@ const NewOutput: React.FC = () => {
               />
             ) : (
               enhancedSectorContext && (
-                <EnhancedSectorContextCard 
-                  sectorContext={enhancedSectorContext}
-                  symbol={stockSymbol}
-                />
+                <>
+                  <EnhancedSectorContextCard 
+                    sectorContext={enhancedSectorContext}
+                    symbol={stockSymbol}
+                  />
+                  
+                  {/* New Correlation Matrix Card */}
+                  {enhancedSectorContext.correlation_insights?.correlation_matrix && 
+                   Object.keys(enhancedSectorContext.correlation_insights.correlation_matrix).length > 0 && (
+                    <CorrelationMatrixCard
+                      correlationData={enhancedSectorContext.correlation_insights}
+                      currentSector={enhancedSectorContext.sector}
+                    />
+                  )}
+                </>
               )
             )}
           </TabsContent>

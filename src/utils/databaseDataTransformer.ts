@@ -181,6 +181,40 @@ function transformLegacyStructure(data: Record<string, unknown>): TransformedAna
 function extractConsensusFromEnhanced(data: Record<string, unknown> | AnalysisResults): Consensus {
   const aiAnalysis = data.ai_analysis || {};
   const technicalIndicators = data.technical_indicators || {};
+
+
+
+  // Prefer backend-provided consensus when present (avoids losing signal_details)
+  const backendConsensus = (data as any).consensus as Partial<Consensus> | undefined;
+  if (backendConsensus && Array.isArray(backendConsensus.signal_details) && backendConsensus.signal_details.length > 0) {
+      return {
+    overall_signal: backendConsensus.overall_signal ?? 'Neutral',
+    signal_strength: backendConsensus.signal_strength ?? 'Medium',
+    bullish_percentage: Number(backendConsensus.bullish_percentage ?? 0),
+    bearish_percentage: Number(backendConsensus.bearish_percentage ?? 0),
+    neutral_percentage: Number(backendConsensus.neutral_percentage ?? Math.max(0, 100 - Number(backendConsensus.bullish_percentage ?? 0) - Number(backendConsensus.bearish_percentage ?? 0))),
+    bullish_score: Number(backendConsensus.bullish_score ?? backendConsensus.bullish_percentage ?? 0),
+    bearish_score: Number(backendConsensus.bearish_score ?? backendConsensus.bearish_percentage ?? 0),
+    neutral_score: Number(backendConsensus.neutral_score ?? backendConsensus.neutral_percentage ?? 0),
+    total_weight: Number(backendConsensus.total_weight ?? 0),
+    confidence: Number(backendConsensus.confidence ?? aiAnalysis.meta?.overall_confidence ?? 0),
+    signal_details: (backendConsensus.signal_details as any[]).map((s) => ({
+      indicator: String(s.indicator ?? 'unknown'),
+      signal: String(s.signal ?? 'neutral'),
+      strength: String(s.strength ?? 'weak'),
+      weight: Number(s.weight ?? 0),
+      score: Number(s.score ?? 0),
+      value: typeof s.value === 'number' ? s.value : undefined,
+      description: String(s.description ?? '')
+    })),
+    data_quality_flags: Array.isArray(backendConsensus.data_quality_flags) ? backendConsensus.data_quality_flags as string[] : [],
+    warnings: Array.isArray(backendConsensus.warnings) ? backendConsensus.warnings as string[] : [],
+    bullish_count: Number(backendConsensus.bullish_count ?? 0),
+    bearish_count: Number(backendConsensus.bearish_count ?? 0),
+    neutral_count: Number(backendConsensus.neutral_count ?? 0),
+    technical_indicators: technicalIndicators
+  };
+  }
   
   // Calculate signal percentages based on technical indicators
   const bullishPercentage = calculateBullishPercentageFromEnhanced(data);
@@ -227,7 +261,8 @@ function extractConsensusFromEnhanced(data: Record<string, unknown> | AnalysisRe
     warnings: extractWarningsFromEnhanced(data),
     bullish_count: Math.round(bullishPercentage / 10), // Approximate count
     bearish_count: Math.round(bearishPercentage / 10),
-    neutral_count: Math.round(neutralPercentage / 10)
+    neutral_count: Math.round(neutralPercentage / 10),
+    technical_indicators: technicalIndicators
   };
 }
 
@@ -793,10 +828,11 @@ function extractSignalDetailsFromEnhanced(data: Record<string, unknown> | Analys
   if (!technicalIndicators) return [];
   
   const signals = [];
+  const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
   
   // RSI Analysis
-  if (technicalIndicators.rsi) {
-    const rsi = technicalIndicators.rsi.rsi_14;
+  if (technicalIndicators.rsi && isNumber(technicalIndicators.rsi.rsi_14)) {
+    const rsi = technicalIndicators.rsi.rsi_14 as number;
     let rsiSignal = 'neutral';
     let rsiStrength = 'weak';
     let rsiDescription = '';
@@ -826,11 +862,14 @@ function extractSignalDetailsFromEnhanced(data: Record<string, unknown> | Analys
   }
   
   // MACD Analysis
-  if (technicalIndicators.macd) {
+  if (technicalIndicators.macd &&
+      isNumber(technicalIndicators.macd.macd_line) &&
+      isNumber(technicalIndicators.macd.signal_line) &&
+      isNumber(technicalIndicators.macd.histogram)) {
     const macd = technicalIndicators.macd;
-    const macdLine = macd.macd_line;
-    const signalLine = macd.signal_line;
-    const histogram = macd.histogram;
+    const macdLine = macd.macd_line as number;
+    const signalLine = macd.signal_line as number;
+    const histogram = macd.histogram as number;
     
     let macdSignal = 'neutral';
     let macdStrength = 'weak';
@@ -863,7 +902,7 @@ function extractSignalDetailsFromEnhanced(data: Record<string, unknown> | Analys
   // Moving Averages Analysis
   if (technicalIndicators.moving_averages) {
     const ma = technicalIndicators.moving_averages;
-    const currentPrice = data.current_price || 0;
+    const currentPrice = (isNumber(data.current_price) ? data.current_price : 0) as number;
     
     let maSignal = 'neutral';
     let maStrength = 'weak';
@@ -871,138 +910,101 @@ function extractSignalDetailsFromEnhanced(data: Record<string, unknown> | Analys
     let bullishCount = 0;
     let totalCount = 0;
     
-    // Check SMA 20
-    if (ma.sma_20 && currentPrice > ma.sma_20) {
-      bullishCount++;
+    if (isNumber(ma.sma_20)) { totalCount++; if (currentPrice > (ma.sma_20 as number)) bullishCount++; }
+    if (isNumber(ma.sma_50)) { totalCount++; if (currentPrice > (ma.sma_50 as number)) bullishCount++; }
+    if (isNumber(ma.sma_200)) { totalCount++; if (currentPrice > (ma.sma_200 as number)) bullishCount++; }
+    
+    if (ma.golden_cross) { bullishCount++; maDescription += 'Golden Cross detected. '; }
+    else if (ma.death_cross) { bullishCount--; maDescription += 'Death Cross detected. '; }
+    
+    if (totalCount > 0) {
+      const bullishRatio = bullishCount / totalCount;
+      if (bullishRatio > 0.6) {
+        maSignal = 'bullish';
+        maStrength = bullishRatio > 0.8 ? 'strong' : 'weak';
+      } else if (bullishRatio < 0.4) {
+        maSignal = 'bearish';
+        maStrength = bullishRatio < 0.2 ? 'strong' : 'weak';
+      }
+      maDescription += `Price vs MAs: ${bullishCount}/${totalCount} bullish`;
+      signals.push({
+        indicator: 'Moving Averages',
+        signal: maSignal,
+        strength: maStrength,
+        description: maDescription,
+        value: bullishRatio * 100,
+        weight: 25
+      });
     }
-    totalCount++;
-    
-    // Check SMA 50
-    if (ma.sma_50 && currentPrice > ma.sma_50) {
-      bullishCount++;
-    }
-    totalCount++;
-    
-    // Check SMA 200
-    if (ma.sma_200 && currentPrice > ma.sma_200) {
-      bullishCount++;
-    }
-    totalCount++;
-    
-    // Check Golden/Death Cross
-    if (ma.golden_cross) {
-      bullishCount++;
-      maDescription += 'Golden Cross detected. ';
-    } else if (ma.death_cross) {
-      bullishCount--;
-      maDescription += 'Death Cross detected. ';
-    }
-    
-    const bullishRatio = bullishCount / totalCount;
-    if (bullishRatio > 0.6) {
-      maSignal = 'bullish';
-      maStrength = bullishRatio > 0.8 ? 'strong' : 'weak';
-    } else if (bullishRatio < 0.4) {
-      maSignal = 'bearish';
-      maStrength = bullishRatio < 0.2 ? 'strong' : 'weak';
-    } else {
-      maSignal = 'neutral';
-      maStrength = 'weak';
-    }
-    
-    maDescription += `Price vs MAs: ${bullishCount}/${totalCount} bullish`;
-    
-    signals.push({
-      indicator: 'Moving Averages',
-      signal: maSignal,
-      strength: maStrength,
-      description: maDescription,
-      value: bullishRatio * 100,
-      weight: 25
-    });
   }
   
   // Bollinger Bands Analysis
   if (technicalIndicators.bollinger_bands) {
     const bb = technicalIndicators.bollinger_bands;
-    const currentPrice = data.current_price || 0;
-    
+    const percentB = isNumber(bb.percent_b) ? (bb.percent_b as number) : undefined;
     let bbSignal = 'neutral';
     let bbStrength = 'weak';
     let bbDescription = '';
     
-    if (currentPrice > bb.upper_band) {
-      bbSignal = 'bearish';
-      bbStrength = 'strong';
-      bbDescription = `Price above upper band - Overbought`;
-    } else if (currentPrice < bb.lower_band) {
-      bbSignal = 'bullish';
-      bbStrength = 'strong';
-      bbDescription = `Price below lower band - Oversold`;
-    } else {
-      bbSignal = 'neutral';
-      bbStrength = 'weak';
-      bbDescription = `Price within bands - Neutral`;
+    if (percentB !== undefined) {
+      if (percentB > 0.8) { bbSignal = 'bearish'; bbStrength = 'strong'; bbDescription = 'Price near upper band - Overbought'; }
+      else if (percentB < 0.2) { bbSignal = 'bullish'; bbStrength = 'strong'; bbDescription = 'Price near lower band - Oversold'; }
+      else if (percentB > 0.6) { bbSignal = 'bearish'; bbStrength = 'weak'; bbDescription = 'Upper band range'; }
+      else if (percentB < 0.4) { bbSignal = 'bullish'; bbStrength = 'weak'; bbDescription = 'Lower band range'; }
+      else { bbSignal = 'neutral'; bbStrength = 'weak'; bbDescription = 'Middle band range - Neutral'; }
+      signals.push({
+        indicator: 'Bollinger Bands',
+        signal: bbSignal,
+        strength: bbStrength,
+        description: bbDescription,
+        value: percentB,
+        weight: 15
+      });
     }
-    
-    signals.push({
-      indicator: 'Bollinger Bands',
-      signal: bbSignal,
-      strength: bbStrength,
-      description: bbDescription,
-      value: bb.percent_b || 0,
-      weight: 15
-    });
   }
   
   // Volume Analysis
-  if (technicalIndicators.volume) {
+  if (technicalIndicators.volume && isNumber(technicalIndicators.volume.volume_ratio)) {
     const volume = technicalIndicators.volume;
+    const vr = volume.volume_ratio as number;
     
     let volumeSignal = 'neutral';
     let volumeStrength = 'weak';
     let volumeDescription = '';
     
-    if (volume.volume_ratio > 1.5) {
-      volumeSignal = 'bullish';
-      volumeStrength = 'strong';
-      volumeDescription = `High volume - ${volume.volume_ratio.toFixed(1)}x average`;
-    } else if (volume.volume_ratio < 0.5) {
-      volumeSignal = 'bearish';
-      volumeStrength = 'weak';
-      volumeDescription = `Low volume - ${volume.volume_ratio.toFixed(1)}x average`;
-    } else {
-      volumeSignal = 'neutral';
-      volumeStrength = 'weak';
-      volumeDescription = `Normal volume - ${volume.volume_ratio.toFixed(1)}x average`;
-    }
+    if (vr > 1.5) { volumeSignal = 'bullish'; volumeStrength = 'strong'; volumeDescription = `High volume - ${vr.toFixed(1)}x average`; }
+    else if (vr < 0.5) { volumeSignal = 'bearish'; volumeStrength = 'weak'; volumeDescription = `Low volume - ${vr.toFixed(1)}x average`; }
+    else { volumeSignal = 'neutral'; volumeStrength = 'weak'; volumeDescription = `Normal volume - ${vr.toFixed(1)}x average`; }
     
     signals.push({
       indicator: 'Volume',
       signal: volumeSignal,
       strength: volumeStrength,
       description: volumeDescription,
-      value: volume.volume_ratio,
+      value: vr,
       weight: 10
     });
   }
   
   // ADX Analysis
-  if (technicalIndicators.adx) {
+  if (technicalIndicators.adx &&
+      isNumber(technicalIndicators.adx.adx) &&
+      isNumber(technicalIndicators.adx.plus_di) &&
+      isNumber(technicalIndicators.adx.minus_di)) {
     const adx = technicalIndicators.adx;
     
     let adxSignal = 'neutral';
     let adxStrength = 'weak';
     let adxDescription = '';
     
-    if (adx.adx > 25) {
-      adxSignal = adx.plus_di > adx.minus_di ? 'bullish' : 'bearish';
-      adxStrength = adx.adx > 40 ? 'strong' : 'weak';
-      adxDescription = `Strong trend - ADX: ${adx.adx.toFixed(1)}, DI+: ${adx.plus_di.toFixed(1)}, DI-: ${adx.minus_di.toFixed(1)}`;
+    if ((adx.adx as number) > 25) {
+      adxSignal = (adx.plus_di as number) > (adx.minus_di as number) ? 'bullish' : 'bearish';
+      adxStrength = (adx.adx as number) > 40 ? 'strong' : 'weak';
+      adxDescription = `Strong trend - ADX: ${(adx.adx as number).toFixed(1)}, DI+: ${(adx.plus_di as number).toFixed(1)}, DI-: ${(adx.minus_di as number).toFixed(1)}`;
     } else {
       adxSignal = 'neutral';
       adxStrength = 'weak';
-      adxDescription = `Weak trend - ADX: ${adx.adx.toFixed(1)}`;
+      adxDescription = `Weak trend - ADX: ${(adx.adx as number).toFixed(1)}`;
     }
     
     signals.push({

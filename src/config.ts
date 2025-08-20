@@ -32,7 +32,7 @@ export const IS_PRODUCTION = import.meta.env.PROD;
 export const IS_DEVELOPMENT = import.meta.env.DEV;
 export const NODE_ENV = import.meta.env.MODE;
 
-// Service endpoints mapping
+// Service endpoints mapping - Base paths without parameters
 export const ENDPOINTS = {
   // Data Service endpoints (Port 8000)
   DATA: {

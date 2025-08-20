@@ -1,19 +1,22 @@
 /**
  * Centralized number formatting utilities to ensure consistent 2 decimal places
- * throughout the application
+ * throughout the application with comprehensive validation
  */
 
+import { validateNumeric, validatePercentage, validateConfidence, validatePrice } from './dataValidator';
+
 /**
- * Formats a number to exactly 2 decimal places
+ * Formats a number to exactly 2 decimal places with validation
  * @param value - The number to format
  * @param fallback - Fallback value if the number is invalid (default: "0.00")
  * @returns Formatted string with 2 decimal places
  */
 export function formatToTwoDecimals(value: number | null | undefined, fallback: string = "0.00"): string {
-  if (value == null || !Number.isFinite(value)) {
+  const validation = validateNumeric(value);
+  if (!validation.isValid) {
     return fallback;
   }
-  return value.toFixed(2);
+  return validation.value.toFixed(2);
 }
 
 /**
@@ -24,10 +27,11 @@ export function formatToTwoDecimals(value: number | null | undefined, fallback: 
  * @returns Formatted currency string
  */
 export function formatCurrency(value: number | null | undefined, currency: string = "₹", fallback: string = "₹0.00"): string {
-  if (value == null || !Number.isFinite(value)) {
+  const validation = validatePrice(value);
+  if (!validation.isValid) {
     return fallback;
   }
-  return `${currency}${value.toFixed(2)}`;
+  return `${currency}${validation.value.toFixed(2)}`;
 }
 
 /**
@@ -38,11 +42,12 @@ export function formatCurrency(value: number | null | undefined, currency: strin
  * @returns Formatted percentage string
  */
 export function formatPercentage(value: number | null | undefined, includeSign: boolean = false, fallback: string = "0.00%"): string {
-  if (value == null || !Number.isFinite(value)) {
+  const validation = validatePercentage(value);
+  if (!validation.isValid) {
     return fallback;
   }
-  const sign = includeSign && value >= 0 ? '+' : '';
-  return `${sign}${value.toFixed(2)}%`;
+  const sign = includeSign && validation.value >= 0 ? '+' : '';
+  return `${sign}${(validation.value * 100).toFixed(2)}%`;
 }
 
 /**
@@ -112,10 +117,11 @@ export function formatRatio(value: number | null | undefined, fallback: string =
  * @returns Formatted confidence string
  */
 export function formatConfidence(value: number | null | undefined, fallback: string = "0.0%"): string {
-  if (value == null || !Number.isFinite(value)) {
+  const validation = validateConfidence(value);
+  if (!validation.isValid) {
     return fallback;
   }
-  return `${value.toFixed(1)}%`;
+  return `${(validation.value * 100).toFixed(1)}%`;
 }
 
 /**

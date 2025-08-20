@@ -168,7 +168,7 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Sector Volatility:</span>
-                    <span className="font-medium text-slate-800">{((benchmarking.sector_benchmarking.sector_volatility || 0) * 100).toFixed(1)}%</span>
+                    <span className="font-medium text-slate-800">{(benchmarking.sector_benchmarking.sector_volatility || 0).toFixed(1)}%</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Sector Return:</span>
@@ -256,71 +256,7 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
           </div>
         )}
 
-        {/* Correlation Insights */}
-        {correlation && (
-          <div className="space-y-4">
-            <h3 className="font-semibold text-slate-800 flex items-center">
-              <Target className="h-4 w-4 mr-2 text-orange-500" />
-              Correlation Analysis
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* High Correlation Sectors */}
-              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                <h4 className="font-medium text-orange-800 mb-2">High Correlation</h4>
-                <div className="space-y-1">
-                  {correlation.high_correlation_sectors.map((sector, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span className="text-orange-700">{sector.sector}</span>
-                      <span className="font-medium text-orange-800">{(sector.correlation * 100).toFixed(1)}%</span>
-                    </div>
-                  ))}
-                  {correlation.high_correlation_sectors.length === 0 && (
-                    <div className="text-sm text-orange-600">None</div>
-                  )}
-                </div>
-              </div>
 
-              {/* Low Correlation Sectors */}
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                <h4 className="font-medium text-green-800 mb-2">Low Correlation</h4>
-                <div className="space-y-1">
-                  {correlation.low_correlation_sectors.map((sector, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span className="text-green-700">{sector.sector}</span>
-                      <span className="font-medium text-green-800">{(sector.correlation * 100).toFixed(1)}%</span>
-                    </div>
-                  ))}
-                  {correlation.low_correlation_sectors.length === 0 && (
-                    <div className="text-sm text-green-600">None</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Correlation Metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <div className="text-lg font-bold text-slate-800">
-                  {(correlation.average_correlation * 100).toFixed(1)}%
-                </div>
-                <div className="text-xs text-slate-600">Avg Correlation</div>
-              </div>
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <div className="text-lg font-bold text-slate-800 capitalize">
-                  {correlation.diversification_quality}
-                </div>
-                <div className="text-xs text-slate-600">Diversification</div>
-              </div>
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <div className="text-lg font-bold text-slate-800">
-                  {(correlation.sector_volatility * 100).toFixed(1)}%
-                </div>
-                <div className="text-xs text-slate-600">Sector Volatility</div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Risk Assessment */}
         {benchmarking.sector_risk_metrics && (
@@ -334,7 +270,7 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-slate-600">Risk Score:</span>
-                  <div className="font-medium text-slate-800">{benchmarking.sector_risk_metrics.risk_score || 'N/A'}</div>
+                  <div className="font-medium text-slate-800">{benchmarking.sector_risk_metrics.risk_score ? benchmarking.sector_risk_metrics.risk_score.toFixed(2) : 'N/A'}</div>
                 </div>
                 <div>
                   <span className="text-slate-600">Correlation Risk:</span>

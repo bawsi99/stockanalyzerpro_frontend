@@ -287,7 +287,7 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Volatility:</span>
-                    <span className="font-medium">{(safeSectorData.sector_volatility * 100).toFixed(2)}%</span>
+                    <span className="font-medium">{safeSectorData.sector_volatility.toFixed(2)}%</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Sharpe Ratio:</span>

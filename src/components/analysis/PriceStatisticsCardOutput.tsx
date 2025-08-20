@@ -90,7 +90,7 @@ const PriceStatisticsCardOutput: React.FC<PriceStatisticsProps> = ({
         </div>
       </CardHeader>
       <CardContent className="p-6 pt-0 flex-1 overflow-y-auto max-h-[calc(90vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <div className="space-y-4 mb-6">
+        <div className="space-y-4 mb-6 mt-4">
           <div className="grid grid-cols-1 gap-4">
             <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 mt-2">
               <div className="text-sm text-slate-600 mb-1">Current Price</div>

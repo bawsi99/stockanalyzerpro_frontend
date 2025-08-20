@@ -175,7 +175,7 @@ const SectorAnalysisCard: React.FC<SectorAnalysisCardProps> = ({
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600">Sector Volatility:</span>
-                  <span className="font-medium">{(correlation_insights.sector_volatility * 100).toFixed(2)}%</span>
+                  <span className="font-medium">{correlation_insights.sector_volatility.toFixed(2)}%</span>
                 </div>
               </div>
             </div>
