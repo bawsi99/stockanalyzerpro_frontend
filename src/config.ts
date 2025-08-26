@@ -1,6 +1,11 @@
 // Environment-aware configuration for split backend architecture
 // Uses environment variables with fallbacks for development
 
+// Environment detection - must come first
+export const IS_PRODUCTION = import.meta.env.PROD;
+export const IS_DEVELOPMENT = import.meta.env.DEV;
+export const NODE_ENV = import.meta.env.MODE;
+
 // Get environment variables with fallbacks
 const getEnvVar = (key: string, fallback: string): string => {
   // Check for Vite environment variables (prefixed with VITE_)
@@ -32,11 +37,6 @@ export const API_BASE_URL = DATA_SERVICE_URL;
 export const WEBSOCKET_URL = getEnvVar('WEBSOCKET_URL', 
   IS_PRODUCTION ? 'wss://stockanalyzer-pro.onrender.com/ws/stream' : 'ws://localhost:8000/ws/stream'
 );
-
-// Environment detection
-export const IS_PRODUCTION = import.meta.env.PROD;
-export const IS_DEVELOPMENT = import.meta.env.DEV;
-export const NODE_ENV = import.meta.env.MODE;
 
 // Service endpoints mapping - Base paths without parameters
 export const ENDPOINTS = {
