@@ -851,18 +851,7 @@ const NewOutput: React.FC = () => {
       <Header />
       <div className="h-16" />
       <div className="w-full px-4 py-8">
-        {/* Cache Clear Button */}
-        <div className="flex justify-end mb-4">
-          <Button 
-            onClick={clearCacheAndRefresh} 
-            variant="outline" 
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Clear Cache & Refresh
-          </Button>
-        </div>
+
         
         {/* Stock Header */}
         <div className="mb-8">
