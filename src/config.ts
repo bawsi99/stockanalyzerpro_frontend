@@ -18,14 +18,20 @@ const getEnvVar = (key: string, fallback: string): string => {
 };
 
 // Base URLs - configurable via environment variables
-export const DATA_SERVICE_URL = getEnvVar('DATA_SERVICE_URL', 'http://localhost:8000');
-export const ANALYSIS_SERVICE_URL = getEnvVar('ANALYSIS_SERVICE_URL', 'http://localhost:8001');
+export const DATA_SERVICE_URL = getEnvVar('DATA_SERVICE_URL', 
+  IS_PRODUCTION ? 'https://stockanalyzer-pro.onrender.com' : 'http://localhost:8000'
+);
+export const ANALYSIS_SERVICE_URL = getEnvVar('ANALYSIS_SERVICE_URL', 
+  IS_PRODUCTION ? 'https://stockanalyzer-pro.onrender.com' : 'http://localhost:8001'
+);
 
 // Legacy support - keep the old API_BASE_URL for backward compatibility
 export const API_BASE_URL = DATA_SERVICE_URL;
 
 // WebSocket URL for real-time data
-export const WEBSOCKET_URL = getEnvVar('WEBSOCKET_URL', `ws://localhost:8000/ws/stream`);
+export const WEBSOCKET_URL = getEnvVar('WEBSOCKET_URL', 
+  IS_PRODUCTION ? 'wss://stockanalyzer-pro.onrender.com/ws/stream' : 'ws://localhost:8000/ws/stream'
+);
 
 // Environment detection
 export const IS_PRODUCTION = import.meta.env.PROD;
