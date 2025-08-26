@@ -550,7 +550,7 @@ class ApiService {
   // User Analysis Methods
   async getUserAnalyses(userId: string, limit: number = 50): Promise<{ success: boolean; analyses: any[]; count: number }> {
     const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(
-      `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/user/${userId}?limit=${limit}`
+      `${ENDPOINTS.ANALYSIS.USER_ANALYSES}/${userId}?limit=${limit}`
     );
     return response;
   }
@@ -558,7 +558,7 @@ class ApiService {
   async getAnalysisById(analysisId: string): Promise<AnalysisResponse | null> {
     try {
       const response = await this.makeRequest<AnalysisResponse>(
-        `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/${analysisId}`
+        `${ENDPOINTS.ANALYSIS.ANALYSIS_BY_ID}/${analysisId}`
       );
       return response;
     } catch (error) {
@@ -569,8 +569,8 @@ class ApiService {
 
   async getAnalysesBySignal(signal: string, userId?: string, limit: number = 20): Promise<{ success: boolean; analyses: any[]; count: number }> {
     const url = userId 
-      ? `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/signal/${signal}?user_id=${userId}&limit=${limit}`
-      : `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/signal/${signal}?limit=${limit}`;
+      ? `${ENDPOINTS.ANALYSIS.ANALYSES_BY_SIGNAL}/${signal}?user_id=${userId}&limit=${limit}`
+      : `${ENDPOINTS.ANALYSIS.ANALYSES_BY_SIGNAL}/${signal}?limit=${limit}`;
     
     const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(url);
     return response;
@@ -578,8 +578,8 @@ class ApiService {
 
   async getAnalysesBySector(sector: string, userId?: string, limit: number = 20): Promise<{ success: boolean; analyses: any[]; count: number }> {
     const url = userId 
-      ? `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/sector/${sector}?user_id=${userId}&limit=${limit}`
-      : `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/sector/${sector}?limit=${limit}`;
+      ? `${ENDPOINTS.ANALYSIS.ANALYSES_BY_SECTOR}/${sector}?user_id=${userId}&limit=${limit}`
+      : `${ENDPOINTS.ANALYSIS.ANALYSES_BY_SECTOR}/${sector}?limit=${limit}`;
     
     const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(url);
     return response;
@@ -587,8 +587,8 @@ class ApiService {
 
   async getHighConfidenceAnalyses(minConfidence: number = 80, userId?: string, limit: number = 20): Promise<{ success: boolean; analyses: any[]; count: number }> {
     const url = userId 
-      ? `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/confidence/${minConfidence}?user_id=${userId}&limit=${limit}`
-      : `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/confidence/${minConfidence}?limit=${limit}`;
+      ? `${ENDPOINTS.ANALYSIS.ANALYSES_BY_CONFIDENCE}/${minConfidence}?user_id=${userId}&limit=${limit}`
+      : `${ENDPOINTS.ANALYSIS.ANALYSES_BY_CONFIDENCE}/${minConfidence}?limit=${limit}`;
     
     const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(url);
     return response;
@@ -596,7 +596,7 @@ class ApiService {
 
   async getUserAnalysisSummary(userId: string): Promise<{ success: boolean; summary: any }> {
     const response = await this.makeRequest<{ success: boolean; summary: any }>(
-      `${ENDPOINTS.ANALYSIS.HEALTH.replace('/health', '')}/analyses/summary/user/${userId}`
+      `${ENDPOINTS.ANALYSIS.USER_ANALYSIS_SUMMARY}/${userId}`
     );
     return response;
   }

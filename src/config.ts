@@ -75,6 +75,13 @@ export const ENDPOINTS = {
     SECTOR_PERFORMANCE: `${ANALYSIS_SERVICE_URL}/sector`,
     SECTOR_COMPARE: `${ANALYSIS_SERVICE_URL}/sector/compare`,
     STOCK_SECTOR: `${ANALYSIS_SERVICE_URL}/stock`,
+    // User Analysis endpoints
+    USER_ANALYSES: `${ANALYSIS_SERVICE_URL}/analyses/user`,
+    ANALYSIS_BY_ID: `${ANALYSIS_SERVICE_URL}/analyses`,
+    ANALYSES_BY_SIGNAL: `${ANALYSIS_SERVICE_URL}/analyses/signal`,
+    ANALYSES_BY_SECTOR: `${ANALYSIS_SERVICE_URL}/analyses/sector`,
+    ANALYSES_BY_CONFIDENCE: `${ANALYSIS_SERVICE_URL}/analyses/confidence`,
+    USER_ANALYSIS_SUMMARY: `${ANALYSIS_SERVICE_URL}/analyses/summary/user`,
   }
 };
 
