@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatPercentage } from '@/utils/numberFormatter';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ArrowLeft, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, Loader2, BarChart3, Activity, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ArrowLeft, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, Loader2, BarChart3, Activity, ArrowUpRight, ArrowDownRight, ZoomIn } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { analysisService } from '@/services/analysisService';
 import { authService } from '@/services/authService';
@@ -837,7 +837,7 @@ const Charts = React.memo(function Charts() {
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
             {/* Enhanced Live Chart Section - Takes 3/4 of the width */}
             <div className="xl:col-span-3">
-              <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full">
+              <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-99">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>{stockSymbol} - {TIMEFRAMES.find(tf => tf.value === selectedTimeframe)?.label}</span>
@@ -855,11 +855,21 @@ const Charts = React.memo(function Charts() {
                         liveData={liveData}
                         lastTickTime={lastTickTime}
                       />
+                      <Button 
+                        onClick={() => {
+                          if (chartResetRef.current) {
+                            chartResetRef.current();
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="bg-white/90 backdrop-blur-sm"
+                      >
+                        <ZoomIn className="h-4 w-4 mr-1" />
+                        Reset Scale
+                      </Button>
                     </div>
                   </CardTitle>
-                  <CardDescription>
-                    Real-time market data with advanced technical analysis
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                   {canShowCharts ? (
@@ -915,7 +925,7 @@ const Charts = React.memo(function Charts() {
             </div>
 
             {/* Price Statistics Card - Takes 1/4 of the width */}
-            <div className="xl:col-span-1 h-full">
+            <div className="xl:col-span-1 h-99">
               {!liveData || liveData.length === 0 ? (
                 <AnalysisCardSkeleton 
                   title="Price Statistics" 

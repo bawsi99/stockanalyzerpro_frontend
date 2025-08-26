@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import {
   Command,
   CommandDialog,
@@ -10,22 +10,25 @@ import {
 } from '@/components/ui/command';
 
 import { 
-  getPopularStocks, 
   getAllStocks, 
   searchStocks, 
-  getStockBySymbol,
-  preloadPopularStocks 
+  getStockBySymbol
 } from '@/services/stockDataService';
 
 import { usePerformanceMonitor } from '@/utils/performanceMonitor';
 
-interface StockSelectorProps {
+export interface StockSelectorProps {
   value: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
   label?: string;
+}
+
+export interface StockSelectorHandle {
+  open: () => void;
+  openWithQuery: (query: string) => void;
 }
 
 // Debounce hook
@@ -45,99 +48,75 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-// Virtualized list component
-const VirtualizedStockList: React.FC<{
+// Optimized stock list component with memoization
+const StockList = React.memo<{
   stocks: ReturnType<typeof getAllStocks>;
   search: string;
   onSelect: (symbol: string) => void;
-}> = ({ stocks, search, onSelect }) => {
-  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const itemHeight = 48; // Height of each stock item
-  const visibleCount = 50; // Number of items to render at once
-
-  // Calculate visible range based on scroll position
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const scrollTop = e.currentTarget.scrollTop;
-    const start = Math.floor(scrollTop / itemHeight);
-    const end = Math.min(start + visibleCount, stocks.length);
-    setVisibleRange({ start, end });
-  }, [stocks.length, itemHeight, visibleCount]);
-
-  // Get visible stocks
-  const visibleStocks = useMemo(() => {
-    return stocks.slice(visibleRange.start, visibleRange.end);
-  }, [stocks, visibleRange]);
-
-  // Calculate total height for scroll container
-  const totalHeight = stocks.length * itemHeight;
-
+}>(({ stocks, search, onSelect }) => {
   return (
-    <div 
-      ref={containerRef}
-      className="max-h-[400px] overflow-y-auto"
-      onScroll={handleScroll}
-    >
-      <div style={{ height: totalHeight, position: 'relative' }}>
-        <div style={{ 
-          position: 'absolute', 
-          top: visibleRange.start * itemHeight,
-          left: 0,
-          right: 0
-        }}>
-          {visibleStocks.map((stock, index) => (
-            <CommandItem
-              key={`${stock.symbol}_${stock.exchange}`}
-              value={stock.symbol}
-              onSelect={() => onSelect(stock.symbol)}
-              className="h-12"
-            >
-              <div className="flex items-center justify-between w-full">
-                <div>
-                  <span className="font-semibold">{stock.symbol}</span>
-                  <span className="ml-2 text-slate-600">{stock.name}</span>
-                </div>
-                <span className="text-xs text-slate-400">{stock.exchange}</span>
-              </div>
-            </CommandItem>
-          ))}
-        </div>
-      </div>
-    </div>
+    <>
+      {stocks.map((stock) => (
+        <CommandItem
+          key={`${stock.symbol}_${stock.exchange}`}
+          value={stock.symbol}
+          onSelect={() => onSelect(stock.symbol)}
+          className="h-12"
+        >
+          <div className="flex items-center justify-between w-full">
+            <div>
+              <span className="font-semibold">{stock.symbol}</span>
+              <span className="ml-2 text-slate-600">{stock.name}</span>
+            </div>
+            <span className="text-xs text-slate-400">{stock.exchange}</span>
+          </div>
+        </CommandItem>
+      ))}
+    </>
   );
-};
+});
 
-export const StockSelector: React.FC<StockSelectorProps> = ({
+StockList.displayName = 'StockList';
+
+export const StockSelector = forwardRef<StockSelectorHandle, StockSelectorProps>(({ 
   value,
   onValueChange,
   placeholder = "Select a stock",
   disabled = false,
   className = "",
   label
-}) => {
+}, ref) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [showAllStocks, setShowAllStocks] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   
   // Performance monitoring
   const { startRender, endRender } = usePerformanceMonitor('StockSelector');
   
-  // Debounce search to reduce filtering operations
-  const debouncedSearch = useDebounce(search, 150);
+  // Debounce search to reduce filtering operations (reduced delay for better responsiveness)
+  const debouncedSearch = useDebounce(search, 100);
 
-  // Memoize popular stocks
-  const popularStocks = useMemo(() => {
-    return getPopularStocks();
-  }, []);
-
-  // Memoize filtered stocks
+  // Memoize filtered stocks with better caching
   const filteredStocks = useMemo(() => {
     if (!debouncedSearch.trim()) {
-      return showAllStocks ? getAllStocks() : popularStocks;
+      return getAllStocks();
     }
     return searchStocks(debouncedSearch);
-  }, [debouncedSearch, showAllStocks, popularStocks]);
+  }, [debouncedSearch]);
+
+  // Pre-load all stocks on component mount for instant access
+  useEffect(() => {
+    // Warm up the cache by calling getAllStocks once
+    getAllStocks();
+  }, []);
+
+  // Get search results count (only when actually searching)
+  const searchResultsCount = useMemo(() => {
+    if (debouncedSearch.trim()) {
+      return searchStocks(debouncedSearch).length;
+    }
+    return 0;
+  }, [debouncedSearch]);
 
   const selectedStock = useMemo(() => 
     getStockBySymbol(value), 
@@ -148,22 +127,21 @@ export const StockSelector: React.FC<StockSelectorProps> = ({
     onValueChange(symbol);
     setDialogOpen(false);
     setSearch("");
-    setShowAllStocks(false);
   }, [onValueChange]);
 
-  const handleLoadAllStocks = useCallback(() => {
-    setIsLoading(true);
-    // Simulate loading delay for better UX
-    setTimeout(() => {
-      setShowAllStocks(true);
-      setIsLoading(false);
-    }, 100);
-  }, []);
-
-  // Preload popular stocks on component mount
-  useEffect(() => {
-    preloadPopularStocks();
-  }, []);
+  // Expose imperative API to parent
+  useImperativeHandle(ref, () => ({
+    open: () => {
+      setDialogOpen(true);
+      // Ensure focus happens after dialog opens
+      setTimeout(() => inputRef.current?.focus(), 0);
+    },
+    openWithQuery: (query: string) => {
+      setSearch(query);
+      setDialogOpen(true);
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }), []);
 
   // Performance monitoring for render
   useEffect(() => {
@@ -201,64 +179,21 @@ export const StockSelector: React.FC<StockSelectorProps> = ({
           value={search}
           onValueChange={setSearch}
           autoFocus
+          ref={inputRef as any}
         />
-        <CommandList>
+        <CommandList className="max-h-[400px] overflow-y-auto">
           <CommandEmpty>
-            {isLoading ? "Loading..." : "No stocks found."}
+            No stocks found.
           </CommandEmpty>
           <CommandGroup>
-            {!debouncedSearch.trim() && !showAllStocks && (
-              <div className="px-2 py-1 text-xs text-slate-500 border-b">
-                Popular Stocks ({popularStocks.length})
-              </div>
-            )}
-            
-            {!debouncedSearch.trim() && !showAllStocks && (
-              <>
-                {popularStocks.map((stock) => (
-                  <CommandItem
-                    key={`${stock.symbol}_${stock.exchange}`}
-                    value={stock.symbol}
-                    onSelect={() => handleSelect(stock.symbol)}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <div>
-                        <span className="font-semibold">{stock.symbol}</span>
-                        <span className="ml-2 text-slate-600">{stock.name}</span>
-                      </div>
-                      <span className="text-xs text-slate-400">{stock.exchange}</span>
-                    </div>
-                  </CommandItem>
-                ))}
-                <div className="px-2 py-2 border-t">
-                  <button
-                    onClick={handleLoadAllStocks}
-                    disabled={isLoading}
-                    className="w-full text-left text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
-                  >
-                    {isLoading ? "Loading..." : `Load all ${getAllStocks().length.toLocaleString()} stocks...`}
-                  </button>
-                </div>
-              </>
-            )}
-            
-            {(debouncedSearch.trim() || showAllStocks) && (
-              <>
-                {debouncedSearch.trim() && (
-                  <div className="px-2 py-1 text-xs text-slate-500 border-b">
-                    Search Results ({filteredStocks.length})
-                  </div>
-                )}
-                <VirtualizedStockList
-                  stocks={filteredStocks}
-                  search={debouncedSearch}
-                  onSelect={handleSelect}
-                />
-              </>
-            )}
+            <StockList
+              stocks={filteredStocks}
+              search={debouncedSearch}
+              onSelect={handleSelect}
+            />
           </CommandGroup>
         </CommandList>
       </CommandDialog>
     </div>
   );
-}; 
+});
