@@ -32,7 +32,7 @@ export const API_BASE_URL = BASE_SERVICE_URL;
 
 // WebSocket URL for real-time data
 export const WEBSOCKET_URL = getEnvVar('WEBSOCKET_URL', 
-  IS_PRODUCTION ? 'wss://stockanalyzer-pro.onrender.com/ws/stream' : 'ws://localhost:8000/ws/stream'
+  IS_PRODUCTION ? 'wss://stockanalyzer-pro.onrender.com/data/ws/stream' : 'ws://localhost:8000/data/ws/stream'
 );
 
 // Service endpoints mapping - Base paths without parameters
