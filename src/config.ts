@@ -30,32 +30,43 @@ export const BASE_SERVICE_URL = getEnvVar('BASE_SERVICE_URL',
 // Legacy support - keep the old API_BASE_URL for backward compatibility
 export const API_BASE_URL = BASE_SERVICE_URL;
 
-// WebSocket URL for real-time data
-export const WEBSOCKET_URL = getEnvVar('WEBSOCKET_URL', 
-  IS_PRODUCTION ? 'wss://stockanalyzer-pro.onrender.com/data/ws/stream' : 'ws://localhost:8000/data/ws/stream'
-);
+// WebSocket URL - automatically derived from base URL
+// Convert http:// to ws:// and https:// to wss://
+export const WEBSOCKET_URL = (() => {
+  const customWebSocketUrl = getEnvVar('WEBSOCKET_URL', '');
+  if (customWebSocketUrl) {
+    return customWebSocketUrl; // Use custom if provided
+  }
+  
+  // Auto-derive from base URL
+  if (BASE_SERVICE_URL.startsWith('https://')) {
+    return BASE_SERVICE_URL.replace('https://', 'wss://') + '/ws/stream';
+  } else {
+    return BASE_SERVICE_URL.replace('http://', 'ws://') + '/ws/stream';
+  }
+})();
 
-// Service endpoints mapping - Base paths without parameters
+// Service endpoints mapping - Now using direct paths everywhere
 export const ENDPOINTS = {
-  // Data Service endpoints (mounted under /data)
+  // Data Service endpoints - Direct paths for both local and production
   DATA: {
-    HEALTH: `${BASE_SERVICE_URL}/data/health`,
-    STOCK_HISTORY: `${BASE_SERVICE_URL}/data/stock`,
-    STOCK_INFO: `${BASE_SERVICE_URL}/data/stock`,
-    MARKET_STATUS: `${BASE_SERVICE_URL}/data/market/status`,
-    MAPPING_TOKEN_TO_SYMBOL: `${BASE_SERVICE_URL}/data/mapping/token-to-symbol`,
-    MAPPING_SYMBOL_TO_TOKEN: `${BASE_SERVICE_URL}/data/mapping/symbol-to-token`,
-    OPTIMIZED_DATA: `${BASE_SERVICE_URL}/data/data/optimized`,
+    HEALTH: `${BASE_SERVICE_URL}/health`,
+    STOCK_HISTORY: `${BASE_SERVICE_URL}/stock`,
+    STOCK_INFO: `${BASE_SERVICE_URL}/stock`,
+    MARKET_STATUS: `${BASE_SERVICE_URL}/market/status`,
+    MAPPING_TOKEN_TO_SYMBOL: `${BASE_SERVICE_URL}/mapping/token-to-symbol`,
+    MAPPING_SYMBOL_TO_TOKEN: `${BASE_SERVICE_URL}/mapping/symbol-to-token`,
+    OPTIMIZED_DATA: `${BASE_SERVICE_URL}/data/optimized`,
     WEBSOCKET: WEBSOCKET_URL,
-    WEBSOCKET_HEALTH: `${BASE_SERVICE_URL}/data/ws/health`,
-    WEBSOCKET_TEST: `${BASE_SERVICE_URL}/data/ws/test`,
-    WEBSOCKET_CONNECTIONS: `${BASE_SERVICE_URL}/data/ws/connections`,
-    AUTH_TOKEN: `${BASE_SERVICE_URL}/data/auth/token`,
-    AUTH_VERIFY: `${BASE_SERVICE_URL}/data/auth/verify`,
-    MARKET_OPTIMIZATION: `${BASE_SERVICE_URL}/data/market/optimization`,
+    WEBSOCKET_HEALTH: `${BASE_SERVICE_URL}/ws/health`,
+    WEBSOCKET_TEST: `${BASE_SERVICE_URL}/ws/test`,
+    WEBSOCKET_CONNECTIONS: `${BASE_SERVICE_URL}/ws/connections`,
+    AUTH_TOKEN: `${BASE_SERVICE_URL}/auth/token`,
+    AUTH_VERIFY: `${BASE_SERVICE_URL}/auth/verify`,
+    MARKET_OPTIMIZATION: `${BASE_SERVICE_URL}/market/optimization`,
   },
   
-  // Analysis Service endpoints (mounted under /analysis)
+  // Analysis Service endpoints - Direct paths for both local and production
   ANALYSIS: {
     HEALTH: `${BASE_SERVICE_URL}/analysis/health`,
     ANALYZE: `${BASE_SERVICE_URL}/analysis/analyze`,
@@ -65,12 +76,12 @@ export const ENDPOINTS = {
     STOCK_INDICATORS: `${BASE_SERVICE_URL}/analysis/stock`,
     PATTERNS: `${BASE_SERVICE_URL}/analysis/patterns`,
     CHARTS: `${BASE_SERVICE_URL}/analysis/charts`,
-    SECTOR_LIST: `${BASE_SERVICE_URL}/analysis/sector/list`,
-    SECTOR_BENCHMARK: `${BASE_SERVICE_URL}/analysis/sector/benchmark`,
-    SECTOR_BENCHMARK_ASYNC: `${BASE_SERVICE_URL}/analysis/sector/benchmark/async`,
-    SECTOR_STOCKS: `${BASE_SERVICE_URL}/analysis/sector`,
-    SECTOR_PERFORMANCE: `${BASE_SERVICE_URL}/analysis/sector`,
-    SECTOR_COMPARE: `${BASE_SERVICE_URL}/analysis/sector/compare`,
+    SECTOR_LIST: `${BASE_SERVICE_URL}/sector/list`,
+    SECTOR_BENCHMARK: `${BASE_SERVICE_URL}/sector/benchmark`,
+    SECTOR_BENCHMARK_ASYNC: `${BASE_SERVICE_URL}/sector/benchmark/async`,
+    SECTOR_STOCKS: `${BASE_SERVICE_URL}/sector`,
+    SECTOR_PERFORMANCE: `${BASE_SERVICE_URL}/sector`,
+    SECTOR_COMPARE: `${BASE_SERVICE_URL}/sector/compare`,
     STOCK_SECTOR: `${BASE_SERVICE_URL}/analysis/stock`,
     // User Analysis endpoints
     USER_ANALYSES: `${BASE_SERVICE_URL}/analysis/analyses/user`,
@@ -95,10 +106,11 @@ export const CONFIG = {
 
 // Log configuration in development
 if (IS_DEVELOPMENT) {
-  // console.log('🔧 Frontend Configuration:', {
-  //   DATA_SERVICE_URL,
-  //   ANALYSIS_SERVICE_URL,
-  //   WEBSOCKET_URL,
-  //   NODE_ENV
-  // });
+  console.log('🔧 Frontend Configuration:', {
+    BASE_SERVICE_URL,
+    WEBSOCKET_URL: `Auto-derived: ${WEBSOCKET_URL}`,
+    NODE_ENV,
+    'DATA_SERVICE_ENDPOINTS': ENDPOINTS.DATA,
+    'ANALYSIS_SERVICE_ENDPOINTS': ENDPOINTS.ANALYSIS
+  });
 } 

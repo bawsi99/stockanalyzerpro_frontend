@@ -11,12 +11,38 @@ This frontend application uses environment variables for configuration. See [CON
    cp env.example .env.local
    ```
 
-2. Modify `.env.local` with your settings:
-   ```env
-   VITE_DATA_SERVICE_URL=http://localhost:8000
-   VITE_ANALYSIS_SERVICE_URL=http://localhost:8001
-   VITE_WEBSOCKET_URL=ws://localhost:8000/ws/stream
-   ```
+2. Choose your backend mode and modify `.env.local` accordingly:
+
+#### Option 1: Single Service Mode (Recommended for simple development)
+When running only the data service: `python data_service.py`
+```env
+VITE_BASE_SERVICE_URL=http://localhost:8000
+VITE_WEBSOCKET_URL=ws://localhost:8000/ws/stream
+```
+
+#### Option 2: Multi Service Mode
+When running both services: `python run_services.py`
+```env
+VITE_BASE_SERVICE_URL=http://localhost:8000
+VITE_WEBSOCKET_URL=ws://localhost:8000/ws/stream
+```
+
+#### Option 3: Production Mode
+When deployed on Render:
+```env
+VITE_BASE_SERVICE_URL=https://stockanalyzer-pro.onrender.com
+VITE_WEBSOCKET_URL=wss://stockanalyzer-pro.onrender.com/data/ws/stream
+```
+
+### Backend Modes Explained
+
+- **Single Service Mode**: Data service only on port 8000. All endpoints are direct (e.g., `/stock/{symbol}/history`). Use this for simple development and testing.
+
+- **Multi Service Mode**: Data service on port 8000, analysis service on port 8001. Data endpoints are direct, analysis endpoints use port 8001. Use this for full functionality testing.
+
+- **Production Mode**: Consolidated service with all endpoints mounted under `/data` and `/analysis`. Use this for production deployment.
+
+The frontend automatically detects the environment and adjusts endpoint URLs accordingly.
 
 ## Chart Components Overview
 
