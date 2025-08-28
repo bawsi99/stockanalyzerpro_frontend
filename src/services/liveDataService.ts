@@ -88,30 +88,46 @@ class LiveDataService {
   ): Promise<HistoricalDataResponse> {
     const apiCallKey = `getHistoricalData-${symbol}-${interval}`;
     
+    console.log(`🔗 [liveDataService] Starting getHistoricalData for ${symbol}:`, {
+      symbol,
+      interval,
+      exchange,
+      limit,
+      apiCallKey
+    });
+    
     return performanceMonitor.monitorApiCall(apiCallKey, async () => {
       try {
+        console.log(`🔐 [liveDataService] Getting authentication token for ${symbol}`);
         const token = await authService.ensureAuthenticated();
         if (!token) {
           throw new Error('Authentication token not available');
         }
+        console.log(`✅ [liveDataService] Authentication successful for ${symbol}`);
 
         const backendInterval = INTERVAL_MAPPING[interval as keyof typeof INTERVAL_MAPPING] || '1day';
         
         const url = `${ENDPOINTS.DATA.STOCK_HISTORY}/${symbol}/history?interval=${backendInterval}&exchange=${exchange}&limit=${limit}`;
-        // console.log('🔗 Calling historical data API:', {
-        //   symbol,
-        //   interval,
-        //   backendInterval,
-        //   exchange,
-        //   limit,
-        //   url
-        // });
+        console.log('🔗 [liveDataService] Calling historical data API:', {
+          symbol,
+          interval,
+          backendInterval,
+          exchange,
+          limit,
+          url
+        });
         
         const response = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+        });
+
+        console.log(`📡 [liveDataService] API response received for ${symbol}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok
         });
 
         if (!response.ok) {
@@ -124,11 +140,28 @@ class LiveDataService {
           }
         }
 
+        console.log(`📊 [liveDataService] Parsing JSON response for ${symbol}`);
         const data = await response.json();
+        
+        console.log(`📊 [liveDataService] Parsed response for ${symbol}:`, {
+          success: data.success,
+          symbol: data.symbol,
+          exchange: data.exchange,
+          interval: data.interval,
+          candlesLength: data.candles?.length,
+          hasError: !!data.error,
+          error: data.error
+        });
         
         if (!data.success) {
           throw new Error(data.error || 'Failed to fetch historical data');
         }
+
+        console.log(`✅ [liveDataService] Successfully fetched data for ${symbol}:`, {
+          candlesCount: data.candles?.length,
+          firstCandle: data.candles?.[0],
+          lastCandle: data.candles?.[data.candles?.length - 1]
+        });
 
         return data;
       } catch (error) {
@@ -477,6 +510,7 @@ class LiveDataService {
         'BAJFINANCE': '811',
         'NESTLEIND': '16751',
         'POWERGRID': '14977',
+        'AAATECH': '3208449', // Add AAATECH with correct token
         'NIFTY 50': '256265', // Use RELIANCE token as fallback for indices
         'NIFTY BANK': '1330', // Use HDFCBANK token as fallback for bank index
         'NIFTY IT': '11536'   // Use TCS token as fallback for IT index

@@ -165,7 +165,7 @@ export function useLiveChart({
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // console.log(`Loading historical data for ${currentSymbol} with timeframe ${currentTimeframe} (attempt ${retryCount + 1})`);
+      console.log(`🔄 [useLiveChart] Starting loadHistoricalData for ${currentSymbol} (attempt ${retryCount + 1})`);
 
       const response = await liveDataService.getHistoricalData(
         currentSymbol,
@@ -174,14 +174,14 @@ export function useLiveChart({
         maxDataPoints
       );
 
-      // console.log('Backend API response:', {
-      //   symbol: currentSymbol,
-      //   responseSuccess: response.success,
-      //   responseSymbol: response.symbol,
-      //   candlesLength: response.candles?.length,
-      //   firstCandle: response.candles?.[0],
-      //   lastCandle: response.candles?.[response.candles?.length - 1]
-      // });
+      console.log('📊 [useLiveChart] Backend API response received:', {
+        symbol: currentSymbol,
+        responseSuccess: response.success,
+        responseSymbol: response.symbol,
+        candlesLength: response.candles?.length,
+        firstCandle: response.candles?.[0],
+        lastCandle: response.candles?.[response.candles?.length - 1]
+      });
 
       // Add more detailed debugging for the first few candles
       if (response.candles && response.candles.length > 0) {
@@ -199,8 +199,16 @@ export function useLiveChart({
         throw new Error(`No data received from server for ${currentSymbol}`);
       }
 
+      console.log(`🔄 [useLiveChart] Converting ${response.candles.length} candles for ${currentSymbol}`);
       const convertedData = liveDataService.convertToChartData(response.candles);
       
+      console.log('🔄 [useLiveChart] Converted data sample:', {
+        originalCount: response.candles.length,
+        convertedCount: convertedData.length,
+        firstConverted: convertedData[0],
+        lastConverted: convertedData[convertedData.length - 1]
+      });
+
       // Validate data before setting
       if (convertedData.length === 0) {
         throw new Error(`No valid data points received for ${currentSymbol}`);
@@ -211,26 +219,69 @@ export function useLiveChart({
       const firstCandle = convertedData[0];
       
       // Check for suspicious price values (likely old data from different stock)
-      if (lastCandle.close < 100 || lastCandle.close > 100000) {
-        // console.warn('⚠️ Suspicious price values detected in historical data:', {
-        //   symbol: currentSymbol,
-        //   lastClose: lastCandle.close,
-        //   firstClose: firstCandle.close,
-        //   dataPoints: convertedData.length
-        // });
+      // REMOVED: Hardcoded price range validation that was too restrictive
+      // OLD: if (lastCandle.close < 100 || lastCandle.close > 100000)
+      
+      // NEW: Smart validation that checks for data consistency and reasonable relationships
+      let validationErrors: string[] = [];
+      
+      // Check OHLC logic consistency
+      if (lastCandle.high < lastCandle.low) {
+        validationErrors.push('High < Low in last candle');
+      }
+      if (lastCandle.high < Math.max(lastCandle.open, lastCandle.close)) {
+        validationErrors.push('High < max(Open, Close) in last candle');
+      }
+      if (lastCandle.low > Math.min(lastCandle.open, lastCandle.close)) {
+        validationErrors.push('Low > min(Open, Close) in last candle');
+      }
+      
+      // Check for reasonable price relationships (not absolute values)
+      const priceRange = Math.abs(lastCandle.close - firstCandle.close);
+      const avgPrice = (lastCandle.close + firstCandle.close) / 2;
+      const priceChangePercent = (priceRange / avgPrice) * 100;
+      
+      // Log price information for debugging
+      console.log(`🔍 [useLiveChart] Price analysis for ${currentSymbol}:`, {
+        lastClose: lastCandle.close,
+        firstClose: firstCandle.close,
+        priceRange,
+        avgPrice,
+        priceChangePercent: priceChangePercent.toFixed(2) + '%'
+      });
+      
+      // Check for extreme price changes (likely data corruption)
+      if (priceChangePercent > 1000) { // More than 1000% change
+        validationErrors.push(`Extreme price change: ${priceChangePercent.toFixed(2)}%`);
+      }
+      
+      // Check for negative prices (invalid)
+      if (lastCandle.close < 0 || firstCandle.close < 0) {
+        validationErrors.push('Negative prices detected');
+      }
+      
+      // Check for zero prices (invalid)
+      if (lastCandle.close === 0 || firstCandle.close === 0) {
+        validationErrors.push('Zero prices detected');
+      }
+      
+      if (validationErrors.length > 0) {
+        console.warn(`⚠️ [useLiveChart] Validation errors for ${currentSymbol}:`, validationErrors);
         throw new Error(`Invalid price data received for ${currentSymbol}. Please try again.`);
       }
+      
+      console.log('✅ [useLiveChart] Data validation passed for', currentSymbol);
       
       // Limit data points for performance
       const limitedData = convertedData.slice(-maxDataPoints);
       
-      // console.log('Historical data loaded:', {
-      //   symbol: currentSymbol,
-      //   timeframe: currentTimeframe,
-      //   dataPoints: limitedData.length,
-      //   firstCandle: limitedData[0],
-      //   lastCandle: limitedData[limitedData.length - 1]
-      // });
+      console.log('📊 [useLiveChart] Historical data loaded successfully:', {
+        symbol: currentSymbol,
+        timeframe: currentTimeframe,
+        dataPoints: limitedData.length,
+        firstCandle: limitedData[0],
+        lastCandle: limitedData[limitedData.length - 1]
+      });
       
       dataRef.current = limitedData;
       setState(prev => ({
@@ -243,12 +294,12 @@ export function useLiveChart({
       }));
 
     } catch (error) {
-      // console.error(`Error loading historical data for ${currentSymbol}:`, error);
+      console.error(`❌ [useLiveChart] Error loading historical data for ${currentSymbol}:`, error);
       
       // Retry logic for transient errors
       if (retryCount < 2 && error instanceof Error && 
           (error.message.includes('network') || error.message.includes('timeout'))) {
-        // console.log(`Retrying historical data load for ${currentSymbol} (${retryCount + 1}/2)...`);
+        console.log(`🔄 [useLiveChart] Retrying historical data load for ${currentSymbol} (${retryCount + 1}/2)...`);
         setTimeout(() => loadHistoricalDataRef.current?.(retryCount + 1), 2000);
         return;
       }

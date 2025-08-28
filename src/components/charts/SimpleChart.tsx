@@ -270,12 +270,34 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
       if (candlestickData.length > 0) {
         const lastCandle = candlestickData[candlestickData.length - 1];
         
-        // Check for reasonable price values
-        if (lastCandle.close < 1 || lastCandle.close > 1000000) {
-          // console.warn('⚠️ Suspicious price values detected, skipping data:', {
-          //   lastClose: lastCandle.close,
-          //   symbol: symbol
-          // });
+        // Check for reasonable price values - REMOVED overly restrictive range check
+        // OLD: if (lastCandle.close < 1 || lastCandle.close > 1000000)
+        
+        // NEW: Smart validation that checks for data consistency
+        let isValidData = true;
+        
+        // Check OHLC logic consistency
+        if (lastCandle.high < lastCandle.low) {
+          console.warn('⚠️ Invalid OHLC in SimpleChart: High < Low for', symbol);
+          isValidData = false;
+        }
+        if (lastCandle.high < Math.max(lastCandle.open, lastCandle.close)) {
+          console.warn('⚠️ Invalid OHLC in SimpleChart: High < max(Open, Close) for', symbol);
+          isValidData = false;
+        }
+        if (lastCandle.low > Math.min(lastCandle.open, lastCandle.close)) {
+          console.warn('⚠️ Invalid OHLC in SimpleChart: Low > min(Open, Close) for', symbol);
+          isValidData = false;
+        }
+        
+        // Check for negative or zero prices (invalid)
+        if (lastCandle.close < 0 || lastCandle.close === 0) {
+          console.warn('⚠️ Invalid price in SimpleChart: Non-positive close price for', symbol);
+          isValidData = false;
+        }
+        
+        if (!isValidData) {
+          console.warn('⚠️ Data validation failed in SimpleChart for', symbol, '- skipping chart update');
           return;
         }
       }
