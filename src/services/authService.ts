@@ -1,5 +1,5 @@
 // Simple authentication service for WebSocket connections
-import { API_BASE_URL } from '../config';
+import { ENDPOINTS } from '../config';
 
 export interface AuthResponse {
   token: string;
@@ -46,7 +46,7 @@ class AuthService {
 
   async createToken(userId?: string): Promise<AuthResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/token?user_id=${encodeURIComponent(userId)}`, {
+      const response = await fetch(`${ENDPOINTS.DATA.AUTH_TOKEN}?user_id=${encodeURIComponent(userId || '')}` , {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -73,7 +73,7 @@ class AuthService {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/verify?token=${encodeURIComponent(tokenToVerify)}`);
+      const response = await fetch(`${ENDPOINTS.DATA.AUTH_VERIFY}?token=${encodeURIComponent(tokenToVerify)}`);
       
       if (!response.ok) {
         return { valid: false };

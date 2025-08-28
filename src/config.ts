@@ -6,6 +6,11 @@ export const IS_PRODUCTION = import.meta.env.PROD;
 export const IS_DEVELOPMENT = import.meta.env.DEV;
 export const NODE_ENV = import.meta.env.MODE;
 
+// Frontend port detection
+export const FRONTEND_PORT = window.location.port || (IS_DEVELOPMENT ? '8080' : '80');
+export const FRONTEND_HOST = window.location.hostname || 'localhost';
+export const FRONTEND_URL = `${window.location.protocol}//${FRONTEND_HOST}:${FRONTEND_PORT}`;
+
 // Get environment variables with fallbacks
 const getEnvVar = (key: string, fallback: string): string => {
   // Check for Vite environment variables (prefixed with VITE_)
@@ -46,24 +51,24 @@ export const WEBSOCKET_URL = (() => {
   }
 })();
 
-// Service endpoints mapping - Now using direct paths everywhere
+// Service endpoints mapping - use consolidated service mount points
 export const ENDPOINTS = {
   // Data Service endpoints - Direct paths for both local and production
   DATA: {
-    HEALTH: `${BASE_SERVICE_URL}/health`,
-    STOCK_HISTORY: `${BASE_SERVICE_URL}/stock`,
-    STOCK_INFO: `${BASE_SERVICE_URL}/stock`,
-    MARKET_STATUS: `${BASE_SERVICE_URL}/market/status`,
-    MAPPING_TOKEN_TO_SYMBOL: `${BASE_SERVICE_URL}/mapping/token-to-symbol`,
-    MAPPING_SYMBOL_TO_TOKEN: `${BASE_SERVICE_URL}/mapping/symbol-to-token`,
+    HEALTH: `${BASE_SERVICE_URL}/data/health`,
+    STOCK_HISTORY: `${BASE_SERVICE_URL}/data/stock`,
+    STOCK_INFO: `${BASE_SERVICE_URL}/data/stock`,
+    MARKET_STATUS: `${BASE_SERVICE_URL}/data/market/status`,
+    MAPPING_TOKEN_TO_SYMBOL: `${BASE_SERVICE_URL}/data/mapping/token-to-symbol`,
+    MAPPING_SYMBOL_TO_TOKEN: `${BASE_SERVICE_URL}/data/mapping/symbol-to-token`,
     OPTIMIZED_DATA: `${BASE_SERVICE_URL}/data/optimized`,
     WEBSOCKET: WEBSOCKET_URL,
-    WEBSOCKET_HEALTH: `${BASE_SERVICE_URL}/ws/health`,
-    WEBSOCKET_TEST: `${BASE_SERVICE_URL}/ws/test`,
-    WEBSOCKET_CONNECTIONS: `${BASE_SERVICE_URL}/ws/connections`,
-    AUTH_TOKEN: `${BASE_SERVICE_URL}/auth/token`,
-    AUTH_VERIFY: `${BASE_SERVICE_URL}/auth/verify`,
-    MARKET_OPTIMIZATION: `${BASE_SERVICE_URL}/market/optimization`,
+    WEBSOCKET_HEALTH: `${BASE_SERVICE_URL}/data/ws/health`,
+    WEBSOCKET_TEST: `${BASE_SERVICE_URL}/data/ws/test`,
+    WEBSOCKET_CONNECTIONS: `${BASE_SERVICE_URL}/data/ws/connections`,
+    AUTH_TOKEN: `${BASE_SERVICE_URL}/data/auth/token`,
+    AUTH_VERIFY: `${BASE_SERVICE_URL}/data/auth/verify`,
+    MARKET_OPTIMIZATION: `${BASE_SERVICE_URL}/data/market/optimization`,
   },
   
   // Analysis Service endpoints - Direct paths for both local and production
@@ -76,12 +81,12 @@ export const ENDPOINTS = {
     STOCK_INDICATORS: `${BASE_SERVICE_URL}/analysis/stock`,
     PATTERNS: `${BASE_SERVICE_URL}/analysis/patterns`,
     CHARTS: `${BASE_SERVICE_URL}/analysis/charts`,
-    SECTOR_LIST: `${BASE_SERVICE_URL}/sector/list`,
-    SECTOR_BENCHMARK: `${BASE_SERVICE_URL}/sector/benchmark`,
-    SECTOR_BENCHMARK_ASYNC: `${BASE_SERVICE_URL}/sector/benchmark/async`,
-    SECTOR_STOCKS: `${BASE_SERVICE_URL}/sector`,
-    SECTOR_PERFORMANCE: `${BASE_SERVICE_URL}/sector`,
-    SECTOR_COMPARE: `${BASE_SERVICE_URL}/sector/compare`,
+    SECTOR_LIST: `${BASE_SERVICE_URL}/analysis/sector/list`,
+    SECTOR_BENCHMARK: `${BASE_SERVICE_URL}/analysis/sector/benchmark`,
+    SECTOR_BENCHMARK_ASYNC: `${BASE_SERVICE_URL}/analysis/sector/benchmark/async`,
+    SECTOR_STOCKS: `${BASE_SERVICE_URL}/analysis/sector`,
+    SECTOR_PERFORMANCE: `${BASE_SERVICE_URL}/analysis/sector`,
+    SECTOR_COMPARE: `${BASE_SERVICE_URL}/analysis/sector/compare`,
     STOCK_SECTOR: `${BASE_SERVICE_URL}/analysis/stock`,
     // User Analysis endpoints
     USER_ANALYSES: `${BASE_SERVICE_URL}/analysis/analyses/user`,

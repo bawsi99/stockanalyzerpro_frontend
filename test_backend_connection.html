@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .endpoint-list {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .endpoint-item {
+            margin: 5px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔗 Backend Connection Test</h1>
+    <p>This page tests the connectivity between the frontend and backend services.</p>
+
+    <div class="test-section">
+        <h2>📊 Backend Health Check</h2>
+        <button onclick="testBackendHealth()">Test Backend Health</button>
+        <div id="health-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🌐 API Endpoint Tests</h2>
+        <button onclick="testAPIEndpoints()">Test API Endpoints</button>
+        <div id="api-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 CORS Test</h2>
+        <button onclick="testCORS()">Test CORS</button>
+        <div id="cors-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📡 WebSocket Test</h2>
+        <button onclick="testWebSocket()">Test WebSocket</button>
+        <div id="websocket-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 Configuration</h2>
+        <div class="endpoint-list">
+            <div class="endpoint-item"><strong>Frontend URL:</strong> <span id="frontend-url"></span></div>
+            <div class="endpoint-item"><strong>Backend URL:</strong> <span id="backend-url"></span></div>
+            <div class="endpoint-item"><strong>Current Port:</strong> <span id="current-port"></span></div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🚀 Run All Tests</h2>
+        <button onclick="runAllTests()" style="background-color: #28a745;">Run All Tests</button>
+        <div id="all-results"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const BACKEND_URL = 'http://localhost:8000';
+        const FRONTEND_URL = window.location.origin;
+        
+        // Display configuration
+        document.getElementById('frontend-url').textContent = FRONTEND_URL;
+        document.getElementById('backend-url').textContent = BACKEND_URL;
+        document.getElementById('current-port').textContent = window.location.port || '80';
+
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            container.appendChild(div);
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        async function testBackendHealth() {
+            clearResults('health-results');
+            addResult('health-results', '🔄 Testing backend health...', 'info');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('health-results', `✅ Backend is healthy! Service: ${data.service}`, 'success');
+                } else {
+                    addResult('health-results', `❌ Backend health check failed: HTTP ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult('health-results', `❌ Backend health check error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAPIEndpoints() {
+            clearResults('api-results');
+            addResult('api-results', '🔄 Testing API endpoints...', 'info');
+
+            const endpoints = [
+                '/data/health',
+                '/analysis/health',
+                '/sector/list',
+                '/data/market/status'
+            ];
+
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(`${BACKEND_URL}${endpoint}`);
+                    if (response.ok) {
+                        addResult('api-results', `✅ ${endpoint}: Working`, 'success');
+                    } else {
+                        addResult('api-results', `❌ ${endpoint}: HTTP ${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    addResult('api-results', `❌ ${endpoint}: Error - ${error.message}`, 'error');
+                }
+            }
+        }
+
+        async function testCORS() {
+            clearResults('cors-results');
+            addResult('cors-results', '🔄 Testing CORS configuration...', 'info');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': FRONTEND_URL
+                    }
+                });
+
+                if (response.ok) {
+                    const corsHeader = response.headers.get('access-control-allow-origin');
+                    addResult('cors-results', `✅ CORS working! Origin header: ${corsHeader || 'Not set'}`, 'success');
+                } else {
+                    addResult('cors-results', `❌ CORS test failed: HTTP ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult('cors-results', `❌ CORS test error: ${error.message}`, 'error');
+            }
+        }
+
+        function testWebSocket() {
+            clearResults('websocket-results');
+            addResult('websocket-results', '🔄 Testing WebSocket connection...', 'info');
+
+            try {
+                const wsUrl = BACKEND_URL.replace('http://', 'ws://') + '/ws/stream';
+                const ws = new WebSocket(wsUrl);
+
+                ws.onopen = function() {
+                    addResult('websocket-results', '✅ WebSocket connected successfully!', 'success');
+                    ws.close();
+                };
+
+                ws.onerror = function(error) {
+                    addResult('websocket-results', `❌ WebSocket error: ${error.message || 'Connection failed'}`, 'error');
+                };
+
+                ws.onclose = function() {
+                    addResult('websocket-results', 'ℹ️ WebSocket connection closed', 'info');
+                };
+
+                // Timeout after 5 seconds
+                setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        addResult('websocket-results', '⏰ WebSocket connection timeout', 'error');
+                        ws.close();
+                    }
+                }, 5000);
+
+            } catch (error) {
+                addResult('websocket-results', `❌ WebSocket test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function runAllTests() {
+            clearResults('all-results');
+            addResult('all-results', '🚀 Running all tests...', 'info');
+
+            // Run tests sequentially
+            await testBackendHealth();
+            await testAPIEndpoints();
+            testCORS();
+            testWebSocket();
+
+            addResult('all-results', '✅ All tests completed!', 'success');
+        }
+
+        // Auto-run health check on page load
+        window.addEventListener('load', () => {
+            setTimeout(testBackendHealth, 1000);
+        });
+    </script>
+</body>
+</html>
