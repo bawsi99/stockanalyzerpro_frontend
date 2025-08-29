@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatPercentage, formatPriceChange } from '@/utils/numberFormatter';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ArrowLeft, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, Loader2, BarChart3, Activity, ArrowUpRight, ArrowDownRight, ZoomIn } from 'lucide-react';
+import { ArrowLeft, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, Loader2, BarChart3, Activity, ArrowUpRight, ArrowDownRight, ZoomIn, Target } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { analysisService } from '@/services/analysisService';
 import { authService } from '@/services/authService';
@@ -16,6 +16,7 @@ import { useLiveChart } from '@/hooks/useLiveChart';
 import { useStockAnalyses } from '@/hooks/useStockAnalyses';
 import { useDataStore } from '@/stores/dataStore';
 import LiveSimpleChart from '@/components/charts/LiveSimpleChart';
+import { useSelectedStockStore } from '@/stores/selectedStockStore';
 
 // Analysis Components
 import PriceStatisticsCardCharts from '@/components/analysis/PriceStatisticsCardCharts';
@@ -149,12 +150,11 @@ const TIMEFRAMES = [
 ];
 
 const Charts = React.memo(function Charts() {
+  // Get the selected stock from the global store
+  const { selectedStock, setSelectedStock } = useSelectedStockStore();
+  
   // Core State
-  const [stockSymbol, setStockSymbol] = useState<string>(() => {
-    // Try to get the stock symbol from localStorage (from analysis page)
-    const lastAnalyzedStock = localStorage.getItem('lastAnalyzedStock');
-    return lastAnalyzedStock || 'NIFTY 50';
-  });
+  const [stockSymbol, setStockSymbol] = useState<string>(selectedStock);
   const [selectedTimeframe, setSelectedTimeframe] = useState('1d');
 
   
@@ -234,12 +234,18 @@ const Charts = React.memo(function Charts() {
     initializeAuth();
   }, []);
 
+  // Sync local state with global store
+  useEffect(() => {
+    if (selectedStock !== stockSymbol) {
+      setStockSymbol(selectedStock);
+    }
+  }, [selectedStock, stockSymbol]);
+
   // Handle stock symbol change
   const handleStockSymbolChange = (newSymbol: string) => {
     setStockSymbol(newSymbol);
-    // Clear the localStorage value when user manually changes the stock
-    // This prevents it from interfering with future manual selections
-    localStorage.removeItem('lastAnalyzedStock');
+    // Update the global store when user manually changes the stock
+    setSelectedStock(newSymbol, 'charts');
   };
 
   // Load analysis data
@@ -788,10 +794,12 @@ const Charts = React.memo(function Charts() {
           {/* Chart Controls */}
           <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Chart Controls
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Chart Controls
+                </CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">

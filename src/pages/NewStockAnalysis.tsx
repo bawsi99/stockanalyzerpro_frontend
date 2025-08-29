@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import PreviousAnalyses, { RunningAnalysisItem } from "@/components/analysis/PreviousAnalyses";
@@ -17,6 +18,8 @@ import { apiService } from "@/services/api";
 import { authService } from "@/services/authService";
 import { StockSelector } from "@/components/ui/stock-selector";
 import type { StockSelectorHandle } from "@/components/ui/stock-selector";
+import { useSelectedStockStore } from "@/stores/selectedStockStore";
+
 
 // Type definitions
 interface SectorInfo {
@@ -49,6 +52,9 @@ const intervalMaxPeriod: Record<string, number | undefined> = {
 const getMaxPeriod = (interval: string) => intervalMaxPeriod[interval];
 
 const NewStockAnalysis = () => {
+  // Get the selected stock from the global store
+  const { selectedStock, setSelectedStock } = useSelectedStockStore();
+  
   // Form state
   const [formData, setFormData] = useState({
     stock: "RELIANCE",
@@ -70,6 +76,15 @@ const NewStockAnalysis = () => {
 
   // Ref to control the StockSelector imperatively
   const stockSelectorRef = useRef<StockSelectorHandle | null>(null);
+
+  // Sync form data when selected stock changes from other sources (but keep RELIANCE as default)
+  useEffect(() => {
+    if (selectedStock && selectedStock !== formData.stock && selectedStock !== "RELIANCE") {
+      setFormData(prev => ({ ...prev, stock: selectedStock }));
+      setDetectedSector("");
+      firstSectorLoad.current = true;
+    }
+  }, [selectedStock]);
 
   // Global keyboard handler: open selector and type query
   useEffect(() => {
@@ -202,8 +217,8 @@ const NewStockAnalysis = () => {
       setDetectedSector("");
       firstSectorLoad.current = true;
       
-      // Store the stock symbol immediately when user selects it
-      localStorage.setItem('lastAnalyzedStock', value.toUpperCase());
+      // Update the global store when user selects a stock
+      setSelectedStock(value, 'analysis');
     } else if (field === "sector") {
       setFormData(prev => ({ ...prev, sector: value }));
     } else if (field === "interval") {
@@ -466,15 +481,29 @@ const NewStockAnalysis = () => {
 
                     {/* Analysis Action */}
                     <div className="space-y-4">
-                      <Button 
-                        type="submit" 
-                        className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <Play className="h-5 w-5" />
-                          <span>Start Analysis</span>
-                        </div>
-                      </Button>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <Play className="h-5 w-5" />
+                            <span>Start Analysis</span>
+                          </div>
+                        </Button>
+
+                        <Button 
+                          type="button"
+                          variant="outline"
+                          onClick={() => navigate('/charts')}
+                          className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <BarChart3 className="h-5 w-5" />
+                            <span>View Charts</span>
+                          </div>
+                        </Button>
+                      </div>
 
                       <div className="text-center text-sm text-slate-500">
                         You can start another analysis while the current one runs. Typical duration 2–3 minutes.
@@ -496,6 +525,8 @@ const NewStockAnalysis = () => {
               />
             </div>
           </div>
+
+
         </div>
       </div>
     </div>

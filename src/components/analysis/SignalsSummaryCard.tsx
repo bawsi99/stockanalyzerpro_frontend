@@ -24,8 +24,14 @@ export default function SignalsSummaryCard({ signals }: { signals: {
     const trend = signals.regime?.trend || 'unknown';
     const volatility = signals.regime?.volatility || 'normal';
     
-    // Only show regime if we have meaningful data
-    if (trend === 'unknown' && volatility === 'normal') {
+    // Debug logging to see what regime data we're receiving
+    console.log('Regime data received:', { trend, volatility, fullRegime: signals.regime });
+    
+    // Check if we have meaningful regime data
+    const hasRegimeData = trend !== 'unknown' || volatility !== 'normal';
+    
+    // Only show "pending" if we truly have no regime information
+    if (!hasRegimeData) {
       return (
         <div className="flex items-center space-x-2 text-amber-600">
           <AlertCircle className="h-4 w-4" />
@@ -57,7 +63,8 @@ export default function SignalsSummaryCard({ signals }: { signals: {
         <span className={`font-medium ${volatilityColor}`}>
           {volatility === 'high' ? 'high volatility' : 
            volatility === 'medium' ? 'moderate volatility' : 
-           'stable volatility'}
+           volatility === 'low' ? 'low volatility' :
+           volatility === 'normal' ? 'stable volatility' : 'analyzing...'}
         </span>
       </div>
     );
