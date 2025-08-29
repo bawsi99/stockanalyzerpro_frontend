@@ -28,16 +28,22 @@ const getEnvVar = (key: string, fallback: string): string => {
 };
 
 // Separate service URLs - configurable via environment variables
-export const DATA_SERVICE_URL = getEnvVar('DATA_SERVICE_URL', 
-  IS_PRODUCTION ? 'https://your-data-websocket-service.onrender.com' : 'http://localhost:8001'
+export const DATA_SERVICE_URL = getEnvVar('VITE_DATA_SERVICE_URL', 
+  IS_PRODUCTION ? 'https://stockanalyzer-pro.onrender.com' : 'http://localhost:8001'
 );
 
-export const ANALYSIS_SERVICE_URL = getEnvVar('ANALYSIS_SERVICE_URL', 
-  IS_PRODUCTION ? 'https://your-analysis-service.onrender.com' : 'http://localhost:8002'
+export const ANALYSIS_SERVICE_URL = getEnvVar('VITE_ANALYSIS_SERVICE_URL', 
+  IS_PRODUCTION ? 'https://stockanalyzer-pro-1.onrender.com' : 'http://localhost:8002'
 );
 
 // Legacy support - keep the old API_BASE_URL for backward compatibility
 export const API_BASE_URL = DATA_SERVICE_URL;
+
+// Service status tracking
+export const SERVICE_STATUS = {
+  DATA_SERVICE: 'unknown',
+  ANALYSIS_SERVICE: 'unknown'
+};
 
 // WebSocket URL - derived from data service URL
 export const WEBSOCKET_URL = (() => {
@@ -146,4 +152,34 @@ if (IS_DEVELOPMENT) {
     'DATA_SERVICE_ENDPOINTS': ENDPOINTS.DATA,
     'ANALYSIS_SERVICE_ENDPOINTS': ENDPOINTS.ANALYSIS
   });
-} 
+}
+
+// Always log service URLs in production for debugging
+if (IS_PRODUCTION) {
+  console.log('🚀 Production Service URLs:', {
+    DATA_SERVICE_URL,
+    ANALYSIS_SERVICE_URL,
+    WEBSOCKET_URL
+  });
+}
+
+// Validate configuration
+export const validateConfig = () => {
+  const issues = [];
+  
+  if (!DATA_SERVICE_URL || DATA_SERVICE_URL.includes('your-data-websocket-service')) {
+    issues.push('DATA_SERVICE_URL not properly configured');
+  }
+  
+  if (!ANALYSIS_SERVICE_URL || ANALYSIS_SERVICE_URL.includes('your-analysis-service')) {
+    issues.push('ANALYSIS_SERVICE_URL not properly configured');
+  }
+  
+  if (issues.length > 0) {
+    console.error('❌ Configuration Issues:', issues);
+    return false;
+  }
+  
+  console.log('✅ Configuration validated successfully');
+  return true;
+}; 

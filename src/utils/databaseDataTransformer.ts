@@ -75,6 +75,29 @@ export interface TransformedAnalysisData {
   enhanced_metadata?: Record<string, unknown>;
   mathematical_validation_results?: Record<string, unknown>;
   code_execution_metadata?: Record<string, unknown>;
+  
+  // Signals data with regime information
+  signals?: {
+    consensus_score: number;
+    consensus_bias: string;
+    confidence: number;
+    per_timeframe: Array<{
+      timeframe: string;
+      score: number;
+      confidence: number;
+      bias: string;
+      reasons: Array<{
+        indicator: string;
+        description: string;
+        weight: number;
+        bias: 'bullish' | 'bearish' | 'neutral';
+      }>;
+    }>;
+    regime: {
+      trend: string;
+      volatility: string;
+    };
+  } | null;
 }
 
 /**
@@ -146,7 +169,10 @@ function transformEnhancedStructure(data: Record<string, unknown> | AnalysisResu
     volume_anomalies_detailed: extractVolumeAnomalies(base),
     overlays: extractOverlays(base),
     trading_guidance: extractTradingGuidance(base),
-    multi_timeframe_analysis: base.multi_timeframe_analysis
+    multi_timeframe_analysis: base.multi_timeframe_analysis,
+    
+    // Signals data with regime information
+    signals: extractSignalsFromEnhanced(base)
   };
 }
 
@@ -171,7 +197,19 @@ function transformLegacyStructure(data: Record<string, unknown>): TransformedAna
     volume_anomalies_detailed: extractVolumeAnomalies(data),
     overlays: extractOverlays(data),
     trading_guidance: extractTradingGuidance(data),
-    multi_timeframe_analysis: extractMultiTimeframeAnalysis(data)
+    multi_timeframe_analysis: extractMultiTimeframeAnalysis(data),
+    
+    // Signals data for legacy structure (basic implementation)
+    signals: {
+      consensus_score: 50,
+      consensus_bias: 'neutral',
+      confidence: 50,
+      per_timeframe: [],
+      regime: {
+        trend: 'unknown',
+        volatility: 'normal'
+      }
+    }
   };
 }
 
@@ -1969,3 +2007,295 @@ export function extractPriceStatisticsFromEnhanced(data: Record<string, unknown>
   
   return null;
 } 
+
+/**
+ * Extract signals data from enhanced structure including regime information
+ */
+function extractSignalsFromEnhanced(data: Record<string, unknown> | AnalysisResults): {
+  consensus_score: number;
+  consensus_bias: string;
+  confidence: number;
+  per_timeframe: Array<{
+    timeframe: string;
+    score: number;
+    confidence: number;
+    bias: string;
+    reasons: Array<{
+      indicator: string;
+      description: string;
+      weight: number;
+      bias: 'bullish' | 'bearish' | 'neutral';
+    }>;
+  }>;
+  regime: {
+    trend: string;
+    volatility: string;
+  };
+} | null {
+  const technicalIndicators = data.technical_indicators;
+  if (!technicalIndicators) return null;
+
+  // Extract trend information from various indicators
+  let trend = 'unknown';
+  let trendConfidence = 0;
+  
+  // RSI trend
+  if (technicalIndicators.rsi?.trend) {
+    const rsiTrend = technicalIndicators.rsi.trend;
+    if (rsiTrend === 'Bullish' || rsiTrend === 'Bearish') {
+      trend = rsiTrend.toLowerCase();
+      trendConfidence += 40; // Increased confidence for RSI
+    }
+  }
+  
+  // RSI value-based trend detection
+  if (technicalIndicators.rsi?.rsi_14) {
+    const rsiValue = technicalIndicators.rsi.rsi_14;
+    if (rsiValue < 30 && trend === 'unknown') {
+      trend = 'bullish'; // Oversold condition
+      trendConfidence += 30;
+    } else if (rsiValue > 70 && trend === 'unknown') {
+      trend = 'bearish'; // Overbought condition
+      trendConfidence += 30;
+    }
+  }
+  
+  // Moving averages trend
+  if (technicalIndicators.moving_averages) {
+    const ma = technicalIndicators.moving_averages;
+    const currentPrice = data.current_price || 0;
+    
+    let bullishCount = 0;
+    let totalCount = 0;
+    
+    if (ma.sma_20 && currentPrice > ma.sma_20) { bullishCount++; totalCount++; }
+    if (ma.sma_50 && currentPrice > ma.sma_50) { bullishCount++; totalCount++; }
+    if (ma.sma_200 && currentPrice > ma.sma_200) { bullishCount++; totalCount++; }
+    
+    if (totalCount > 0) {
+      const maTrend = bullishCount / totalCount;
+      if (maTrend > 0.5) { // Lowered threshold from 0.66
+        if (trend === 'unknown' || trend === 'bullish') {
+          trend = 'bullish';
+          trendConfidence += 35; // Increased confidence
+        }
+      } else if (maTrend < 0.5) { // Lowered threshold from 0.33
+        if (trend === 'unknown' || trend === 'bearish') {
+          trend = 'bearish';
+          trendConfidence += 35; // Increased confidence
+        }
+      }
+    }
+    
+    // Golden/Death cross signals
+    if (ma.golden_cross && trend === 'unknown') {
+      trend = 'bullish';
+      trendConfidence += 20;
+    } else if (ma.death_cross && trend === 'unknown') {
+      trend = 'bearish';
+      trendConfidence += 20;
+    }
+  }
+  
+  // MACD trend
+  if (technicalIndicators.macd?.histogram) {
+    const histogram = technicalIndicators.macd.histogram;
+    if (Math.abs(histogram) > 0.05) { // Lowered threshold from 0.1
+      if (histogram > 0 && (trend === 'unknown' || trend === 'bullish')) {
+        trend = 'bullish';
+        trendConfidence += 20; // Increased confidence
+      } else if (histogram < 0 && (trend === 'unknown' || trend === 'bearish')) {
+        trend = 'bearish';
+        trendConfidence += 20; // Increased confidence
+      }
+    }
+  }
+  
+  // ADX-based trend strength
+  if (technicalIndicators.adx?.adx) {
+    const adxValue = technicalIndicators.adx.adx;
+    if (adxValue > 20) { // Lowered threshold from 25
+      if (trend === 'unknown') {
+        // Use ADX direction to determine trend
+        if (technicalIndicators.adx?.plus_di && technicalIndicators.adx?.minus_di) {
+          if (technicalIndicators.adx.plus_di > technicalIndicators.adx.minus_di) {
+            trend = 'bullish';
+            trendConfidence += 30;
+          } else {
+            trend = 'bearish';
+            trendConfidence += 30;
+          }
+        }
+      }
+      trendConfidence += 15; // Bonus for strong trend
+    }
+  }
+  
+  // Normalize trend confidence
+  trendConfidence = Math.min(100, trendConfidence);
+  
+  // Extract volatility regime
+  let volatility = 'normal';
+  if (technicalIndicators.volatility_analysis?.volatility_regime) {
+    volatility = technicalIndicators.volatility_analysis.volatility_regime;
+  } else {
+    // Calculate volatility from available data
+    const prices = technicalIndicators.raw_data?.close;
+    if (prices && Array.isArray(prices) && prices.length > 1) {
+      const returns = prices.slice(1).map((price, i) => (price - prices[i]) / prices[i]);
+      const volatilityValue = Math.sqrt(returns.reduce((sum, ret) => sum + ret * ret, 0) / returns.length);
+      volatility = volatilityValue > 0.03 ? 'high' : volatilityValue > 0.02 ? 'medium' : 'normal';
+    } else {
+      // Fallback: estimate volatility from indicators
+      if (technicalIndicators.bollinger_bands?.bandwidth) {
+        const bandwidth = technicalIndicators.bollinger_bands.bandwidth;
+        volatility = bandwidth > 0.2 ? 'high' : bandwidth > 0.1 ? 'medium' : 'normal';
+      } else if (technicalIndicators.rsi?.rsi_14) {
+        const rsiValue = technicalIndicators.rsi.rsi_14;
+        // RSI extremes can indicate volatility
+        if (rsiValue < 20 || rsiValue > 80) {
+          volatility = 'high';
+        } else if (rsiValue < 30 || rsiValue > 70) {
+          volatility = 'medium';
+        }
+      }
+    }
+  }
+  
+  // Fallback: if trend is still unknown but we have some confidence, make an educated guess
+  if (trend === 'unknown' && trendConfidence > 0) {
+    // Use consensus bias from per-timeframe signals if available
+    if (per_timeframe.length > 0) {
+      const bullishTimeframes = per_timeframe.filter(tf => tf.bias === 'bullish').length;
+      const bearishTimeframes = per_timeframe.filter(tf => tf.bias === 'bearish').length;
+      
+      if (bullishTimeframes > bearishTimeframes) {
+        trend = 'bullish';
+        trendConfidence += 20;
+      } else if (bearishTimeframes > bullishTimeframes) {
+        trend = 'bearish';
+        trendConfidence += 20;
+      } else {
+        // If equal, use current price vs moving averages
+        if (technicalIndicators.moving_averages?.sma_20 && data.current_price) {
+          trend = data.current_price > technicalIndicators.moving_averages.sma_20 ? 'bullish' : 'bearish';
+          trendConfidence += 15;
+        }
+      }
+    }
+  }
+  
+  // Final fallback: if still unknown, use a neutral trend
+  if (trend === 'unknown') {
+    trend = 'neutral';
+    trendConfidence = 30; // Low confidence for neutral
+  }
+  
+  // Create per-timeframe signals
+  const per_timeframe = [];
+  
+  // Short-term signals (1-5 days)
+  const shortTermSignals = extractSignalDetailsFromEnhanced(data);
+  if (shortTermSignals.length > 0) {
+    const bullishSignals = shortTermSignals.filter((s: any) => s.signal === 'bullish');
+    const bearishSignals = shortTermSignals.filter((s: any) => s.signal === 'bearish');
+    const neutralSignals = shortTermSignals.filter((s: any) => s.signal === 'neutral');
+    
+    const totalWeight = shortTermSignals.reduce((sum: number, s: any) => sum + (s.weight || 0), 0);
+    const bullishWeight = bullishSignals.reduce((sum: number, s: any) => sum + (s.weight || 0), 0);
+    const bearishWeight = bearishSignals.reduce((sum: number, s: any) => sum + (s.weight || 0), 0);
+    
+    let bias = 'neutral';
+    let score = 50;
+    
+    if (totalWeight > 0) {
+      if (bullishWeight > bearishWeight) {
+        bias = 'bullish';
+        score = 50 + (bullishWeight / totalWeight) * 50;
+      } else if (bearishWeight > bullishWeight) {
+        bias = 'bearish';
+        score = 50 - (bearishWeight / totalWeight) * 50;
+      }
+    }
+    
+    per_timeframe.push({
+      timeframe: 'Short-term (1-5 days)',
+      score: Math.round(score),
+      confidence: Math.min(100, trendConfidence + 20),
+      bias,
+      reasons: shortTermSignals.slice(0, 5).map((s: any) => ({
+        indicator: s.indicator,
+        description: s.description,
+        weight: s.weight || 0,
+        bias: s.signal as 'bullish' | 'bearish' | 'neutral'
+      }))
+    });
+  }
+  
+  // Medium-term signals (1-4 weeks)
+  if (technicalIndicators.multi_timeframe_analysis?.medium_term) {
+    const mediumTerm = technicalIndicators.multi_timeframe_analysis.medium_term;
+    per_timeframe.push({
+      timeframe: 'Medium-term (1-4 weeks)',
+      score: mediumTerm.consensus?.score || 50,
+      confidence: mediumTerm.ai_confidence || 70,
+      bias: mediumTerm.consensus?.direction?.toLowerCase() || 'neutral',
+      reasons: [{
+        indicator: 'Multi-timeframe Analysis',
+        description: mediumTerm.consensus?.rationale || 'Medium-term trend analysis',
+        weight: 25,
+        bias: (mediumTerm.consensus?.direction?.toLowerCase() || 'neutral') as 'bullish' | 'bearish' | 'neutral'
+      }]
+    });
+  }
+  
+  // Long-term signals (1-12 months)
+  if (technicalIndicators.multi_timeframe_analysis?.long_term) {
+    const longTerm = technicalIndicators.multi_timeframe_analysis.long_term;
+    per_timeframe.push({
+      timeframe: 'Long-term (1-12 months)',
+      score: longTerm.consensus?.score || 50,
+      confidence: longTerm.ai_confidence || 60,
+      bias: longTerm.consensus?.direction?.toLowerCase() || 'neutral',
+      reasons: [{
+        indicator: 'Long-term Analysis',
+        description: longTerm.consensus?.rationale || 'Long-term trend analysis',
+        weight: 20,
+        bias: (longTerm.consensus?.direction?.toLowerCase() || 'neutral') as 'bullish' | 'bearish' | 'neutral'
+      }]
+    });
+  }
+  
+  // Calculate overall consensus
+  let consensus_score = 50;
+  let consensus_bias = 'neutral';
+  let confidence = 0;
+  
+  if (per_timeframe.length > 0) {
+    const totalScore = per_timeframe.reduce((sum, tf) => sum + tf.score, 0);
+    const totalConfidence = per_timeframe.reduce((sum, tf) => sum + tf.confidence, 0);
+    
+    consensus_score = Math.round(totalScore / per_timeframe.length);
+    confidence = Math.round(totalConfidence / per_timeframe.length);
+    
+    const bullishTimeframes = per_timeframe.filter(tf => tf.bias === 'bullish').length;
+    const bearishTimeframes = per_timeframe.filter(tf => tf.bias === 'bearish').length;
+    
+    if (bullishTimeframes > bearishTimeframes) {
+      consensus_bias = 'bullish';
+    } else if (bearishTimeframes > bullishTimeframes) {
+      consensus_bias = 'bearish';
+    }
+  }
+  
+  return {
+    consensus_score,
+    consensus_bias,
+    confidence,
+    per_timeframe,
+    regime: {
+      trend,
+      volatility
+    }
+  };
+}

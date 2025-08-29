@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { formatCurrency, formatPercentage, formatPercentageValue, formatNumber } from "@/utils/numberFormatter";
+import { formatCurrency, formatPercentage, formatPercentageValue, formatNumber, formatPriceChange } from "@/utils/numberFormatter";
 
 // Icons
 import { 
@@ -68,6 +68,8 @@ import { apiService } from "@/services/api";
 import { AnalysisData, EnhancedOverlays, MultiTimeframeAnalysis, AdvancedRiskMetrics, StressTestingData, ScenarioAnalysisData, AnalysisResults } from "@/types/analysis";
 import { transformDatabaseRecord, extractPriceStatisticsFromEnhanced } from "@/utils/databaseDataTransformer";
 import Header from "@/components/Header";
+
+
 
 interface ChartData {
   date: string;
@@ -903,7 +905,7 @@ const NewOutput: React.FC = () => {
               </div>
               <div className="text-center">
                 <div className={`text-2xl font-bold flex items-center justify-center ${priceChange?.changePercent && priceChange.changePercent > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : formatCurrency(priceChange?.change)}
+                  {analysisLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : formatPriceChange(priceChange?.change)}
                 </div>
                 <div className="text-sm text-slate-600">Change</div>
               </div>

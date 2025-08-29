@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency, formatPercentage } from '@/utils/numberFormatter';
+import { formatCurrency, formatPercentage, formatPriceChange } from '@/utils/numberFormatter';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ArrowLeft, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, Loader2, BarChart3, Activity, ArrowUpRight, ArrowDownRight, ZoomIn } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -758,7 +758,7 @@ const Charts = React.memo(function Charts() {
                 {hasPriceChange && (
                   <>
                     <div>Previous Price: {formatCurrency(previousPrice)}</div>
-                                          <div>Change: {formatCurrency(priceChange, '', priceChange > 0 ? '+' : '')} ({formatPercentage(percentageChange, true)})</div>
+                                          <div>Change: {formatPriceChange(priceChange, '', priceChange > 0 ? '+' : '')} ({formatPercentage(percentageChange, true)})</div>
                     <div>Direction: {isPositive ? '🟢 UP' : isNegative ? '🔴 DOWN' : '⚪ NO CHANGE'}</div>
                   </>
                 )}

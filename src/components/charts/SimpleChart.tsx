@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TrendingUp, TrendingDown, Minus, Activity, Wifi, WifiOff, RefreshCw } from 'lucide-react';
-import { formatCurrency, formatPercentage } from '@/utils/numberFormatter';
+import { formatCurrency, formatPercentage, formatPriceChange } from '@/utils/numberFormatter';
 
 interface ChartData {
   date: string;
@@ -505,7 +505,7 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
           {getPriceIcon()}
                           <span className="font-semibold">{formatCurrency(currentPrice)}</span>
           <span className="text-sm">
-                          {formatCurrency(priceChange, '', priceChange > 0 ? '+' : '')} ({formatPercentage(priceChangePercent, true)})
+                          {formatPriceChange(priceChange, '', priceChange > 0 ? '+' : '')} ({formatPercentage(priceChangePercent, true)})
           </span>
         </div>
       </div>
