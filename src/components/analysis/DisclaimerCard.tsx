@@ -10,7 +10,7 @@ const DisclaimerCard = () => {
         </p>
         <p className="text-xs text-slate-500">
           This report is for informational purposes only and should not be considered financial advice.
-          Always conduct your own research and consult with a qualified financial advisor before making investment decisions.
+          Always conduct your own research before making investment decisions.
         </p>
       </CardContent>
     </Card>
