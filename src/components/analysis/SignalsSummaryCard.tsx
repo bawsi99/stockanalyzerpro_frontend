@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatPercentage, formatConfidence } from '@/utils/numberFormatter'
 import { validateNumeric } from '@/utils/dataValidator'
-import { AlertCircle, TrendingUp, TrendingDown, Activity } from 'lucide-react'
+import { AlertCircle, TrendingUp, TrendingDown, Activity, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 type Reason = { indicator: string; description: string; weight: number; bias: 'bullish'|'bearish'|'neutral' }
 type TimeframeScore = { timeframe: string; score: number; confidence: number; bias: string; reasons: Reason[] }
@@ -93,9 +94,23 @@ export default function SignalsSummaryCard({ signals }: { signals: {
               <div key={tf.timeframe} className="border rounded-lg p-3">
                 <div className="flex items-center justify-between mb-1">
                   <div className="font-medium">{tf.timeframe}</div>
-                  <Badge className={biasColor(tf.bias)}>
-                    {tf.bias} · {formatPercentage(tf.score, false, '0%')} · {formatConfidence(tf.confidence, '0%')}
-                  </Badge>
+                  <div className="flex items-center">
+                    <Badge className={biasColor(tf.bias)}>
+                      {tf.bias} · {formatPercentage(tf.score, false, '0%')} · {formatConfidence(tf.confidence, '0%')}
+                    </Badge>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 ml-1 text-slate-400 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[300px]">
+                          <p className="text-xs">
+                            <span className="font-bold">Direction</span> · <span className="font-bold">Strength</span> · <span className="font-bold">Confidence</span>
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </div>
                 <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
                   {tf.reasons.slice(0, 5).map((r, idx) => (
