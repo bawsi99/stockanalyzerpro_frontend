@@ -350,7 +350,7 @@ const NewStockAnalysis = () => {
             
             {/* Analysis Configuration Panel */}
             <div className="xl:col-span-3 h-full">
-              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm h-[750px] grid grid-rows-[auto,1fr]">
+              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm h-[800px] grid grid-rows-[auto,1fr]">
                 <CardHeader className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-t-xl">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 bg-white/20 rounded-lg">
