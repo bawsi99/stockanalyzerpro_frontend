@@ -130,7 +130,7 @@ const Index = () => {
               </div>
               <div className="flex items-center gap-3">
                 <Mail className="h-5 w-5 text-emerald-300" />
-                <a href="mailto:aaryanmanawar99@gmail.com" className="text-slate-200 hover:text-white">aaryanmanawar99@gmail.com</a>
+                <a href="mailto:aaryanmanawat99@gmail.com" className="text-slate-200 hover:text-white">aaryanmanawat99@gmail.com</a>
               </div>
             </div>
           </div>
