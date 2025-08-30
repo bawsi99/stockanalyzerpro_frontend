@@ -1,14 +1,16 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { TrendingUp, LogOut } from "lucide-react";
+import { TrendingUp, LogOut, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const isActive = (path: string) => location.pathname === path;
 
@@ -38,6 +40,7 @@ const Header = () => {
             <span className="text-xl font-bold text-white">StockAnalyzer Pro</span>
           </Link>
           
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
             <Link 
               to="/analysis" 
@@ -64,28 +67,61 @@ const Header = () => {
               Results
             </Link>
           </nav>
-
-          <div className="flex items-center space-x-4">
-            {user ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSignOut}
-                className="text-slate-300 hover:text-white hover:bg-slate-700"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign out
-              </Button>
-            ) : (
-              <Link to="/auth">
-                <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white">
-                  Sign In
-                </Button>
-              </Link>
-            )}
+          
+          {/* Mobile Menu Button */}
+          <div className="md:hidden">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="text-slate-300 hover:text-white hover:bg-slate-700 p-2"
+            >
+              {mobileMenuOpen ? (
+                <X className="h-7 w-7" />
+              ) : (
+                <Menu className="h-7 w-7" />
+              )}
+            </Button>
           </div>
+
+          {/* Sign in button removed */}
         </div>
       </div>
+      
+      {/* Mobile Navigation Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-slate-800 border-t border-slate-700 shadow-lg">
+          <div className="container mx-auto px-4 py-3 space-y-3">
+            <Link 
+              to="/analysis" 
+              className={`block text-sm font-medium transition-colors hover:text-emerald-400 ${
+                isActive("/analysis") ? "text-emerald-400" : "text-slate-300"
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Analysis
+            </Link>
+            <Link 
+              to="/charts" 
+              className={`block text-sm font-medium transition-colors hover:text-emerald-400 ${
+                isActive("/charts") ? "text-emerald-400" : "text-slate-300"
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Charts
+            </Link>
+            <Link 
+              to="/output" 
+              className={`block text-sm font-medium transition-colors hover:text-emerald-400 ${
+                isActive("/output") ? "text-emerald-400" : "text-slate-300"
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Results
+            </Link>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
