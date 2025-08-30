@@ -269,13 +269,55 @@ class ApiService {
 
   // POST /analyze/enhanced - Enhanced analysis with code execution
   async enhancedAnalyzeStock(request: AnalysisRequest & { enable_code_execution?: boolean }): Promise<AnalysisResponse> {
-    const resp = await fetch(ENDPOINTS.ANALYSIS.ENHANCED_ANALYZE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request)
-    });
-    if (!resp.ok) throw new Error('Failed to perform enhanced analysis');
-    return await resp.json();
+    try {
+      // Get authentication token
+      const token = localStorage.getItem('jwt_token');
+      
+      const resp = await fetch(ENDPOINTS.ANALYSIS.ENHANCED_ANALYZE, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '' 
+        },
+        body: JSON.stringify(request)
+      });
+      
+      if (!resp.ok) {
+        if (resp.status === 401) {
+          // Try to get a new token if authentication failed
+          try {
+            const userId = localStorage.getItem('user_id') || 'anonymous';
+            const authResponse = await this.getJwtToken(userId);
+            if (authResponse && authResponse.token) {
+              localStorage.setItem('jwt_token', authResponse.token);
+              
+              // Retry with new token
+              const retryResp = await fetch(ENDPOINTS.ANALYSIS.ENHANCED_ANALYZE, {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${authResponse.token}`
+                },
+                body: JSON.stringify(request)
+              });
+              
+              if (retryResp.ok) {
+                return await retryResp.json();
+              }
+            }
+          } catch (authError) {
+            console.error('Authentication error:', authError);
+          }
+        }
+        
+        throw new Error(`Failed to perform enhanced analysis: ${resp.status}`);
+      }
+      
+      return await resp.json();
+    } catch (error) {
+      console.error('Enhanced analysis error:', error);
+      throw error;
+    }
   }
 
   // GET /stock/{symbol}/indicators - Technical indicators
