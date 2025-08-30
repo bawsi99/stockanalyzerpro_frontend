@@ -338,9 +338,19 @@ const NewStockAnalysis = () => {
         <div className="max-w-7xl mx-auto mt-5">
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 items-stretch">
               
+            {/* Prototype Disclaimer */}
+            <div className="xl:col-span-4 mb-4 w-full">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-amber-500 mr-2" />
+                <p className="text-amber-700 text-center whitespace-nowrap">
+                  <span className="font-semibold">Prototype Notice:</span> This system is currently in prototype stage. Responses might be slow or occasionally unresponsive. Thank you for your patience.
+                </p>
+              </div>
+            </div>
+            
             {/* Analysis Configuration Panel */}
             <div className="xl:col-span-3 h-full">
-              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm h-[800px] grid grid-rows-[auto,1fr]">
+              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm h-[750px] grid grid-rows-[auto,1fr]">
                 <CardHeader className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-t-xl">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 bg-white/20 rounded-lg">
@@ -506,7 +516,7 @@ const NewStockAnalysis = () => {
                       </div>
 
                       <div className="text-center text-sm text-slate-500">
-                        You can start another analysis while the current one runs. Typical duration 2–3 minutes.
+                        You can start another analysis while the current one runs. Typical duration 3–4 minutes.
                       </div>
                     </div>
                   </form>

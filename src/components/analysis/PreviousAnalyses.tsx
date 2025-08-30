@@ -36,7 +36,7 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
   }, [runningAnalyses?.length]);
 
   return (
-    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm grid grid-rows-[auto,1fr] h-[800px]">
+    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm grid grid-rows-[auto,1fr] h-[750px]">
       <CardHeader className="flex-shrink-0">
         <CardTitle className="flex items-center text-slate-800">
           <History className="h-5 w-5 mr-2 text-blue-500" />
