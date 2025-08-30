@@ -35,6 +35,21 @@ export function formatCurrency(value: number | null | undefined, currency: strin
 }
 
 /**
+ * Formats a price change value (allows negative values for decreases)
+ * @param value - The price change number (can be negative)
+ * @param currency - Currency symbol (default: "₹")
+ * @param fallback - Fallback value if the number is invalid
+ * @returns Formatted price change string
+ */
+export function formatPriceChange(value: number | null | undefined, currency: string = "₹", fallback: string = "₹0.00"): string {
+  if (value == null || !Number.isFinite(value)) {
+    return fallback;
+  }
+  // Allow negative values for price changes (decreases)
+  return `${currency}${value.toFixed(2)}`;
+}
+
+/**
  * Formats a percentage value to 2 decimal places
  * @param value - The number to format (as decimal, e.g., 0.15 for 15%)
  * @param includeSign - Whether to include + sign for positive values (default: false)

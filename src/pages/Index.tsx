@@ -111,7 +111,7 @@ const Index = () => {
       </section>
 
       {/* Founder's Profile Section */}
-      <section className="pt-2 pb-16 bg-gradient-to-r from-slate-900 to-slate-800">
+      <section className="pt-2 pb-0 bg-gradient-to-r from-slate-900 to-slate-800">
         <div className="container mx-auto px-4 text-center">
           <div className="mx-auto max-w-3xl rounded-lg p-6 bg-transparent">
             <div className="flex flex-nowrap items-center justify-center gap-8 whitespace-nowrap">

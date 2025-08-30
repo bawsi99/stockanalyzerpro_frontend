@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, BarChart3, Target, Activity, Loader2 } from "lucide-react";
-import { formatCurrency, formatPercentage } from "@/utils/numberFormatter";
+import { formatCurrency, formatPercentageValue } from "@/utils/numberFormatter";
 
 interface PriceStatisticsProps {
   summaryStats: {
@@ -61,8 +61,8 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
 
   if (!summaryStats || stats.current === 0) {
     return (
-      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[99%]">
-        <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
+      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-full flex flex-col">
+        <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg flex-shrink-0">
           <div className="flex items-center space-x-2">
             <Target className="h-6 w-6" />
             <CardTitle className="text-xl">Price Statistics</CardTitle>
@@ -71,8 +71,8 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
             {timeframe} Analysis
           </div>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="text-center text-gray-500">
+        <CardContent className="px-6 pt-4 pb-6 h-full">
+          <div className="text-center text-gray-500 h-full flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
             <p>Loading price statistics...</p>
           </div>
@@ -82,15 +82,15 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
   }
 
   return (
-    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[99%]">
-      <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
+    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-full flex flex-col">
+      <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg flex-shrink-0">
         <div className="flex items-center space-x-2">
           <Target className="h-6 w-6" />
           <CardTitle className="text-xl">Price Statistics</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="p-6">
-        <div className="space-y-4 mb-6">
+      <CardContent className="px-6 pt-4 pb-6 h-full">
+        <div className="space-y-4 mb-4">
           <div className="grid grid-cols-1 gap-4">
             <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
               <div className="text-sm text-slate-600 mb-1">Current Price</div>
@@ -127,7 +127,7 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
           </div>
         </div>
 
-        <div className="space-y-4 mb-6">
+        <div className="space-y-4 mb-4">
           <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
             <div className="flex items-center space-x-2">
               <Activity className="h-5 w-5 text-blue-600" />
@@ -139,7 +139,7 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
                 <span className="ml-1">{formatCurrency(stats.distFromMean)}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {formatPercentage(stats.distFromMeanPct)}
+                {formatPercentageValue(stats.distFromMeanPct)}
               </div>
             </div>
           </div>
@@ -152,10 +152,10 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
             <div className="text-right">
               <div className={`font-semibold ${getPerformanceColor(stats.distFromMax)}`}>
                 {getPerformanceIcon(stats.distFromMax)}
-                <span className="ml-1">{formatCurrency(stats.distFromMax)}</span>
+                <span className="ml-1">{formatCurrency(Math.abs(stats.distFromMax))}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {formatPercentage(stats.distFromMaxPct)}
+                {formatPercentageValue(stats.distFromMaxPct)}
               </div>
             </div>
           </div>
@@ -171,7 +171,7 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
                 <span className="ml-1">{formatCurrency(stats.distFromMin)}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {formatPercentage(stats.distFromMinPct)}
+                {formatPercentageValue(stats.distFromMinPct)}
               </div>
             </div>
           </div>

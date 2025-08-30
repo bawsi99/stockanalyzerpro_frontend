@@ -45,9 +45,24 @@ export const getPopularStocks = () => {
   );
 };
 
-// Get all stocks
+// Pre-sorted stock list for performance
+let sortedStockList: typeof stockList | null = null;
+
+// Get all stocks (memoized)
 export const getAllStocks = () => {
-  return stockList;
+  if (!sortedStockList) {
+    // Sort once and cache the result
+    const startsWithLetter = (s: string) => /^[A-Za-z]/.test(s);
+    sortedStockList = [...stockList].sort((a, b) => {
+      const aIsLetter = startsWithLetter(a.symbol);
+      const bIsLetter = startsWithLetter(b.symbol);
+      if (aIsLetter !== bIsLetter) {
+        return aIsLetter ? -1 : 1;
+      }
+      return a.symbol.localeCompare(b.symbol);
+    });
+  }
+  return sortedStockList;
 };
 
 // Search stocks with caching and indexing
@@ -63,43 +78,56 @@ export const searchStocks = (query: string): typeof stockList => {
     return searchCache.get(normalizedQuery)!;
   }
   
-  // Use search index for faster filtering
-  const queryWords = normalizedQuery.split(/\s+/).filter(word => word.length >= 2);
-  const matchingIndices = new Set<number>();
-  
-  if (queryWords.length > 0) {
-    // Find stocks that match any of the query words
-    queryWords.forEach(word => {
-      const indices = searchIndex.get(word) || [];
-      indices.forEach(idx => matchingIndices.add(idx));
-    });
-  }
-  
-  // Convert indices back to stocks
-  const results = Array.from(matchingIndices)
-    .map(idx => stockList[idx])
+  // Simple substring matching with priority scoring
+  const results = stockList
     .filter(stock => {
-      // Additional filtering for exact matches
       const searchableText = `${stock.symbol} ${stock.name} ${stock.exchange}`.toLowerCase();
       return searchableText.includes(normalizedQuery);
     })
+    .map(stock => {
+      const symbolLower = stock.symbol.toLowerCase();
+      const nameLower = stock.name.toLowerCase();
+      
+      // Calculate priority score based on where the match occurs
+      let score = 0;
+      
+      // Exact symbol match gets highest priority
+      if (symbolLower === normalizedQuery) {
+        score += 1000;
+      }
+      // Symbol starts with query
+      else if (symbolLower.startsWith(normalizedQuery)) {
+        score += 500;
+      }
+      // Symbol contains query
+      else if (symbolLower.includes(normalizedQuery)) {
+        score += 300;
+      }
+      
+      // Name starts with query
+      if (nameLower.startsWith(normalizedQuery)) {
+        score += 200;
+      }
+      // Name contains query
+      else if (nameLower.includes(normalizedQuery)) {
+        score += 100;
+      }
+      
+      // Popular stocks get bonus
+      if (POPULAR_STOCKS.includes(stock.symbol)) {
+        score += 50;
+      }
+      
+      return { ...stock, _score: score };
+    })
     .sort((a, b) => {
-      // Prioritize exact symbol matches
-      const aExactSymbol = a.symbol.toLowerCase() === normalizedQuery;
-      const bExactSymbol = b.symbol.toLowerCase() === normalizedQuery;
-      
-      if (aExactSymbol && !bExactSymbol) return -1;
-      if (!aExactSymbol && bExactSymbol) return 1;
-      
-      // Then prioritize popular stocks
-      const aPopular = POPULAR_STOCKS.includes(a.symbol);
-      const bPopular = POPULAR_STOCKS.includes(b.symbol);
-      
-      if (aPopular && !bPopular) return -1;
-      if (!aPopular && bPopular) return 1;
-      
-      return 0;
-    });
+      // Sort by score (descending), then alphabetically
+      if (a._score !== b._score) {
+        return b._score - a._score;
+      }
+      return a.symbol.localeCompare(b.symbol);
+    })
+    .map(({ _score, ...stock }) => stock); // Remove score from final result
   
   // Cache the result (limit cache size)
   if (searchCache.size > 100) {

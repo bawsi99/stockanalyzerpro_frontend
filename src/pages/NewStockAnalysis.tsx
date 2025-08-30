@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import PreviousAnalyses, { RunningAnalysisItem } from "@/components/analysis/PreviousAnalyses";
@@ -16,6 +17,9 @@ import { AnalysisResponse, ErrorResponse, isAnalysisResponse, isErrorResponse } 
 import { apiService } from "@/services/api";
 import { authService } from "@/services/authService";
 import { StockSelector } from "@/components/ui/stock-selector";
+import type { StockSelectorHandle } from "@/components/ui/stock-selector";
+import { useSelectedStockStore } from "@/stores/selectedStockStore";
+
 
 // Type definitions
 interface SectorInfo {
@@ -48,6 +52,9 @@ const intervalMaxPeriod: Record<string, number | undefined> = {
 const getMaxPeriod = (interval: string) => intervalMaxPeriod[interval];
 
 const NewStockAnalysis = () => {
+  // Get the selected stock from the global store
+  const { selectedStock, setSelectedStock } = useSelectedStockStore();
+  
   // Form state
   const [formData, setFormData] = useState({
     stock: "RELIANCE",
@@ -65,9 +72,54 @@ const NewStockAnalysis = () => {
   // Sector state
   const [sectors, setSectors] = useState<SectorInfo[]>([]);
   const [detectedSector, setDetectedSector] = useState<string>("");
-  const [sectorLoading, setSectorLoading] = useState(false);
-  const [showSectorOverride, setShowSectorOverride] = useState(false);
   const firstSectorLoad = useRef(true);
+
+  // Ref to control the StockSelector imperatively
+  const stockSelectorRef = useRef<StockSelectorHandle | null>(null);
+
+  // Sync form data when selected stock changes from other sources (but keep RELIANCE as default)
+  useEffect(() => {
+    if (selectedStock && selectedStock !== formData.stock && selectedStock !== "RELIANCE") {
+      setFormData(prev => ({ ...prev, stock: selectedStock }));
+      setDetectedSector("");
+      firstSectorLoad.current = true;
+    }
+  }, [selectedStock]);
+
+  // Global keyboard handler: open selector and type query
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if an input/textarea/select is focused
+      const target = e.target as HTMLElement;
+      const isEditable = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        (target as any).isContentEditable
+      );
+      if (isEditable) return;
+
+      // Only handle printable alphanumerics and space; ignore with modifiers
+      const key = e.key;
+      const isPrintable = key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+
+      if (isPrintable) {
+        // Prevent the original event from also typing into the input after focus
+        e.preventDefault();
+        e.stopPropagation();
+        stockSelectorRef.current?.openWithQuery(key);
+        return;
+      }
+
+      if (key === 'Backspace') {
+        e.preventDefault();
+        e.stopPropagation();
+        stockSelectorRef.current?.open();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true } as any);
+  }, []);
 
   // Hooks
   const navigate = useNavigate();
@@ -117,7 +169,6 @@ const NewStockAnalysis = () => {
   };
 
   const fetchStockSector = useCallback(async (symbol: string) => {
-    setSectorLoading(true);
     try {
       const data = await apiService.getStockSector(symbol);
       if (data.success && data.sector_info && data.sector_info.sector) {
@@ -134,8 +185,6 @@ const NewStockAnalysis = () => {
       // console.error('Error fetching stock sector:', error);
       setDetectedSector("");
       setFormData(prev => ({ ...prev, sector: null }));
-    } finally {
-      setSectorLoading(false);
     }
   }, [formData.sector]);
 
@@ -168,8 +217,8 @@ const NewStockAnalysis = () => {
       setDetectedSector("");
       firstSectorLoad.current = true;
       
-      // Store the stock symbol immediately when user selects it
-      localStorage.setItem('lastAnalyzedStock', value.toUpperCase());
+      // Update the global store when user selects a stock
+      setSelectedStock(value, 'analysis');
     } else if (field === "sector") {
       setFormData(prev => ({ ...prev, sector: value }));
     } else if (field === "interval") {
@@ -286,12 +335,12 @@ const NewStockAnalysis = () => {
         {/* Page Header removed */}
 
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto mt-5">
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 items-stretch">
-            
+              
             {/* Analysis Configuration Panel */}
             <div className="xl:col-span-3 h-full">
-              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm h-[850px] grid grid-rows-[auto,1fr]">
+              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm h-[800px] grid grid-rows-[auto,1fr]">
                 <CardHeader className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-t-xl">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 bg-white/20 rounded-lg">
@@ -306,7 +355,7 @@ const NewStockAnalysis = () => {
                   </div>
                 </CardHeader>
                 
-                <CardContent className="p-8 overflow-y-auto min-h-0">
+                <CardContent className="p-8 overflow-y-hidden min-h-0">
                   <form onSubmit={handleSubmit} className="space-y-8">
                     
                     {/* Stock Selection Section */}
@@ -318,6 +367,7 @@ const NewStockAnalysis = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <StockSelector
+                            ref={stockSelectorRef}
                             value={formData.stock}
                             onValueChange={(value) => handleInputChange("stock", value)}
                             label="Stock Symbol"
@@ -325,8 +375,8 @@ const NewStockAnalysis = () => {
                         </div>
 
                         <div className="space-y-2">
-                          <Label className="text-slate-700 font-medium">Exchange</Label>
-                          <div className="w-full flex items-center rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-700">
+                          <label className="block text-sm font-medium mb-2 text-slate-700">Exchange</label>
+                          <div className="w-full flex items-center rounded-md border border-input bg-background px-3 py-2 text-slate-700">
                             <span className="font-medium">NSE</span>
                             <span className="ml-2 text-xs text-slate-500">(Fixed)</span>
                           </div>
@@ -343,55 +393,26 @@ const NewStockAnalysis = () => {
                         Sector Analysis
                       </h3>
                       <div className="space-y-4">
-                        {detectedSector && !showSectorOverride && (
-                          <div className="flex items-center space-x-3">
-                            <div className="flex-1 p-4 bg-green-50 border border-green-200 rounded-lg">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <span className="font-semibold text-green-800">
-                                    {sectors.find(s => s.code === detectedSector)?.name || detectedSector}
-                                  </span>
-                                  <span className="text-green-600 ml-2 text-sm">(Auto-detected)</span>
-                                </div>
-                                {sectorLoading && (
-                                  <div className="text-xs text-blue-600">Detecting...</div>
-                                )}
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setShowSectorOverride(true)}
-                            >
-                              Change
-                            </Button>
-                          </div>
-                        )}
+                        <Select
+                          value={formData.sector || "none"}
+                          onValueChange={(value) => {
+                            handleInputChange("sector", value === "none" ? null : value);
+                          }}
+                        >
+                          <SelectTrigger className="border-slate-300 focus:border-emerald-400">
+                            <SelectValue placeholder="Select sector for analysis" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No Sector (Use Market Index)</SelectItem>
+                            {sectors.map((sector) => (
+                              <SelectItem key={sector.code} value={sector.code}>
+                                {sector.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         
-                        {(showSectorOverride || !detectedSector) && (
-                          <Select
-                            value={formData.sector || "none"}
-                            onValueChange={(value) => {
-                              handleInputChange("sector", value === "none" ? null : value);
-                              setShowSectorOverride(false);
-                            }}
-                          >
-                            <SelectTrigger className="border-slate-300 focus:border-emerald-400">
-                              <SelectValue placeholder="Select sector for analysis" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No Sector (Use Market Index)</SelectItem>
-                              {sectors.map((sector) => (
-                                <SelectItem key={sector.code} value={sector.code}>
-                                  {sector.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                        
-                        {detectedSector && !showSectorOverride && (
+                        {detectedSector && formData.sector === detectedSector && (
                           <p className="text-sm text-slate-500">
                             Using sector-specific index for more accurate analysis
                           </p>
@@ -460,15 +481,29 @@ const NewStockAnalysis = () => {
 
                     {/* Analysis Action */}
                     <div className="space-y-4">
-                      <Button 
-                        type="submit" 
-                        className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <Play className="h-5 w-5" />
-                          <span>Start Analysis</span>
-                        </div>
-                      </Button>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <Play className="h-5 w-5" />
+                            <span>Start Analysis</span>
+                          </div>
+                        </Button>
+
+                        <Button 
+                          type="button"
+                          variant="outline"
+                          onClick={() => navigate('/charts')}
+                          className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <BarChart3 className="h-5 w-5" />
+                            <span>View Charts</span>
+                          </div>
+                        </Button>
+                      </div>
 
                       <div className="text-center text-sm text-slate-500">
                         You can start another analysis while the current one runs. Typical duration 2–3 minutes.
@@ -490,6 +525,8 @@ const NewStockAnalysis = () => {
               />
             </div>
           </div>
+
+
         </div>
       </div>
     </div>

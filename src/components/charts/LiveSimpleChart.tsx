@@ -1140,7 +1140,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
       {/* Chart Container - Responsive sizing with max-width constraint */}
       <div 
-        className="chart-container-responsive bg-white border border-gray-200" 
+        className="chart-container-responsive bg-white rounded-b-[var(--radius)] overflow-hidden" 
         style={{ 
           height: `${height}px`,
           maxWidth: `${width}px`
@@ -1253,20 +1253,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         )}
       </div>
       
-      {/* Control Buttons */}
-      <div className="absolute bottom-2 left-2 z-10 flex gap-2">
-        {onResetScale && (
-          <Button 
-            onClick={onResetScale}
-            variant="outline"
-            size="sm"
-            className="bg-white/90 backdrop-blur-sm"
-          >
-            <ZoomIn className="h-4 w-4 mr-1" />
-            Reset Scale
-          </Button>
-        )}
-      </div>
+
       
       {/* Error Alert */}
       {error && (

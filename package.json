@@ -12,6 +12,8 @@
     "preview": "vite preview",
     "preview:staging": "vite preview --mode staging",
     "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:warn": "eslint . --max-warnings 0",
     "config:check": "node -e \"console.log('Configuration check - run in browser to see full config')\""
   },
   "dependencies": {

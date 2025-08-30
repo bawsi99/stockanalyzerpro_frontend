@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, BarChart3, Target, Activity, Loader2 } from "lucide-react";
-import { formatCurrency, formatPercentage } from "@/utils/numberFormatter";
+import { formatCurrency, formatPercentage, formatPercentageValue, formatPriceChange } from "@/utils/numberFormatter";
 
 interface PriceStatisticsProps {
   summaryStats: {
@@ -136,10 +136,10 @@ const PriceStatisticsCardOutput: React.FC<PriceStatisticsProps> = ({
             <div className="text-right">
               <div className={`font-semibold ${getPerformanceColor(stats.distFromMean)}`}>
                 {getPerformanceIcon(stats.distFromMean)}
-                <span className="ml-1">{formatCurrency(stats.distFromMean)}</span>
+                <span className="ml-1">{formatPriceChange(stats.distFromMean)}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {formatPercentage(stats.distFromMeanPct)}
+                {formatPercentageValue(stats.distFromMeanPct)}
               </div>
             </div>
           </div>
@@ -152,10 +152,10 @@ const PriceStatisticsCardOutput: React.FC<PriceStatisticsProps> = ({
             <div className="text-right">
               <div className={`font-semibold ${getPerformanceColor(stats.distFromMax)}`}>
                 {getPerformanceIcon(stats.distFromMax)}
-                <span className="ml-1">{formatCurrency(stats.distFromMax)}</span>
+                <span className="ml-1">{formatCurrency(Math.abs(stats.distFromMax))}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {formatPercentage(stats.distFromMaxPct)}
+                {formatPercentageValue(stats.distFromMaxPct)}
               </div>
             </div>
           </div>
@@ -171,7 +171,7 @@ const PriceStatisticsCardOutput: React.FC<PriceStatisticsProps> = ({
                 <span className="ml-1">{formatCurrency(stats.distFromMin)}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {formatPercentage(stats.distFromMinPct)}
+                {formatPercentageValue(stats.distFromMinPct)}
               </div>
             </div>
           </div>
