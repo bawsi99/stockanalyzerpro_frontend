@@ -114,7 +114,7 @@ const Index = () => {
       <section className="pt-2 pb-0 bg-gradient-to-r from-slate-900 to-slate-800">
         <div className="container mx-auto px-4 text-center">
           <div className="mx-auto max-w-3xl rounded-lg p-6 bg-transparent">
-            <div className="flex flex-nowrap items-center justify-center gap-8 whitespace-nowrap">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
                   <User className="h-5 w-5 text-emerald-300" />
