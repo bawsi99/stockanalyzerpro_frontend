@@ -85,7 +85,7 @@ const calculatePriceStatistics = (data: ChartData[] | null): ChartStats => {
 };
 
 // Transform ChartStats to PriceStatisticsCard format
-const transformChartStatsForPriceCard = (chartStats: ChartStats | null) => {
+const transformChartStatsForPriceCard = (chartStats: ChartStats | null, liveData?: ChartData[]) => {
   if (!chartStats) {
     return {
       mean: 0,
@@ -102,19 +102,44 @@ const transformChartStatsForPriceCard = (chartStats: ChartStats | null) => {
   }
 
   const { price } = chartStats;
-  const mean = (price.max + price.min) / 2;
-  const distFromMean = price.current - mean;
-  const distFromMax = price.current - price.max;
-  const distFromMin = price.current - price.min;
+  
+  // Calculate true arithmetic mean from all closing prices
+  let mean: number;
+  if (liveData && liveData.length > 0) {
+    const allPrices = liveData.map(d => d.close || d.price);
+    mean = allPrices.reduce((sum, price) => sum + price, 0) / allPrices.length;
+  } else {
+    // Fallback to midpoint if no live data available
+    mean = (price.max + price.min) / 2;
+  }
+  
+  // Use the latest price from liveData if available, otherwise use from chartStats
+  const currentPrice = liveData && liveData.length > 0 
+    ? (liveData[liveData.length - 1].close || liveData[liveData.length - 1].price)
+    : price.current;
+    
+
+    
+  const distFromMean = currentPrice - mean;
+  const distFromMax = currentPrice - price.max;
+  const distFromMin = currentPrice - price.min;
+  
+  // Calculate meaningful percentages
   const distFromMeanPct = mean !== 0 ? (distFromMean / mean) * 100 : 0;
+  
+  // For distance from high: show percentage below the high (0% = at high, negative = below high)
   const distFromMaxPct = price.max !== 0 ? (distFromMax / price.max) * 100 : 0;
+  
+  // For distance from low: show percentage above the low (0% = at low, positive = above low)
   const distFromMinPct = price.min !== 0 ? (distFromMin / price.min) * 100 : 0;
+  
+
 
   return {
     mean,
     max: price.max,
     min: price.min,
-    current: price.current,
+    current: currentPrice,
     distFromMean,
     distFromMax,
     distFromMin,
@@ -942,7 +967,7 @@ const Charts = React.memo(function Charts() {
               ) : (
                 <div className={`h-full transition-all duration-300 ${isPriceStatsUpdating ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}>
                   <PriceStatisticsCardCharts 
-                    summaryStats={transformChartStatsForPriceCard(memoizedLiveChartStats)}
+                    summaryStats={transformChartStatsForPriceCard(memoizedLiveChartStats, liveData)}
                     latestPrice={liveData[liveData.length - 1].close || liveData[liveData.length - 1].price}
                     timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
                   />

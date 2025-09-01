@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, BarChart3, Target, Activity, Loader2 } from "lucide-react";
-import { formatCurrency, formatPercentageValue } from "@/utils/numberFormatter";
+import { formatCurrency, formatPercentageValue, formatPriceChange } from "@/utils/numberFormatter";
 
 interface PriceStatisticsProps {
   summaryStats: {
@@ -113,7 +113,7 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
               </div>
             </div>
             <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="text-sm text-slate-600 mb-1">Mean Price</div>
+              <div className="text-sm text-slate-600 mb-1">Average Price</div>
               <div className="text-xl font-bold text-blue-700">
                 {formatCurrency(stats.mean)}
               </div>
@@ -131,16 +131,17 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
           <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
             <div className="flex items-center space-x-2">
               <Activity className="h-5 w-5 text-blue-600" />
-              <span className="text-slate-700">Deviation from Mean</span>
+              <span className="text-slate-700">Deviation from Average</span>
             </div>
             <div className="text-right">
               <div className={`font-semibold ${getPerformanceColor(stats.distFromMean)}`}>
                 {getPerformanceIcon(stats.distFromMean)}
-                <span className="ml-1">{formatCurrency(stats.distFromMean)}</span>
+                <span className="ml-1">{formatPriceChange(Math.abs(stats.distFromMean))}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {formatPercentageValue(stats.distFromMeanPct)}
+                {formatPercentageValue(stats.distFromMeanPct, true)}
               </div>
+
             </div>
           </div>
 
@@ -152,11 +153,12 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
             <div className="text-right">
               <div className={`font-semibold ${getPerformanceColor(stats.distFromMax)}`}>
                 {getPerformanceIcon(stats.distFromMax)}
-                <span className="ml-1">{formatCurrency(Math.abs(stats.distFromMax))}</span>
+                <span className="ml-1">{formatPriceChange(Math.abs(stats.distFromMax))}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {formatPercentageValue(stats.distFromMaxPct)}
+                {formatPercentageValue(stats.distFromMaxPct, true)}
               </div>
+
             </div>
           </div>
 
@@ -168,11 +170,12 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
             <div className="text-right">
               <div className={`font-semibold ${getPerformanceColor(stats.distFromMin)}`}>
                 {getPerformanceIcon(stats.distFromMin)}
-                <span className="ml-1">{formatCurrency(stats.distFromMin)}</span>
+                <span className="ml-1">{formatPriceChange(stats.distFromMin)}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {formatPercentageValue(stats.distFromMinPct)}
+                {formatPercentageValue(stats.distFromMinPct, true)}
               </div>
+
             </div>
           </div>
         </div>
