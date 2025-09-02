@@ -124,7 +124,7 @@ const NewStockAnalysis = () => {
   // Hooks
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { saveAnalysis, analyses, loading, error } = useStockAnalyses();
+  const { saveAnalysis, analyses, loading, error, loadMoreAnalyses, hasMore } = useStockAnalyses();
   const { user } = useAuth();
 
   // Persistence helpers for running analyses
@@ -532,6 +532,8 @@ const NewStockAnalysis = () => {
                 loading={loading}
                 error={error}
                 runningAnalyses={runningAnalyses}
+                loadMoreAnalyses={loadMoreAnalyses}
+                hasMore={hasMore}
               />
             </div>
           </div>

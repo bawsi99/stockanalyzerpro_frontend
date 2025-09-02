@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, Clock, History, Loader2 } from 'lucide-react';
 import { StoredAnalysis } from '@/hooks/useStockAnalyses';
 import { format } from "date-fns";
+import { Button } from '@/components/ui/button';
 
 export interface RunningAnalysisItem {
   id: string;
@@ -23,9 +24,11 @@ interface PreviousAnalysesProps {
   loading?: boolean;
   error?: string | null;
   runningAnalyses?: RunningAnalysisItem[];
+  loadMoreAnalyses?: () => void; // New prop for loading more analyses
+  hasMore?: boolean; // New prop to indicate if more analyses are available
 }
 
-const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error = null, runningAnalyses = [] }: PreviousAnalysesProps) => {
+const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error = null, runningAnalyses = [], loadMoreAnalyses, hasMore = false }: PreviousAnalysesProps) => {
   // local clock to tick running timers
   const [now, setNow] = useState<number>(Date.now());
 
@@ -151,6 +154,17 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {hasMore && !loading && loadMoreAnalyses && (
+          <div className="flex justify-center mt-4">
+            <Button
+              onClick={loadMoreAnalyses}
+              variant="outline"
+              className="bg-white/90 backdrop-blur-sm"
+            >
+              Load More
+            </Button>
           </div>
         )}
       </CardContent>

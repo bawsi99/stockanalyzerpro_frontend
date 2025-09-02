@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/services/api';
 import { ApiResponse, AnalysisResponse } from '@/types/analysis';
@@ -62,10 +62,17 @@ export const useStockAnalyses = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
+  const [offset, setOffset] = useState(0); // Current offset for pagination
+  const limit = 10; // Number of analyses to fetch per request
+  const [hasMore, setHasMore] = useState(true); // Flag to indicate if more analyses are available
+  const isInitialMount = useRef(true); // Ref to track initial mount
+
   // Fetch user's analysis history
-  const fetchAnalyses = useCallback(async () => {
+  const fetchAnalyses = useCallback(async (newOffset: number = 0) => {
     if (!user?.id) {
       setAnalyses([]);
+      setHasMore(false);
+      setLoading(false);
       return [];
     }
 
@@ -73,7 +80,7 @@ export const useStockAnalyses = () => {
     setError(null);
 
     try {
-      const response = await apiService.getUserAnalyses(user.id, 50);
+      const response = await apiService.getUserAnalyses(user.id, limit, newOffset);
       
       if (response.success && response.analyses) {
         const transformedAnalyses = response.analyses.map((analysis: any) => ({
@@ -100,22 +107,29 @@ export const useStockAnalyses = () => {
           metadata: analysis.analysis_data?.metadata || null
         }));
 
-        setAnalyses(transformedAnalyses);
+        if (newOffset === 0) {
+          setAnalyses(transformedAnalyses);
+        } else {
+          setAnalyses(prevAnalyses => [...prevAnalyses, ...transformedAnalyses]);
+        }
+        setHasMore(transformedAnalyses.length === limit); // Update hasMore based on backend response
         return transformedAnalyses;
       } else {
-        setAnalyses([]);
+        setAnalyses(newOffset === 0 ? [] : prevAnalyses => prevAnalyses);
+        setHasMore(false);
         return [];
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch analyses';
       setError(errorMessage);
       // console.error('Error fetching analyses:', err);
-      setAnalyses([]);
+      setAnalyses(newOffset === 0 ? [] : prevAnalyses => prevAnalyses);
+      setHasMore(false);
       return [];
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, limit]);
 
   // Fetch analysis by ID
   const getAnalysisById = async (analysisId: string): Promise<StoredAnalysis | null> => {
@@ -269,7 +283,7 @@ export const useStockAnalyses = () => {
       // console.log('Analysis saved for:', stockSymbol);
       
       // Refresh the analyses list
-      await fetchAnalyses();
+      await fetchAnalyses(offset); // Use current offset for refresh
     } catch (err) {
       // console.error('Error saving analysis:', err);
     }
@@ -287,11 +301,21 @@ export const useStockAnalyses = () => {
 
   // Load analyses on component mount
   useEffect(() => {
-    if (user?.id) {
-      fetchAnalyses();
+    if (user?.id && isInitialMount.current) {
+      fetchAnalyses(0); // Initial fetch, always start from 0
       fetchSectorPerformance();
+      isInitialMount.current = false; // Mark as fetched
     }
-  }, [user?.id, fetchAnalyses]);
+  }, [user?.id, fetchAnalyses, fetchSectorPerformance]); // Removed 'offset' from dependency array
+
+  // Function to load more analyses
+  const loadMoreAnalyses = useCallback(() => {
+    if (hasMore && !loading) {
+      const nextOffset = offset + limit;
+      setOffset(nextOffset); // Update offset
+      fetchAnalyses(nextOffset); // Fetch with the new offset
+    }
+  }, [offset, hasMore, loading, fetchAnalyses, limit]); // Added 'limit' to dependencies
 
   return {
     analyses,
@@ -300,11 +324,13 @@ export const useStockAnalyses = () => {
     loading,
     error,
     saveAnalysis,
-    refetch: fetchAnalyses,
+    refetch: () => fetchAnalyses(0), // Refetch from beginning
     getAnalysisById,
     getAnalysesBySignal,
     getAnalysesBySector,
     getHighConfidenceAnalyses,
-    fetchAnalyses
+    fetchAnalyses,
+    loadMoreAnalyses,
+    hasMore
   };
 };

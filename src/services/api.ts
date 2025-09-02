@@ -609,9 +609,9 @@ class ApiService {
   }
 
   // User Analysis Methods
-  async getUserAnalyses(userId: string, limit: number = 50): Promise<{ success: boolean; analyses: any[]; count: number }> {
+  async getUserAnalyses(userId: string, limit: number = 50, offset: number = 0): Promise<{ success: boolean; analyses: any[]; count: number }> {
     const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(
-      `${DATABASE_ENDPOINTS.USER_ANALYSES}/${userId}?limit=${limit}`
+      `${DATABASE_ENDPOINTS.USER_ANALYSES}/${userId}?limit=${limit}&offset=${offset}`
     );
     return response;
   }
