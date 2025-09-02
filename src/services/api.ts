@@ -12,6 +12,7 @@ import {
   SectorBenchmarking
 } from '@/types/analysis';
 import { ENDPOINTS } from '../config';
+import { DATABASE_ENDPOINTS } from '../config'; // Import DATABASE_ENDPOINTS
 
 // Types for chart data
 export interface CandleData {
@@ -236,6 +237,18 @@ export interface AnalysisHistoryResponse {
 }
 
 class ApiService {
+  private baseUrl: string;
+  private dataServiceUrl: string;
+  private analysisServiceUrl: string;
+  private databaseServiceUrl: string; // Add database service URL
+
+  constructor() {
+    this.baseUrl = import.meta.env.VITE_BASE_SERVICE_URL || 'http://localhost:8000'; // Fallback for base
+    this.dataServiceUrl = import.meta.env.VITE_DATA_SERVICE_URL || 'http://localhost:8001';
+    this.analysisServiceUrl = import.meta.env.VITE_ANALYSIS_SERVICE_URL || 'http://localhost:8002';
+    this.databaseServiceUrl = import.meta.env.VITE_DATABASE_SERVICE_URL || 'http://localhost:8003'; // Initialize database service URL
+  }
+
   // ===== ANALYSIS SERVICE ENDPOINTS (Port 8001) =====
 
   // Generic request method
@@ -576,6 +589,12 @@ class ApiService {
     return await resp.json();
   }
 
+  async getDatabaseServiceHealth(): Promise<ServiceHealthResponse> {
+    const resp = await fetch(DATABASE_ENDPOINTS.HEALTH);
+    if (!resp.ok) throw new Error('Database service health check failed');
+    return await resp.json();
+  }
+
   // ===== LEGACY SUPPORT =====
 
   // Legacy method for backward compatibility
@@ -592,7 +611,7 @@ class ApiService {
   // User Analysis Methods
   async getUserAnalyses(userId: string, limit: number = 50): Promise<{ success: boolean; analyses: any[]; count: number }> {
     const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(
-      `${ENDPOINTS.ANALYSIS.USER_ANALYSES}/${userId}?limit=${limit}`
+      `${DATABASE_ENDPOINTS.USER_ANALYSES}/${userId}?limit=${limit}`
     );
     return response;
   }
@@ -600,7 +619,7 @@ class ApiService {
   async getAnalysisById(analysisId: string): Promise<AnalysisResponse | null> {
     try {
       const response = await this.makeRequest<AnalysisResponse>(
-        `${ENDPOINTS.ANALYSIS.ANALYSIS_BY_ID}/${analysisId}`
+        `${DATABASE_ENDPOINTS.ANALYSIS_BY_ID}/${analysisId}`
       );
       return response;
     } catch (error) {
@@ -611,8 +630,8 @@ class ApiService {
 
   async getAnalysesBySignal(signal: string, userId?: string, limit: number = 20): Promise<{ success: boolean; analyses: any[]; count: number }> {
     const url = userId 
-      ? `${ENDPOINTS.ANALYSIS.ANALYSES_BY_SIGNAL}/${signal}?user_id=${userId}&limit=${limit}`
-      : `${ENDPOINTS.ANALYSIS.ANALYSES_BY_SIGNAL}/${signal}?limit=${limit}`;
+      ? `${DATABASE_ENDPOINTS.ANALYSES_BY_SIGNAL}/${signal}?user_id=${userId}&limit=${limit}`
+      : `${DATABASE_ENDPOINTS.ANALYSES_BY_SIGNAL}/${signal}?limit=${limit}`;
     
     const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(url);
     return response;
@@ -620,8 +639,8 @@ class ApiService {
 
   async getAnalysesBySector(sector: string, userId?: string, limit: number = 20): Promise<{ success: boolean; analyses: any[]; count: number }> {
     const url = userId 
-      ? `${ENDPOINTS.ANALYSIS.ANALYSES_BY_SECTOR}/${sector}?user_id=${userId}&limit=${limit}`
-      : `${ENDPOINTS.ANALYSIS.ANALYSES_BY_SECTOR}/${sector}?limit=${limit}`;
+      ? `${DATABASE_ENDPOINTS.ANALYSES_BY_SECTOR}/${sector}?user_id=${userId}&limit=${limit}`
+      : `${DATABASE_ENDPOINTS.ANALYSES_BY_SECTOR}/${sector}?limit=${limit}`;
     
     const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(url);
     return response;
@@ -629,8 +648,8 @@ class ApiService {
 
   async getHighConfidenceAnalyses(minConfidence: number = 80, userId?: string, limit: number = 20): Promise<{ success: boolean; analyses: any[]; count: number }> {
     const url = userId 
-      ? `${ENDPOINTS.ANALYSIS.ANALYSES_BY_CONFIDENCE}/${minConfidence}?user_id=${userId}&limit=${limit}`
-      : `${ENDPOINTS.ANALYSIS.ANALYSES_BY_CONFIDENCE}/${minConfidence}?limit=${limit}`;
+      ? `${DATABASE_ENDPOINTS.ANALYSES_BY_CONFIDENCE}/${minConfidence}?user_id=${userId}&limit=${limit}`
+      : `${DATABASE_ENDPOINTS.ANALYSES_BY_CONFIDENCE}/${minConfidence}?limit=${limit}`;
     
     const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(url);
     return response;
@@ -638,7 +657,7 @@ class ApiService {
 
   async getUserAnalysisSummary(userId: string): Promise<{ success: boolean; summary: any }> {
     const response = await this.makeRequest<{ success: boolean; summary: any }>(
-      `${ENDPOINTS.ANALYSIS.USER_ANALYSIS_SUMMARY}/${userId}`
+      `${DATABASE_ENDPOINTS.USER_ANALYSIS_SUMMARY}/${userId}`
     );
     return response;
   }
@@ -682,6 +701,7 @@ export const {
   // Health Checks
   getDataServiceHealth,
   getAnalysisServiceHealth,
+  getDatabaseServiceHealth,
   
   // Legacy
   getRealtimeAnalysis,

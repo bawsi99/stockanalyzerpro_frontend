@@ -36,6 +36,10 @@ export const ANALYSIS_SERVICE_URL = getEnvVar('VITE_ANALYSIS_SERVICE_URL',
   IS_PRODUCTION ? 'https://stockanalyzer-pro-1.onrender.com' : 'http://localhost:8002'
 );
 
+export const DATABASE_SERVICE_URL = getEnvVar('VITE_DATABASE_SERVICE_URL',
+  IS_PRODUCTION ? 'https://stockanalyzer-pro-2.onrender.com' : 'http://localhost:8003'
+);
+
 // Legacy support - keep the old API_BASE_URL for backward compatibility
 export const API_BASE_URL = DATA_SERVICE_URL;
 
@@ -99,13 +103,6 @@ export const ENDPOINTS = {
     SECTOR_PERFORMANCE: `${ANALYSIS_SERVICE_URL}/sector`,
     SECTOR_COMPARE: `${ANALYSIS_SERVICE_URL}/sector/compare`,
     STOCK_SECTOR: `${ANALYSIS_SERVICE_URL}/stock`,
-    // User Analysis endpoints
-    USER_ANALYSES: `${ANALYSIS_SERVICE_URL}/analyses/user`,
-    ANALYSIS_BY_ID: `${ANALYSIS_SERVICE_URL}/analyses`,
-    ANALYSES_BY_SIGNAL: `${ANALYSIS_SERVICE_URL}/analyses/signal`,
-    ANALYSES_BY_SECTOR: `${ANALYSIS_SERVICE_URL}/analyses/sector`,
-    ANALYSES_BY_CONFIDENCE: `${ANALYSIS_SERVICE_URL}/analyses/confidence`,
-    USER_ANALYSIS_SUMMARY: `${ANALYSIS_SERVICE_URL}/analyses/summary/user`,
     // ML endpoints
     ML_TRAIN: `${ANALYSIS_SERVICE_URL}/ml/train`,
     ML_MODEL: `${ANALYSIS_SERVICE_URL}/ml/model`,
@@ -123,17 +120,32 @@ export const ENDPOINTS = {
     // Cache management
     REDIS_CACHE_STATS: `${ANALYSIS_SERVICE_URL}/redis/cache/stats`,
     REDIS_CACHE_CLEAR: `${ANALYSIS_SERVICE_URL}/redis/cache/clear`,
-    REDIS_CACHE_STOCK: `${ANALYSIS_SERVICE_URL}/redis/cache/stock`,
+    REDIS_STOCK_CACHE_CLEAR: `${ANALYSIS_SERVICE_URL}/redis/cache/stock`,
+    REDIS_STOCK_CACHE_GET: `${ANALYSIS_SERVICE_URL}/redis/cache/stock`,
     // Storage info
     STORAGE_INFO: `${ANALYSIS_SERVICE_URL}/storage/info`,
     STORAGE_RECOMMENDATIONS: `${ANALYSIS_SERVICE_URL}/storage/recommendations`,
-  }
+  },
+
+  // Database Service endpoints - using DATABASE_SERVICE_URL
+};
+
+export const DATABASE_ENDPOINTS = {
+  HEALTH: `${DATABASE_SERVICE_URL}/health`,
+  STORE_ANALYSIS: `${DATABASE_SERVICE_URL}/analyses/store`,
+  USER_ANALYSES: `${DATABASE_SERVICE_URL}/analyses/user`,
+  ANALYSIS_BY_ID: `${DATABASE_SERVICE_URL}/analyses`,
+  ANALYSES_BY_SIGNAL: `${DATABASE_SERVICE_URL}/analyses/signal`,
+  ANALYSES_BY_SECTOR: `${DATABASE_SERVICE_URL}/analyses/sector`,
+  ANALYSES_BY_CONFIDENCE: `${DATABASE_SERVICE_URL}/analyses/confidence`,
+  USER_ANALYSIS_SUMMARY: `${DATABASE_SERVICE_URL}/analyses/summary/user`,
 };
 
 // Configuration object for easy access
 export const CONFIG = {
   DATA_SERVICE_URL,
   ANALYSIS_SERVICE_URL,
+  DATABASE_SERVICE_URL,
   API_BASE_URL,
   WEBSOCKET_URL,
   IS_PRODUCTION,
@@ -147,10 +159,12 @@ if (IS_DEVELOPMENT) {
   console.log('🔧 Frontend Configuration:', {
     DATA_SERVICE_URL,
     ANALYSIS_SERVICE_URL,
+    DATABASE_SERVICE_URL,
     WEBSOCKET_URL: `Auto-derived: ${WEBSOCKET_URL}`,
     NODE_ENV,
     'DATA_SERVICE_ENDPOINTS': ENDPOINTS.DATA,
-    'ANALYSIS_SERVICE_ENDPOINTS': ENDPOINTS.ANALYSIS
+    'ANALYSIS_SERVICE_ENDPOINTS': ENDPOINTS.ANALYSIS,
+    'DATABASE_SERVICE_ENDPOINTS': ENDPOINTS.DATABASE
   });
 }
 
@@ -159,6 +173,7 @@ if (IS_PRODUCTION) {
   console.log('🚀 Production Service URLs:', {
     DATA_SERVICE_URL,
     ANALYSIS_SERVICE_URL,
+    DATABASE_SERVICE_URL,
     WEBSOCKET_URL
   });
 }
@@ -173,6 +188,10 @@ export const validateConfig = () => {
   
   if (!ANALYSIS_SERVICE_URL || ANALYSIS_SERVICE_URL.includes('your-analysis-service')) {
     issues.push('ANALYSIS_SERVICE_URL not properly configured');
+  }
+  
+  if (!DATABASE_SERVICE_URL || DATABASE_SERVICE_URL.includes('your-database-service')) {
+    issues.push('DATABASE_SERVICE_URL not properly configured');
   }
   
   if (issues.length > 0) {
