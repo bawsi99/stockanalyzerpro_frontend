@@ -68,6 +68,7 @@ const NewStockAnalysis = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [runningAnalyses, setRunningAnalyses] = useState<RunningAnalysisItem[]>([]);
+  const [isAnalysisRunning, setIsAnalysisRunning] = useState(false);
 
   // Sector state
   const [sectors, setSectors] = useState<SectorInfo[]>([]);
@@ -250,6 +251,7 @@ const NewStockAnalysis = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    setIsAnalysisRunning(true);
 
     try {
       const payload = {
@@ -314,7 +316,10 @@ const NewStockAnalysis = () => {
           }, 2000);
           toast({ title: 'Analysis Failed', description: errorMessage, variant: 'destructive' });
         })
-        .finally(() => setIsLoading(false));
+        .finally(() => {
+          setIsLoading(false);
+          setIsAnalysisRunning(false);
+        });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred during analysis";
       setFormError(errorMessage);
@@ -495,6 +500,7 @@ const NewStockAnalysis = () => {
                         <Button 
                           type="submit" 
                           className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
+                          disabled={isAnalysisRunning}
                         >
                           <div className="flex items-center space-x-2">
                             <Play className="h-5 w-5" />
