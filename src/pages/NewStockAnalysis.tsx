@@ -77,6 +77,10 @@ const NewStockAnalysis = () => {
 
   // Ref to control the StockSelector imperatively
   const stockSelectorRef = useRef<StockSelectorHandle | null>(null);
+  
+  // Ref to track current form data to avoid dependency issues
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
 
   // Sync form data when selected stock changes from other sources (but keep RELIANCE as default)
   useEffect(() => {
@@ -172,22 +176,32 @@ const NewStockAnalysis = () => {
   const fetchStockSector = useCallback(async (symbol: string) => {
     try {
       const data = await apiService.getStockSector(symbol);
+      
       if (data.success && data.sector_info && data.sector_info.sector) {
         setDetectedSector(data.sector_info.sector);
-        if (!formData.sector || firstSectorLoad.current) {
+        // Always update form data when we have a valid sector, but only if no sector is currently selected
+        if (!formDataRef.current.sector || firstSectorLoad.current) {
           setFormData(prev => ({ ...prev, sector: data.sector_info.sector }));
           firstSectorLoad.current = false;
         }
       } else {
         setDetectedSector("");
-        setFormData(prev => ({ ...prev, sector: null }));
+        // Only clear form data if no sector is currently selected or it's the first load
+        if (!formDataRef.current.sector || firstSectorLoad.current) {
+          setFormData(prev => ({ ...prev, sector: null }));
+          firstSectorLoad.current = false;
+        }
       }
     } catch (error) {
-      // console.error('Error fetching stock sector:', error);
+      console.error('Error fetching stock sector:', error);
       setDetectedSector("");
-      setFormData(prev => ({ ...prev, sector: null }));
+      // Only clear form data if no sector is currently selected or it's the first load
+      if (!formDataRef.current.sector || firstSectorLoad.current) {
+        setFormData(prev => ({ ...prev, sector: null }));
+        firstSectorLoad.current = false;
+      }
     }
-  }, [formData.sector]);
+  }, []); // No dependencies to prevent infinite loop
 
   // Effects
 
