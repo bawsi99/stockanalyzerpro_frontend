@@ -381,7 +381,7 @@ const Charts = React.memo(function Charts() {
               }
             },
             chart_insights: 'Live chart data available',
-            indicator_summary_md: 'Technical indicators will be calculated from live data'
+            indicator_summary: 'Technical indicators will be calculated from live data'
           });
         } else {
           // Fallback to localStorage
@@ -561,7 +561,7 @@ const Charts = React.memo(function Charts() {
 
   const consensus = analysisData?.consensus;
   const indicators = analysisData?.indicators;
-  const indicator_summary_md = analysisData?.indicator_summary_md;
+  const indicator_summary_md = analysisData?.indicator_summary;
   const chart_insights = analysisData?.chart_insights;
 
   // Get signal color

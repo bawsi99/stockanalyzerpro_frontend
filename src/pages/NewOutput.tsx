@@ -331,7 +331,7 @@ const NewOutput: React.FC = () => {
                   }
                 },
                 chart_insights: 'Historical data available',
-                indicator_summary_md: 'Technical indicators will be calculated from historical data',
+                indicator_summary: 'Technical indicators will be calculated from historical data',
                 data: data.candles
               };
               
@@ -596,7 +596,7 @@ const NewOutput: React.FC = () => {
   
   const indicators = extractAdvancedIndicators(enhancedData, analysisData);
 
-  const indicator_summary_md = enhancedData?.indicator_summary || analysisData?.indicator_summary_md;
+  const indicator_summary_md = enhancedData?.indicator_summary || analysisData?.indicator_summary;
   const chart_insights = enhancedData?.chart_insights || analysisData?.chart_insights;
   const ai_analysis = enhancedData?.ai_analysis || analysisData?.ai_analysis;
   const deterministicSignals = (enhancedData as any)?.signals || (analysisData as any)?.signals || null;
@@ -975,7 +975,7 @@ const NewOutput: React.FC = () => {
                     aiAnalysis={ai_analysis} 
                     analysisDate={enhancedData?.analysis_timestamp}
                     analysisPeriod={enhancedData?.analysis_period}
-                    indicatorSummary={enhancedData?.indicator_summary || analysisData?.indicator_summary_md}
+                    indicatorSummary={enhancedData?.indicator_summary || analysisData?.indicator_summary}
                   />
                 )}
               </div>

@@ -41,8 +41,7 @@ export interface TransformedAnalysisData {
   indicators: Indicators;
   charts: Charts;
   ai_analysis: AIAnalysis;
-  indicator_summary_md: string;
-  indicator_summary: string; // Add missing property
+  indicator_summary: string; // Modern field name (was indicator_summary_md)
   chart_insights: string;
   sector_benchmarking?: SectorBenchmarking;
   summary: Summary;
@@ -156,8 +155,7 @@ function transformEnhancedStructure(data: Record<string, unknown> | AnalysisResu
     indicators: extractIndicatorsFromEnhanced(base),
     charts: extractCharts(base),
     ai_analysis: extractAIAnalysisFromEnhanced(base),
-    indicator_summary_md: base.indicator_summary_md || base.indicator_summary || '',
-    indicator_summary: base.indicator_summary || '',
+    indicator_summary: base.indicator_summary || base.indicator_summary_md || '',
     chart_insights: base.chart_insights || '',
     sector_benchmarking: extractSectorBenchmarkingFromEnhanced(base),
     summary: extractSummaryFromEnhanced(base),
@@ -184,8 +182,7 @@ function transformLegacyStructure(data: Record<string, unknown>): TransformedAna
     indicators: extractIndicators(data),
     charts: extractCharts(data),
     ai_analysis: extractAIAnalysis(data),
-    indicator_summary_md: extractIndicatorSummary(data),
-    indicator_summary: extractIndicatorSummary(data), // Add missing property
+    indicator_summary: extractIndicatorSummary(data),
     chart_insights: extractChartInsights(data),
     sector_benchmarking: extractSectorBenchmarking(data),
     summary: extractSummary(data),
@@ -1322,7 +1319,7 @@ function extractAIAnalysis(data: Record<string, unknown>): AIAnalysis {
       }
     },
     key_takeaways: [],
-    indicator_summary_md: data.indicator_summary_md || '',
+    indicator_summary: data.indicator_summary || data.indicator_summary_md || '',
     chart_insights: data.chart_insights || ''
   };
 }
@@ -1429,7 +1426,7 @@ function extractSummary(data: Record<string, unknown>): Summary {
 
 // Helper functions
 function extractIndicatorSummary(data: Record<string, unknown>): string {
-  return data.indicator_summary_md || '';
+  return data.indicator_summary || data.indicator_summary_md || '';
 }
 
 function extractChartInsights(data: Record<string, unknown>): string {
