@@ -109,7 +109,6 @@ export function transformDatabaseRecord(record: SimplifiedDatabaseRecord): Trans
   
   // Check if this is the new enhanced structure
   const isEnhancedStructure = analysisData && (
-    analysisData.symbol || 
     analysisData.analysis_type || 
     analysisData.enhanced_metadata ||
     analysisData.technical_indicators
@@ -132,7 +131,7 @@ function transformEnhancedStructure(data: Record<string, unknown> | AnalysisResu
 
   return {
     // Enhanced fields
-    symbol: base.symbol,
+    symbol: base.symbol || '', // Note: symbol is now deprecated in results, use stock_symbol from root
     exchange: base.exchange,
     analysis_timestamp: base.analysis_timestamp,
     analysis_type: base.analysis_type,
@@ -506,7 +505,7 @@ function extractAIAnalysisFromEnhanced(data: Record<string, unknown> | AnalysisR
   
   return {
     meta: {
-      symbol: data.symbol || '',
+      symbol: data.symbol || '', // Note: symbol is now deprecated in results, use stock_symbol from root
       analysis_date: data.analysis_timestamp || '',
       timeframe: data.interval || 'day',
       overall_confidence: aiAnalysis.meta?.overall_confidence || 0,
@@ -593,7 +592,7 @@ function extractSectorBenchmarkingFromEnhanced(data: Record<string, unknown> | A
   const analysisSummary = sectorBenchmarking.analysis_summary as Record<string, unknown>;
   
   return {
-    stock_symbol: sectorBenchmarking.stock_symbol as string || data.symbol || '',
+    stock_symbol: sectorBenchmarking.stock_symbol as string || '', // Note: data.symbol is deprecated
     sector_info: {
       sector: sectorInfo?.sector as string || sectorContext.sector as string || '',
       sector_name: sectorInfo?.sector_name as string || sectorContext.sector as string || '',

@@ -183,14 +183,13 @@ const NewOutput: React.FC = () => {
         
         // Check if the response has a 'results' field (new backend structure)
         const analysisData = parsed.results || parsed;
-        const stockSymbol = parsed.stock_symbol || analysisData.symbol || "RELIANCE";
+        const stockSymbol = parsed.stock_symbol || "RELIANCE";
         
         // console.log('Analysis data after extraction:', analysisData);
         // console.log('Stock symbol:', stockSymbol);
         
         // Check if this is the new enhanced structure
         const isEnhancedStructure = analysisData && (
-          analysisData.symbol || 
           analysisData.analysis_type || 
           analysisData.enhanced_metadata ||
           analysisData.technical_indicators

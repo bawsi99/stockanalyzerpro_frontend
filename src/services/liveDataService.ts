@@ -145,7 +145,7 @@ class LiveDataService {
         
         console.log(`📊 [liveDataService] Parsed response for ${symbol}:`, {
           success: data.success,
-          symbol: data.symbol,
+          stock_symbol: data.stock_symbol,
           exchange: data.exchange,
           interval: data.interval,
           candlesLength: data.candles?.length,
