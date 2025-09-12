@@ -717,8 +717,7 @@ const NewOutput: React.FC = () => {
       rotation_insights: {
         sector_rank: backendSectorContext.sector_rotation?.sector_rankings?.[backendSectorContext.sector]?.rank || 
                     backendSectorContext.sector_rotation?.sector_performance?.[backendSectorContext.sector]?.total_return || null,
-        sector_performance: backendSectorContext.sector_rotation?.sector_performance?.[backendSectorContext.sector]?.total_return || 
-                           backendSectorContext.sector_rotation?.sector_rankings?.[backendSectorContext.sector]?.performance?.total_return || null,
+        sector_performance: backendSectorContext.sector_rotation?.sector_performance?.[backendSectorContext.sector]?.total_return || null,
         rotation_strength: backendSectorContext.sector_rotation?.rotation_patterns?.rotation_strength || 'unknown',
         leading_sectors: backendSectorContext.sector_rotation?.rotation_patterns?.leading_sectors?.map((s: any) => s.sector) || [],
         lagging_sectors: backendSectorContext.sector_rotation?.rotation_patterns?.lagging_sectors?.map((s: any) => s.sector) || [],

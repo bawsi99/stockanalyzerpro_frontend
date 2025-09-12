@@ -15,11 +15,8 @@ interface SectorRotationData {
   }>;
   sector_rankings: Record<string, {
     rank: number;
-    performance: {
-      total_return: number;
-      momentum: number;
-      relative_strength: number;
-    };
+    // OPTIMIZED: performance data removed to eliminate duplication
+    // Performance data is available in sector_performance[sector]
   }>;
   rotation_patterns: {
     leading_sectors: Array<{
@@ -111,8 +108,8 @@ const SectorRotationCard: React.FC<SectorRotationCardProps> = ({ data, currentSe
           />
         </div>
 
-        {/* Current Sector Performance */}
-        {currentSector && data.sector_rankings[currentSector] && (
+        {/* Current Sector Performance - OPTIMIZED: Use sector_performance instead of sector_rankings.performance */}
+        {currentSector && data.sector_rankings[currentSector] && data.sector_performance[currentSector] && (
           <div className="p-4 bg-blue-50 rounded-lg">
             <h4 className="font-medium text-blue-900 mb-2">Your Sector: {currentSector}</h4>
             <div className="grid grid-cols-3 gap-4 text-sm">
@@ -123,19 +120,19 @@ const SectorRotationCard: React.FC<SectorRotationCardProps> = ({ data, currentSe
               <div>
                 <span className="text-gray-600">Return</span>
                 <div className={`font-semibold ${
-                  data.sector_rankings[currentSector].performance.total_return > 0 
+                  data.sector_performance[currentSector].total_return > 0 
                     ? 'text-green-600' : 'text-red-600'
                 }`}>
-                  {data.sector_rankings[currentSector].performance.total_return.toFixed(1)}%
+                  {data.sector_performance[currentSector].total_return.toFixed(1)}%
                 </div>
               </div>
               <div>
                 <span className="text-gray-600">Momentum</span>
                 <div className={`font-semibold ${
-                  data.sector_rankings[currentSector].performance.momentum > 0 
+                  data.sector_performance[currentSector].momentum > 0 
                     ? 'text-green-600' : 'text-red-600'
                 }`}>
-                  {data.sector_rankings[currentSector].performance.momentum.toFixed(1)}%
+                  {data.sector_performance[currentSector].momentum.toFixed(1)}%
                 </div>
               </div>
             </div>
