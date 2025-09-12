@@ -98,7 +98,7 @@ export const useStockAnalyses = () => {
           price_change_percentage: null, // Not available in current data structure
           sector: analysis.analysis_data?.sector_benchmarking?.sector_info?.sector || null,
           analysis_type: 'standard',
-          exchange: analysis.analysis_data?.metadata?.exchange || 'NSE',
+          exchange: analysis.analysis_data?.exchange || 'NSE',
           period_days: analysis.analysis_data?.metadata?.period_days || null,
           interval: analysis.analysis_data?.metadata?.interval || null,
           analysis_quality: 'standard',

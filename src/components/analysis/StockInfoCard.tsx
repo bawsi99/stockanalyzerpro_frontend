@@ -7,11 +7,12 @@ interface StockInfoCardProps {
   symbol: string;
   currentPrice: number | null;
   priceChange: { change: number; changePercent: number } | null;
+  exchange?: string;
   metadata?: any;
   summary?: any;
 }
 
-const StockInfoCard = ({ symbol, currentPrice, priceChange, metadata, summary }: StockInfoCardProps) => {
+const StockInfoCard = ({ symbol, currentPrice, priceChange, exchange, metadata, summary }: StockInfoCardProps) => {
   const getPriceChangeIcon = (changePercent: number) => {
     if (changePercent > 0) return <TrendingUp className="h-4 w-4 text-green-600" />;
     if (changePercent < 0) return <TrendingDown className="h-4 w-4 text-red-600" />;
@@ -45,7 +46,7 @@ const StockInfoCard = ({ symbol, currentPrice, priceChange, metadata, summary }:
           
           <div className="flex justify-between items-center">
             <span className="text-slate-600">Exchange:</span>
-            <span className="font-semibold">{metadata?.exchange || 'NSE'}</span>
+            <span className="font-semibold">{exchange || metadata?.exchange || 'NSE'}</span>
           </div>
 
           {/* Current Price */}

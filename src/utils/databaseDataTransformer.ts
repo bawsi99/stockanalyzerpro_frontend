@@ -132,7 +132,7 @@ function transformEnhancedStructure(data: Record<string, unknown> | AnalysisResu
   return {
     // Enhanced fields
     symbol: base.symbol || '', // Note: symbol is now deprecated in results, use stock_symbol from root
-    exchange: base.exchange,
+    exchange: (data as any).exchange || base.exchange, // Get exchange from root level first, fallback to results
     analysis_timestamp: base.analysis_timestamp,
     analysis_type: base.analysis_type,
     mathematical_validation: base.mathematical_validation,
