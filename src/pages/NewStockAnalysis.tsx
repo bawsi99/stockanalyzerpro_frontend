@@ -536,7 +536,7 @@ const NewStockAnalysis = () => {
                       </div>
 
                       <div className="text-center text-sm text-slate-500">
-                        You can start another analysis while the current one runs. Typical duration 3–4 minutes.
+                        Typical duration 3–4 minutes.
                       </div>
                     </div>
                   </form>
