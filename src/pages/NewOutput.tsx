@@ -960,16 +960,16 @@ const NewOutput: React.FC = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <div className="relative flex w-fit justify-center bg-transparent p-3 gap-3 h-16 mx-auto">
-            {/* Sliding Background Bubble */}
-            <div 
-              className="absolute top-3 bottom-3 bg-white/20 shadow-lg shadow-slate-200/30 border border-slate-400/70 backdrop-blur-md rounded-full transition-all duration-500 ease-out"
-              style={{
-                left: `${bubbleStyle.left}px`,
-                width: `${bubbleStyle.width}px`
-              }}
-            />
-            <TabsList className="flex bg-transparent gap-3 h-full relative z-10">
+          <div className="flex w-fit justify-center bg-transparent p-3 gap-3 h-16 mx-auto">
+            <TabsList className="flex bg-transparent gap-3 h-full relative">
+              {/* Sliding Background Bubble */}
+              <div 
+                className="absolute top-0 bottom-0 bg-white/20 shadow-lg shadow-slate-200/30 border border-slate-400/70 backdrop-blur-md rounded-full transition-all duration-500 ease-out"
+                style={{
+                  left: `${bubbleStyle.left}px`,
+                  width: `${bubbleStyle.width}px`
+                }}
+              />
               <TabsTrigger 
                 ref={(el) => (tabRefs.current.overview = el)}
                 value="overview" 
