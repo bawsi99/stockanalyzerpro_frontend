@@ -253,7 +253,22 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
                 <div className="text-lg font-bold text-slate-800 capitalize">
                   {rotation.rotation_strength || 'N/A'}
                 </div>
-                <div className="text-xs text-slate-600">Rotation Strength</div>
+                <div className="text-xs text-slate-600 mb-1">Rotation Strength</div>
+                <div className="text-xs text-slate-500 italic leading-tight">
+                  {(() => {
+                    const strength = rotation.rotation_strength?.toLowerCase();
+                    switch (strength) {
+                      case 'strong':
+                        return 'Sector selection crucial';
+                      case 'moderate':
+                        return 'Mixed sector performance';
+                      case 'weak':
+                        return 'Sectors moving together';
+                      default:
+                        return 'Analysis pending';
+                    }
+                  })()}
+                </div>
               </div>
               <div className="text-center p-3 bg-slate-50 rounded-lg">
                 <div className={`text-lg font-bold capitalize ${
