@@ -256,10 +256,30 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
                 <div className="text-xs text-slate-600">Rotation Strength</div>
               </div>
               <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <div className="text-lg font-bold text-slate-800">
-                  {rotation.recommendations?.length || 0}
+                <div className={`text-lg font-bold capitalize ${
+                  (() => {
+                    const recommendations = rotation.recommendations || [];
+                    const overweightCount = recommendations.filter(r => r.type === 'overweight').length;
+                    const underweightCount = recommendations.filter(r => r.type === 'underweight').length;
+                    
+                    if (overweightCount > underweightCount) return 'text-green-600';
+                    if (underweightCount > overweightCount) return 'text-red-600';
+                    if (recommendations.length > 0) return 'text-yellow-600';
+                    return 'text-slate-500';
+                  })()
+                }`}>
+                  {(() => {
+                    const recommendations = rotation.recommendations || [];
+                    const overweightCount = recommendations.filter(r => r.type === 'overweight').length;
+                    const underweightCount = recommendations.filter(r => r.type === 'underweight').length;
+                    
+                    if (overweightCount > underweightCount) return 'Bullish';
+                    if (underweightCount > overweightCount) return 'Bearish';
+                    if (recommendations.length > 0) return 'Neutral';
+                    return 'No Signal';
+                  })()}
                 </div>
-                <div className="text-xs text-slate-600">Recommendations</div>
+                <div className="text-xs text-slate-600">Market Signal</div>
               </div>
             </div>
           </div>
