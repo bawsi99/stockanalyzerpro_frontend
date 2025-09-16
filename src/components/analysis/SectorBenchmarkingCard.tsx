@@ -61,7 +61,7 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
   const safeSectorInfo = {
     sector: sector_info?.sector ?? 'Unknown',
     sector_name: sector_info?.sector_name ?? 'Unknown',
-    sector_index: sector_info?.sector_index ?? 'NIFTY_IT',
+    sector_index: sector_info?.sector_index ?? 'NIFTY 50',
     sector_stocks_count: sector_info?.sector_stocks_count ?? 0
   };
 

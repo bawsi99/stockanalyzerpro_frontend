@@ -533,26 +533,26 @@ class LiveDataService {
       
       // Fallback to hardcoded list if JSON loading fails
       const majorStocks = [
-        { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', token: '256265', exchange: 'NSE', sector: 'Oil & Gas' },
-        { symbol: 'TCS', name: 'Tata Consultancy Services Ltd', token: '11536', exchange: 'NSE', sector: 'IT' },
-        { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', token: '1330', exchange: 'NSE', sector: 'Banking' },
-        { symbol: 'INFY', name: 'Infosys Ltd', token: '1594', exchange: 'NSE', sector: 'IT' },
-        { symbol: 'ICICIBANK', name: 'ICICI Bank Ltd', token: '4963', exchange: 'NSE', sector: 'Banking' },
-        { symbol: 'HINDUNILVR', name: 'Hindustan Unilever Ltd', token: '3045', exchange: 'NSE', sector: 'FMCG' },
-        { symbol: 'ITC', name: 'ITC Ltd', token: '1660', exchange: 'NSE', sector: 'FMCG' },
-        { symbol: 'SBIN', name: 'State Bank of India', token: '3045', exchange: 'NSE', sector: 'Banking' },
-        { symbol: 'BHARTIARTL', name: 'Bharti Airtel Ltd', token: '2713', exchange: 'NSE', sector: 'Telecom' },
-        { symbol: 'AXISBANK', name: 'Axis Bank Ltd', token: '590', exchange: 'NSE', sector: 'Banking' },
-        { symbol: 'WIPRO', name: 'Wipro Ltd', token: '969', exchange: 'NSE', sector: 'IT' },
-        { symbol: 'HCLTECH', name: 'HCL Technologies Ltd', token: '7229', exchange: 'NSE', sector: 'IT' },
-        { symbol: 'ASIANPAINT', name: 'Asian Paints Ltd', token: '22', exchange: 'NSE', sector: 'Consumer Goods' },
-        { symbol: 'MARUTI', name: 'Maruti Suzuki India Ltd', token: '10999', exchange: 'NSE', sector: 'Automobile' },
-        { symbol: 'SUNPHARMA', name: 'Sun Pharmaceutical Industries Ltd', token: '8572', exchange: 'NSE', sector: 'Pharma' },
-        { symbol: 'ULTRACEMCO', name: 'UltraTech Cement Ltd', token: '11511', exchange: 'NSE', sector: 'Cement' },
-        { symbol: 'TITAN', name: 'Titan Company Ltd', token: '11536', exchange: 'NSE', sector: 'Consumer Goods' },
-        { symbol: 'BAJFINANCE', name: 'Bajaj Finance Ltd', token: '811', exchange: 'NSE', sector: 'Finance' },
-        { symbol: 'NESTLEIND', name: 'Nestle India Ltd', token: '16751', exchange: 'NSE', sector: 'FMCG' },
-        { symbol: 'POWERGRID', name: 'Power Grid Corporation of India Ltd', token: '14977', exchange: 'NSE', sector: 'Power' }
+        { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', token: '256265', exchange: 'NSE', sector: 'Nifty Oil and Gas' },
+        { symbol: 'TCS', name: 'Tata Consultancy Services Ltd', token: '11536', exchange: 'NSE', sector: 'Nifty IT' },
+        { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', token: '1330', exchange: 'NSE', sector: 'Nifty Bank' },
+        { symbol: 'INFY', name: 'Infosys Ltd', token: '1594', exchange: 'NSE', sector: 'Nifty IT' },
+        { symbol: 'ICICIBANK', name: 'ICICI Bank Ltd', token: '4963', exchange: 'NSE', sector: 'Nifty Bank' },
+        { symbol: 'HINDUNILVR', name: 'Hindustan Unilever Ltd', token: '3045', exchange: 'NSE', sector: 'Nifty FMCG' },
+        { symbol: 'ITC', name: 'ITC Ltd', token: '1660', exchange: 'NSE', sector: 'Nifty FMCG' },
+        { symbol: 'SBIN', name: 'State Bank of India', token: '3045', exchange: 'NSE', sector: 'Nifty PSU Bank' },
+        { symbol: 'BHARTIARTL', name: 'Bharti Airtel Ltd', token: '2713', exchange: 'NSE', sector: 'Nifty MidSmall IT & Telecom' },
+        { symbol: 'AXISBANK', name: 'Axis Bank Ltd', token: '590', exchange: 'NSE', sector: 'Nifty Private Bank' },
+        { symbol: 'WIPRO', name: 'Wipro Ltd', token: '969', exchange: 'NSE', sector: 'Nifty IT' },
+        { symbol: 'HCLTECH', name: 'HCL Technologies Ltd', token: '7229', exchange: 'NSE', sector: 'Nifty IT' },
+        { symbol: 'ASIANPAINT', name: 'Asian Paints Ltd', token: '22', exchange: 'NSE', sector: 'Nifty Consumer Durables' },
+        { symbol: 'MARUTI', name: 'Maruti Suzuki India Ltd', token: '10999', exchange: 'NSE', sector: 'Nifty Auto' },
+        { symbol: 'SUNPHARMA', name: 'Sun Pharmaceutical Industries Ltd', token: '8572', exchange: 'NSE', sector: 'Nifty Pharma' },
+        { symbol: 'ULTRACEMCO', name: 'UltraTech Cement Ltd', token: '11511', exchange: 'NSE', sector: 'Nifty Metal' },
+        { symbol: 'TITAN', name: 'Titan Company Ltd', token: '11536', exchange: 'NSE', sector: 'Nifty Consumer Durables' },
+        { symbol: 'BAJFINANCE', name: 'Bajaj Finance Ltd', token: '811', exchange: 'NSE', sector: 'Nifty Financial Services' },
+        { symbol: 'NESTLEIND', name: 'Nestle India Ltd', token: '16751', exchange: 'NSE', sector: 'Nifty FMCG' },
+        { symbol: 'POWERGRID', name: 'Power Grid Corporation of India Ltd', token: '14977', exchange: 'NSE', sector: 'Nifty Oil and Gas' }
       ];
 
       return majorStocks;

@@ -165,12 +165,37 @@ const NewOutput: React.FC = () => {
   
   // Enhanced data state
   const [enhancedData, setEnhancedData] = useState<AnalysisResults | null>(null);
+  
+  // Refs for sliding bubble positioning
+  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const [bubbleStyle, setBubbleStyle] = useState({ left: 0, width: 0 });
 
   // Function to clear cache and force fresh analysis
   const clearCacheAndRefresh = () => {
     localStorage.removeItem('analysisResult');
     window.location.reload();
   };
+
+  // Update bubble position when active tab changes
+  useEffect(() => {
+    const updateBubblePosition = () => {
+      const activeTabRef = tabRefs.current[activeTab];
+      if (activeTabRef) {
+        const rect = activeTabRef.getBoundingClientRect();
+        const tabsListRect = activeTabRef.parentElement?.getBoundingClientRect();
+        if (tabsListRect) {
+          setBubbleStyle({
+            left: rect.left - tabsListRect.left,
+            width: rect.width
+          });
+        }
+      }
+    };
+
+    // Small delay to ensure DOM is updated
+    const timeoutId = setTimeout(updateBubblePosition, 50);
+    return () => clearTimeout(timeoutId);
+  }, [activeTab]);
 
   // Load analysis data and stock symbol from localStorage or route params
   useEffect(() => {
@@ -935,28 +960,58 @@ const NewOutput: React.FC = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white/80 backdrop-blur-sm">
-            <TabsTrigger value="overview" className="flex items-center space-x-2">
-              <Eye className="h-4 w-4" />
-              <span>Overview</span>
-            </TabsTrigger>
-            <TabsTrigger value="technical" className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4" />
-              <span>Technical</span>
-            </TabsTrigger>
-            <TabsTrigger value="ai" className="flex items-center space-x-2">
-              <Brain className="h-4 w-4" />
-              <span>AI Analysis</span>
-            </TabsTrigger>
-            <TabsTrigger value="sector" className="flex items-center space-x-2">
-              <Building2 className="h-4 w-4" />
-              <span>Sector</span>
-            </TabsTrigger>
-            <TabsTrigger value="advanced" className="flex items-center space-x-2">
-              <Settings className="h-4 w-4" />
-              <span>Advanced</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="relative flex w-fit justify-center bg-transparent p-3 gap-3 h-16 mx-auto">
+            {/* Sliding Background Bubble */}
+            <div 
+              className="absolute top-3 bottom-3 bg-white/20 shadow-lg shadow-slate-200/30 border border-slate-400/70 backdrop-blur-md rounded-full transition-all duration-500 ease-out"
+              style={{
+                left: `${bubbleStyle.left}px`,
+                width: `${bubbleStyle.width}px`
+              }}
+            />
+            <TabsList className="flex bg-transparent gap-3 h-full relative z-10">
+              <TabsTrigger 
+                ref={(el) => (tabRefs.current.overview = el)}
+                value="overview" 
+                className="flex items-center justify-center space-x-2 h-full px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
+              >
+                <Eye className="h-4 w-4 data-[state=active]:h-5 data-[state=active]:w-5" />
+                <span className="data-[state=active]:text-2xl text-sm whitespace-nowrap">Overview</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                ref={(el) => (tabRefs.current.technical = el)}
+                value="technical" 
+                className="flex items-center justify-center space-x-2 h-full px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
+              >
+                <TrendingUp className="h-4 w-4 data-[state=active]:h-5 data-[state=active]:w-5" />
+                <span className="data-[state=active]:text-2xl text-sm whitespace-nowrap">Technical</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                ref={(el) => (tabRefs.current.ai = el)}
+                value="ai" 
+                className="flex items-center justify-center space-x-2 h-full px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
+              >
+                <Brain className="h-4 w-4 data-[state=active]:h-5 data-[state=active]:w-5" />
+                <span className="data-[state=active]:text-2xl text-sm whitespace-nowrap">AI Analysis</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                ref={(el) => (tabRefs.current.sector = el)}
+                value="sector" 
+                className="flex items-center justify-center space-x-2 h-full px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
+              >
+                <Building2 className="h-4 w-4 data-[state=active]:h-5 data-[state=active]:w-5" />
+                <span className="data-[state=active]:text-2xl text-sm whitespace-nowrap">Sector</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                ref={(el) => (tabRefs.current.advanced = el)}
+                value="advanced" 
+                className="flex items-center justify-center space-x-2 h-full px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
+              >
+                <Settings className="h-4 w-4 data-[state=active]:h-5 data-[state=active]:w-5" />
+                <span className="data-[state=active]:text-2xl text-sm whitespace-nowrap">Advanced</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-0.001">
