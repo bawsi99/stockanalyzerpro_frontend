@@ -259,9 +259,9 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
                     const strength = rotation.rotation_strength?.toLowerCase();
                     switch (strength) {
                       case 'strong':
-                        return 'Sector selection crucial';
+                        return 'Large gaps between different sector returns';
                       case 'moderate':
-                        return 'Mixed sector performance';
+                        return 'Moderate differences in sector returns';
                       case 'weak':
                         return 'Sectors moving together';
                       default:
