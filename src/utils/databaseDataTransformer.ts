@@ -593,7 +593,7 @@ function extractSectorBenchmarkingFromEnhanced(data: Record<string, unknown> | A
     sector_info: {
       sector: sectorInfo?.sector as string || sectorContext.sector as string || '',
       sector_name: sectorInfo?.sector_name as string || sectorContext.sector as string || '',
-      sector_index: sectorInfo?.sector_index as string || 'NIFTY_ENERGY',
+      sector_index: sectorInfo?.sector_index as string || 'NIFTY 50',
       sector_stocks_count: sectorInfo?.sector_stocks_count as number || 0
     },
     market_benchmarking: {
@@ -617,7 +617,7 @@ function extractSectorBenchmarkingFromEnhanced(data: Record<string, unknown> | A
       sector_max_drawdown: sectorBenchmarkingData?.sector_max_drawdown as number || 0,
       sector_cumulative_return: sectorBenchmarkingData?.sector_cumulative_return as number || 0,
       sector_annualized_return: sectorBenchmarkingData?.sector_annualized_return as number || 0,
-      sector_index: sectorBenchmarkingData?.sector_index as string || 'NIFTY_ENERGY',
+      sector_index: sectorBenchmarkingData?.sector_index as string || 'NIFTY 50',
       sector_data_points: sectorBenchmarkingData?.sector_data_points as number || 0
     },
     relative_performance: {
