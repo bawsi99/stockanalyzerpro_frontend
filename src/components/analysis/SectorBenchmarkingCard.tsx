@@ -88,12 +88,12 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
   const safeRelativePerformance = {
     vs_market: {
       performance_ratio: relative_performance?.vs_market?.performance_ratio,
-      sector_rank: relative_performance?.vs_market?.consistency_score,
-      sector_consistency: relative_performance?.vs_market?.consistency_score
+      consistency_score: relative_performance?.vs_market?.consistency_score
     },
     vs_sector: {
       performance_ratio: relative_performance?.vs_sector?.performance_ratio,
       sector_rank: relative_performance?.vs_sector?.sector_rank,
+      sector_percentile: relative_performance?.vs_sector?.sector_percentile,
       sector_consistency: relative_performance?.vs_sector?.sector_consistency
     }
   };
@@ -373,6 +373,12 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
                     <span className="text-sm text-slate-600">Sector Rank:</span>
                     <Badge variant="outline">
                       {safeRelativePerformance.vs_sector.sector_rank !== null ? `${safeRelativePerformance.vs_sector.sector_rank}/${safeSectorInfo.sector_stocks_count}` : 'N/A'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Percentile:</span>
+                    <Badge variant="secondary">
+                      {safeRelativePerformance.vs_sector.sector_percentile !== null ? `${safeRelativePerformance.vs_sector.sector_percentile}th` : 'N/A'}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">

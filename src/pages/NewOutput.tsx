@@ -711,30 +711,30 @@ const NewOutput: React.FC = () => {
           vs_sector: {
             performance_ratio: shouldNullifyValues ? null : (backendData.sector_excess_return ?? null),
             risk_adjusted_ratio: null,
-            sector_rank: null,
-            sector_percentile: null,
-            sector_consistency: null
+            sector_rank: shouldNullifyValues ? null : (backendData.relative_performance?.vs_sector?.sector_rank ?? null),
+            sector_percentile: shouldNullifyValues ? null : (backendData.relative_performance?.vs_sector?.sector_percentile ?? null),
+            sector_consistency: shouldNullifyValues ? null : (backendData.relative_performance?.vs_sector?.sector_consistency ?? null)
           }
         },
         sector_risk_metrics: {
-          risk_score: null,
-          risk_level: null,
-          correlation_risk: null,
-          momentum_risk: null,
-          volatility_risk: null,
+          risk_score: backendData.sector_risk_metrics?.risk_score ?? null,
+          risk_level: backendData.sector_risk_metrics?.risk_level ?? null,
+          correlation_risk: backendData.sector_risk_metrics?.correlation_risk ?? null,
+          momentum_risk: backendData.sector_risk_metrics?.momentum_risk ?? null,
+          volatility_risk: backendData.sector_risk_metrics?.volatility_risk ?? null,
           sector_stress_metrics: {
-            stress_score: null,
-            stress_level: null,
-            stress_factors: []
+            stress_score: backendData.sector_risk_metrics?.sector_stress_metrics?.stress_score ?? null,
+            stress_level: backendData.sector_risk_metrics?.sector_stress_metrics?.stress_level ?? null,
+            stress_factors: backendData.sector_risk_metrics?.sector_stress_metrics?.stress_factors ?? []
           },
-          risk_factors: [],
-          risk_mitigation: []
+          risk_factors: backendData.sector_risk_metrics?.risk_factors ?? [],
+          risk_mitigation: backendData.sector_risk_metrics?.risk_mitigation ?? []
         },
         analysis_summary: {
-          market_position: null,
-          sector_position: null,
-          risk_assessment: null,
-          investment_recommendation: null
+          market_position: backendData.analysis_summary?.market_position ?? null,
+          sector_position: backendData.analysis_summary?.sector_position ?? null,
+          risk_assessment: backendData.analysis_summary?.risk_assessment ?? null,
+          investment_recommendation: backendData.analysis_summary?.investment_recommendation ?? null
         },
         timestamp: new Date().toISOString(),
         data_points: backendData.data_points || {
@@ -1431,12 +1431,23 @@ const NewOutput: React.FC = () => {
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-slate-600">Sector Rank:</span>
                                 <Badge variant="outline">
-                                  {sector_benchmarking.relative_performance?.vs_sector?.sector_rank || 0}/{sector_benchmarking.sector_info?.sector_stocks_count || 0}
+                                  {(() => {
+                                    const rank = sector_benchmarking.relative_performance?.vs_sector?.sector_rank;
+                                    const totalStocks = sector_benchmarking.sector_info?.sector_stocks_count;
+                                    if (!rank || !totalStocks || rank === 0) return 'N/A';
+                                    return `${rank}/${totalStocks}`;
+                                  })()}
                                 </Badge>
                               </div>
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-slate-600">Consistency:</span>
-                                <span className="font-medium">{((sector_benchmarking.relative_performance?.vs_sector?.sector_consistency || 0) * 100).toFixed(1)}%</span>
+                                <span className="font-medium">
+                                  {(() => {
+                                    const consistency = sector_benchmarking.relative_performance?.vs_sector?.sector_consistency;
+                                    if (consistency === null || consistency === undefined) return 'N/A';
+                                    return `${(consistency * 100).toFixed(1)}%`;
+                                  })()}
+                                </span>
                               </div>
                             </div>
                           </div>
