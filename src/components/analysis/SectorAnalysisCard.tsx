@@ -180,30 +180,57 @@ const SectorAnalysisCard: React.FC<SectorAnalysisCardProps> = ({
               </div>
             </div>
 
-            {/* Correlation Sectors */}
+            {/* ENHANCED: Correlation Breakdown with Negative Correlations */}
             <div className="space-y-4">
-              <h4 className="font-semibold text-slate-700">Correlation Breakdown</h4>
+              <h4 className="font-semibold text-slate-700">Enhanced Correlation Breakdown</h4>
               <div className="grid grid-cols-1 gap-3">
+                {/* High Positive Correlations */}
                 <div>
-                  <h5 className="text-sm font-medium text-slate-600 mb-2">High Correlation ({'>'}0.7)</h5>
+                  <h5 className="text-sm font-medium text-slate-600 mb-2 flex items-center">
+                    <TrendingUp className="h-3 w-3 mr-1 text-orange-500" />
+                    High Positive ({'>'} 0.5)
+                  </h5>
                   <div className="space-y-1">
-                    {correlation_insights.high_correlation_sectors.length > 0 ? (
-                      correlation_insights.high_correlation_sectors.slice(0, 3).map((item, index) => (
+                    {correlation_insights.high_correlation_sectors?.length > 0 ? (
+                      correlation_insights.high_correlation_sectors.slice(0, 2).map((item, index) => (
                         <div key={index} className="flex items-center justify-between text-sm">
                           <span className="text-slate-600">{item.sector}</span>
-                          <span className="font-medium text-red-600">{item.correlation.toFixed(3)}</span>
+                          <span className="font-medium text-orange-600">{item.correlation.toFixed(3)}</span>
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-slate-500">No high correlation sectors</p>
+                      <p className="text-sm text-slate-500">No high positive correlations</p>
                     )}
                   </div>
                 </div>
+                
+                {/* NEW: Negative Correlations (Hedging Opportunities) */}
+                {correlation_insights.negative_correlation_sectors?.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-slate-600 mb-2 flex items-center">
+                      <TrendingDown className="h-3 w-3 mr-1 text-blue-500" />
+                      Negative Correlations (Hedging)
+                    </h5>
+                    <div className="space-y-1">
+                      {correlation_insights.negative_correlation_sectors.slice(0, 2).map((item, index) => (
+                        <div key={index} className="flex items-center justify-between text-sm">
+                          <span className="text-slate-600">{item.sector}</span>
+                          <span className="font-medium text-blue-600">{item.correlation.toFixed(3)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Low Correlations (Diversification) */}
                 <div>
-                  <h5 className="text-sm font-medium text-slate-600 mb-2">Low Correlation ({'<'}0.3)</h5>
+                  <h5 className="text-sm font-medium text-slate-600 mb-2 flex items-center">
+                    <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
+                    Low Correlation ({'<'} 0.3)
+                  </h5>
                   <div className="space-y-1">
-                    {correlation_insights.low_correlation_sectors.length > 0 ? (
-                      correlation_insights.low_correlation_sectors.slice(0, 3).map((item, index) => (
+                    {correlation_insights.low_correlation_sectors?.length > 0 ? (
+                      correlation_insights.low_correlation_sectors.slice(0, 2).map((item, index) => (
                         <div key={index} className="flex items-center justify-between text-sm">
                           <span className="text-slate-600">{item.sector}</span>
                           <span className="font-medium text-green-600">{item.correlation.toFixed(3)}</span>
