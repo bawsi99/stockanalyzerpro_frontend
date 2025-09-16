@@ -627,9 +627,32 @@ const NewOutput: React.FC = () => {
   const deterministicSignals = (enhancedData as any)?.signals || (analysisData as any)?.signals || null;
   // Transform backend sector benchmarking data to frontend format
   const transformSectorBenchmarking = (backendData: any) => {
-    if (!backendData) return null;
+    if (!backendData) {
+      return null;
+    }
     
+    // Check for backend errors or insufficient data
+    const hasError = backendData.error;
+    const hasInsufficientData = backendData.data_quality?.sufficient_data === false;
+    const isReliable = backendData.data_quality?.reliability !== 'none';
 
+    // Check for insufficient data points (less than minimum recommended)
+    const dataPoints = backendData.data_quality?.data_points || 0;
+    const minRecommended = backendData.data_quality?.minimum_recommended || 30;
+    const hasInsufficientDataPoints = dataPoints < minRecommended;
+    
+    // Determine if values should be nullified BEFORE any usage
+    // Be aggressive about nullifying when data is clearly insufficient
+    const shouldNullifyValues = Boolean(
+      hasError || 
+      hasInsufficientData || 
+      !isReliable || 
+      hasInsufficientDataPoints ||
+      (dataPoints === 0) // Always nullify when zero data points
+    );
+    if (shouldNullifyValues) {
+      console.warn('⚠️ [SECTOR DATA] Insufficient data detected - showing N/A values');
+    }
     
     // If it's already in frontend format, ensure proper field mapping
     if (backendData.sector_info && backendData.market_benchmarking) {
@@ -639,6 +662,90 @@ const NewOutput: React.FC = () => {
         result.market_benchmarking.sharpe_ratio = result.market_benchmarking.stock_sharpe;
       }
       return result;
+    }
+    
+    // CRITICAL FIX: Handle our optimized backend data structure
+    // Our backend returns: { sector, beta, correlation, sector_beta, sector_correlation, data_quality, ... }
+    if (backendData.beta !== undefined || backendData.sector_beta !== undefined) {
+      
+      return {
+        stock_symbol: backendData.stock_symbol || 'UNKNOWN',
+        sector_info: {
+          sector: backendData.sector || 'UNKNOWN',
+          sector_name: backendData.sector || 'UNKNOWN', 
+          sector_index: backendData.sector_index || `NIFTY_${backendData.sector || 'UNKNOWN'}`,
+          sector_stocks_count: 0
+        },
+        market_benchmarking: {
+          beta: shouldNullifyValues ? null : (backendData.beta ?? null),
+          correlation: shouldNullifyValues ? null : (backendData.correlation ?? null),
+          sharpe_ratio: shouldNullifyValues ? null : (backendData.stock_sharpe ?? backendData.sharpe_ratio ?? null),
+          volatility: shouldNullifyValues ? null : (backendData.stock_volatility ?? backendData.volatility ?? null),
+          max_drawdown: shouldNullifyValues ? null : (backendData.max_drawdown ?? null),
+          cumulative_return: shouldNullifyValues ? null : (backendData.stock_cumulative_return ?? backendData.cumulative_return ?? null),
+          annualized_return: shouldNullifyValues ? null : (backendData.stock_annualized_return ?? backendData.annualized_return ?? null),
+          risk_free_rate: backendData.risk_free_rate ?? 0.07,
+          current_vix: backendData.current_vix ?? 20,
+          data_source: 'NSE',
+          data_points: backendData.data_quality?.data_points ?? 0
+        },
+        sector_benchmarking: {
+          sector_beta: shouldNullifyValues ? null : (backendData.sector_beta ?? null),
+          sector_correlation: shouldNullifyValues ? null : (backendData.sector_correlation ?? null),
+          sector_sharpe_ratio: shouldNullifyValues ? null : (backendData.sector_sharpe ?? backendData.sector_sharpe_ratio ?? null),
+          sector_volatility: shouldNullifyValues ? null : (backendData.sector_volatility ?? null),
+          sector_max_drawdown: shouldNullifyValues ? null : (backendData.sector_max_drawdown ?? null),
+          sector_cumulative_return: shouldNullifyValues ? null : (backendData.sector_cumulative_return ?? null),
+          sector_annualized_return: shouldNullifyValues ? null : (backendData.sector_annualized_return ?? null),
+          sector_index: backendData.sector_index ?? `NIFTY_${backendData.sector || 'UNKNOWN'}`,
+          sector_data_points: backendData.data_quality?.sector_data_points ?? 0
+        },
+        relative_performance: {
+          vs_market: {
+            performance_ratio: shouldNullifyValues ? null : (backendData.excess_return ?? null),
+            risk_adjusted_ratio: null,
+            outperformance_periods: null,
+            underperformance_periods: null,
+            consistency_score: null
+          },
+          vs_sector: {
+            performance_ratio: shouldNullifyValues ? null : (backendData.sector_excess_return ?? null),
+            risk_adjusted_ratio: null,
+            sector_rank: null,
+            sector_percentile: null,
+            sector_consistency: null
+          }
+        },
+        sector_risk_metrics: {
+          risk_score: null,
+          risk_level: null,
+          correlation_risk: null,
+          momentum_risk: null,
+          volatility_risk: null,
+          sector_stress_metrics: {
+            stress_score: null,
+            stress_level: null,
+            stress_factors: []
+          },
+          risk_factors: [],
+          risk_mitigation: []
+        },
+        analysis_summary: {
+          market_position: null,
+          sector_position: null,
+          risk_assessment: null,
+          investment_recommendation: null
+        },
+        timestamp: new Date().toISOString(),
+        data_points: backendData.data_points || {
+          stock_data_points: 0,
+          market_data_points: 0,
+          sector_data_points: 0
+        },
+        data_quality: backendData.data_quality || null,
+        error_message: null,
+        is_reliable: !shouldNullifyValues
+      };
     }
     
     // Transform backend format to frontend format - using the correct structure from your JSON
@@ -651,84 +758,97 @@ const NewOutput: React.FC = () => {
         sector_stocks_count: backendData.sector_info?.sector_stocks_count || 0
       },
       market_benchmarking: {
-        beta: backendData.market_benchmarking?.beta || 1.0,
-        correlation: backendData.market_benchmarking?.correlation || 0.5,
-        sharpe_ratio: backendData.market_benchmarking?.stock_sharpe || 0,
-        volatility: backendData.market_benchmarking?.volatility || 0,
-        max_drawdown: backendData.market_benchmarking?.max_drawdown || 0,
-        cumulative_return: backendData.market_benchmarking?.cumulative_return || 0,
-        annualized_return: backendData.market_benchmarking?.annualized_return || 0,
-        risk_free_rate: 0.05,
-        current_vix: 20,
-        data_source: 'NSE',
-        data_points: backendData.market_benchmarking?.data_points || 0
+        beta: shouldNullifyValues ? null : (backendData.market_benchmarking?.beta ?? null),
+        correlation: shouldNullifyValues ? null : (backendData.market_benchmarking?.correlation ?? null),
+        sharpe_ratio: shouldNullifyValues ? null : (backendData.market_benchmarking?.stock_sharpe ?? backendData.market_benchmarking?.sharpe_ratio ?? null),
+        volatility: shouldNullifyValues ? null : (backendData.market_benchmarking?.volatility ?? null),
+        max_drawdown: shouldNullifyValues ? null : (backendData.market_benchmarking?.max_drawdown ?? null),
+        cumulative_return: shouldNullifyValues ? null : (backendData.market_benchmarking?.cumulative_return ?? null),
+        annualized_return: shouldNullifyValues ? null : (backendData.market_benchmarking?.annualized_return ?? null),
+        risk_free_rate: backendData.market_benchmarking?.risk_free_rate ?? 0.05,
+        current_vix: backendData.market_benchmarking?.current_vix ?? 20,
+        data_source: backendData.market_benchmarking?.data_source ?? 'NSE',
+        data_points: backendData.data_quality?.data_points ?? 0
       },
       sector_benchmarking: {
-        sector_beta: backendData.sector_benchmarking?.sector_beta || 1.0,
-        sector_correlation: backendData.sector_benchmarking?.sector_correlation || 0.5,
-        sector_sharpe_ratio: backendData.sector_benchmarking?.sector_sharpe_ratio || 0,
-        sector_volatility: backendData.sector_benchmarking?.sector_volatility || 0,
-        sector_max_drawdown: backendData.sector_benchmarking?.sector_max_drawdown || 0,
-        sector_cumulative_return: backendData.sector_benchmarking?.sector_cumulative_return || 0,
-        sector_annualized_return: backendData.sector_benchmarking?.sector_annualized_return || 0,
-        sector_index: backendData.sector_benchmarking?.sector_index || 'NIFTY_' + (backendData.sector || 'UNKNOWN'),
-        sector_data_points: backendData.sector_benchmarking?.sector_data_points || 0
+        sector_beta: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_beta ?? null),
+        sector_correlation: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_correlation ?? null),
+        sector_sharpe_ratio: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_sharpe_ratio ?? null),
+        sector_volatility: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_volatility ?? null),
+        sector_max_drawdown: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_max_drawdown ?? null),
+        sector_cumulative_return: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_cumulative_return ?? null),
+        sector_annualized_return: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_annualized_return ?? null),
+        sector_index: backendData.sector_benchmarking?.sector_index ?? (backendData.sector ? 'NIFTY_' + backendData.sector : 'NIFTY_UNKNOWN'),
+        sector_data_points: backendData.data_quality?.sector_data_points ?? 0
       },
       relative_performance: {
         vs_market: {
-          performance_ratio: backendData.relative_performance?.vs_market?.performance_ratio || 1.0,
-          risk_adjusted_ratio: backendData.relative_performance?.vs_market?.risk_adjusted_ratio || 1.0,
-          outperformance_periods: backendData.relative_performance?.vs_market?.outperformance_periods || 0,
-          underperformance_periods: backendData.relative_performance?.vs_market?.underperformance_periods || 0,
-          consistency_score: backendData.relative_performance?.vs_market?.consistency_score || 0.5
+          performance_ratio: shouldNullifyValues ? null : (backendData.relative_performance?.vs_market?.performance_ratio ?? null),
+          risk_adjusted_ratio: shouldNullifyValues ? null : (backendData.relative_performance?.vs_market?.risk_adjusted_ratio ?? null),
+          outperformance_periods: shouldNullifyValues ? null : (backendData.relative_performance?.vs_market?.outperformance_periods ?? null),
+          underperformance_periods: shouldNullifyValues ? null : (backendData.relative_performance?.vs_market?.underperformance_periods ?? null),
+          consistency_score: shouldNullifyValues ? null : (backendData.relative_performance?.vs_market?.consistency_score ?? null)
         },
         vs_sector: {
-          performance_ratio: backendData.relative_performance?.vs_sector?.performance_ratio || 1.0,
-          risk_adjusted_ratio: backendData.relative_performance?.vs_sector?.risk_adjusted_ratio || 1.0,
-          sector_rank: backendData.relative_performance?.vs_sector?.sector_rank || 0,
-          sector_percentile: backendData.relative_performance?.vs_sector?.sector_percentile || 50,
-          sector_consistency: backendData.relative_performance?.vs_sector?.sector_consistency || 0.5
+          performance_ratio: shouldNullifyValues ? null : (backendData.relative_performance?.vs_sector?.performance_ratio ?? null),
+          risk_adjusted_ratio: shouldNullifyValues ? null : (backendData.relative_performance?.vs_sector?.risk_adjusted_ratio ?? null),
+          sector_rank: shouldNullifyValues ? null : (backendData.relative_performance?.vs_sector?.sector_rank ?? null),
+          sector_percentile: shouldNullifyValues ? null : (backendData.relative_performance?.vs_sector?.sector_percentile ?? null),
+          sector_consistency: shouldNullifyValues ? null : (backendData.relative_performance?.vs_sector?.sector_consistency ?? null)
         }
       },
       sector_risk_metrics: {
-        risk_score: backendData.sector_risk_metrics?.risk_score || 50,
-        risk_level: backendData.sector_risk_metrics?.risk_level || 'Medium',
-        correlation_risk: backendData.sector_risk_metrics?.correlation_risk || 'Low',
-        momentum_risk: backendData.sector_risk_metrics?.momentum_risk || 'Medium',
-        volatility_risk: backendData.sector_risk_metrics?.volatility_risk || 'Medium',
+        risk_score: backendData.sector_risk_metrics?.risk_score ?? null,
+        risk_level: backendData.sector_risk_metrics?.risk_level ?? null,
+        correlation_risk: backendData.sector_risk_metrics?.correlation_risk ?? null,
+        momentum_risk: backendData.sector_risk_metrics?.momentum_risk ?? null,
+        volatility_risk: backendData.sector_risk_metrics?.volatility_risk ?? null,
         sector_stress_metrics: {
-          stress_score: backendData.sector_risk_metrics?.sector_stress_metrics?.stress_score || 50,
-          stress_level: backendData.sector_risk_metrics?.sector_stress_metrics?.stress_level || 'Medium',
-          stress_factors: backendData.sector_risk_metrics?.sector_stress_metrics?.stress_factors || []
+          stress_score: backendData.sector_risk_metrics?.sector_stress_metrics?.stress_score ?? null,
+          stress_level: backendData.sector_risk_metrics?.sector_stress_metrics?.stress_level ?? null,
+          stress_factors: backendData.sector_risk_metrics?.sector_stress_metrics?.stress_factors ?? []
         },
-        risk_factors: backendData.sector_risk_metrics?.risk_factors || [],
-        risk_mitigation: backendData.sector_risk_metrics?.risk_mitigation || []
+        risk_factors: backendData.sector_risk_metrics?.risk_factors ?? [],
+        risk_mitigation: backendData.sector_risk_metrics?.risk_mitigation ?? []
       },
       analysis_summary: {
-        market_position: backendData.analysis_summary?.market_position || 'Neutral',
-        sector_position: backendData.analysis_summary?.sector_position || 'Neutral',
-        risk_assessment: backendData.analysis_summary?.risk_assessment || 'Medium',
-        investment_recommendation: backendData.analysis_summary?.investment_recommendation || 'Hold'
+        market_position: backendData.analysis_summary?.market_position ?? null,
+        sector_position: backendData.analysis_summary?.sector_position ?? null,
+        risk_assessment: backendData.analysis_summary?.risk_assessment ?? null,
+        investment_recommendation: backendData.analysis_summary?.investment_recommendation ?? null
       },
       timestamp: backendData.timestamp || new Date().toISOString(),
       data_points: {
-        stock_data_points: backendData.data_points?.stock_data_points || 0,
-        market_data_points: backendData.data_points?.market_data_points || 0,
-        sector_data_points: backendData.data_points?.sector_data_points || 0
-      }
+        stock_data_points: backendData.data_points?.stock_data_points ?? 0,
+        market_data_points: backendData.data_points?.market_data_points ?? 0,
+        sector_data_points: backendData.data_points?.sector_data_points ?? 0
+      },
+      // Add data quality and error information for frontend display
+      data_quality: backendData.data_quality || null,
+      error_message: hasError ? backendData.error : null,
+      is_reliable: !shouldNullifyValues
     };
+    
+    // Log final transformation result when there are issues
+    if (shouldNullifyValues && result) {
+      console.info('ℹ️ [SECTOR DATA] Transformed unreliable data to null values for display as N/A');
+    }
     
     return result;
   };
 
-  // The sector_context contains multiple components including sector_benchmarking
+  // Extract sector data from the appropriate location in the response
   const rawSectorData = enhancedData?.sector_context?.sector_benchmarking || 
                        enhancedData?.sector_context?.comprehensive_sector_context?.sector_benchmarking ||
                        enhancedData?.sector_context?.benchmarking || 
                        enhancedData?.sector_context || 
                        analysisData?.sector_benchmarking;
   
-  const sector_benchmarking = transformSectorBenchmarking(rawSectorData);
+  const sector_benchmarking_raw = transformSectorBenchmarking(rawSectorData);
+  
+  // CRITICAL FIX: Only use sector_benchmarking when it's not null
+  // This prevents null values from first render overriding good data from subsequent renders
+  const sector_benchmarking = sector_benchmarking_raw && Object.keys(sector_benchmarking_raw).length > 0 ? sector_benchmarking_raw : null;
   
 
   
@@ -740,10 +860,10 @@ const NewOutput: React.FC = () => {
       sector: backendSectorContext.sector || 'UNKNOWN',
       benchmarking: sector_benchmarking, // Use the transformed sector benchmarking
       rotation_insights: {
-        sector_rank: backendSectorContext.sector_rotation?.sector_rankings?.[backendSectorContext.sector]?.rank || 
-                    backendSectorContext.sector_rotation?.sector_performance?.[backendSectorContext.sector]?.total_return || null,
-        sector_performance: backendSectorContext.sector_rotation?.sector_performance?.[backendSectorContext.sector]?.total_return || null,
-        rotation_strength: backendSectorContext.sector_rotation?.rotation_patterns?.rotation_strength || 'unknown',
+        sector_rank: backendSectorContext.sector_rotation?.sector_rankings?.[backendSectorContext.sector]?.rank ?? 
+                    backendSectorContext.sector_rotation?.sector_performance?.[backendSectorContext.sector]?.total_return ?? null,
+        sector_performance: backendSectorContext.sector_rotation?.sector_performance?.[backendSectorContext.sector]?.total_return ?? null,
+        rotation_strength: backendSectorContext.sector_rotation?.rotation_patterns?.rotation_strength ?? null,
         leading_sectors: backendSectorContext.sector_rotation?.rotation_patterns?.leading_sectors?.map((s: any) => s.sector) || [],
         lagging_sectors: backendSectorContext.sector_rotation?.rotation_patterns?.lagging_sectors?.map((s: any) => s.sector) || [],
         recommendations: backendSectorContext.sector_rotation?.recommendations?.map((r: any) => ({
@@ -755,16 +875,16 @@ const NewOutput: React.FC = () => {
         })) || []
       },
       correlation_insights: {
-        average_correlation: backendSectorContext.sector_correlation?.average_correlation || 0,
-        diversification_quality: backendSectorContext.sector_correlation?.diversification_insights?.diversification_quality || 'unknown',
-        sector_volatility: backendSectorContext.sector_correlation?.sector_volatility?.[backendSectorContext.sector] || 0,
+        average_correlation: backendSectorContext.sector_correlation?.average_correlation ?? null,
+        diversification_quality: backendSectorContext.sector_correlation?.diversification_insights?.diversification_quality ?? null,
+        sector_volatility: backendSectorContext.sector_correlation?.sector_volatility?.[backendSectorContext.sector] ?? null,
         // Store raw correlation data for the new component
         correlation_matrix: backendSectorContext.sector_correlation?.correlation_matrix || {},
         high_correlation_pairs: backendSectorContext.sector_correlation?.high_correlation_pairs || [],
         low_correlation_pairs: backendSectorContext.sector_correlation?.low_correlation_pairs || [],
         // Include the full diversification insights for the new component
-        diversification_insights: backendSectorContext.sector_correlation?.diversification_insights || {
-          diversification_quality: 'unknown',
+        diversification_insights: backendSectorContext.sector_correlation?.diversification_insights ?? {
+          diversification_quality: null,
           recommendations: []
         }
       },

@@ -61,6 +61,15 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
   const rotation = sectorContext.rotation_insights;
   const correlation = sectorContext.correlation_insights;
 
+  // Helper functions to handle null values in display (same as SectorBenchmarkingCard)
+  const formatPercentage = (value: number | null | undefined): string => {
+    return value !== null && value !== undefined ? `${(value * 100).toFixed(1)}%` : 'N/A';
+  };
+
+  const formatNumber = (value: number | null | undefined, decimals: number = 2): string => {
+    return value !== null && value !== undefined ? value.toFixed(decimals) : 'N/A';
+  };
+
   return (
     <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full">
       <CardHeader>
@@ -124,23 +133,23 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-600">Beta:</span>
-                    <span className="font-medium text-slate-800">{(benchmarking.market_benchmarking.beta || 0).toFixed(2)}</span>
+                    <span className="font-medium text-slate-800">{formatNumber(benchmarking.market_benchmarking.beta)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Correlation:</span>
-                    <span className="font-medium text-slate-800">{((benchmarking.market_benchmarking.correlation || 0) * 100).toFixed(1)}%</span>
+                    <span className="font-medium text-slate-800">{formatPercentage(benchmarking.market_benchmarking.correlation)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Sharpe Ratio:</span>
-                    <span className="font-medium text-slate-800">{(benchmarking.market_benchmarking.sharpe_ratio || 0).toFixed(2)}</span>
+                    <span className="font-medium text-slate-800">{formatNumber(benchmarking.market_benchmarking.sharpe_ratio)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Volatility:</span>
-                    <span className="font-medium text-slate-800">{((benchmarking.market_benchmarking.volatility || 0) * 100).toFixed(1)}%</span>
+                    <span className="font-medium text-slate-800">{formatPercentage(benchmarking.market_benchmarking.volatility)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Return:</span>
-                    <span className="font-medium text-slate-800">{((benchmarking.market_benchmarking.annualized_return || 0) * 100).toFixed(1)}%</span>
+                    <span className="font-medium text-slate-800">{formatPercentage(benchmarking.market_benchmarking.annualized_return)}</span>
                   </div>
                 </div>
               </div>
@@ -156,23 +165,23 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-600">Sector Beta:</span>
-                    <span className="font-medium text-slate-800">{(benchmarking.sector_benchmarking.sector_beta || 0).toFixed(2)}</span>
+                    <span className="font-medium text-slate-800">{formatNumber(benchmarking.sector_benchmarking.sector_beta)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Sector Correlation:</span>
-                    <span className="font-medium text-slate-800">{((benchmarking.sector_benchmarking.sector_correlation || 0) * 100).toFixed(1)}%</span>
+                    <span className="font-medium text-slate-800">{formatPercentage(benchmarking.sector_benchmarking.sector_correlation)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Sector Sharpe:</span>
-                    <span className="font-medium text-slate-800">{(benchmarking.sector_benchmarking.sector_sharpe_ratio || 0).toFixed(2)}</span>
+                    <span className="font-medium text-slate-800">{formatNumber(benchmarking.sector_benchmarking.sector_sharpe_ratio)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Sector Volatility:</span>
-                    <span className="font-medium text-slate-800">{(benchmarking.sector_benchmarking.sector_volatility || 0).toFixed(1)}%</span>
+                    <span className="font-medium text-slate-800">{formatPercentage(benchmarking.sector_benchmarking.sector_volatility)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Sector Return:</span>
-                    <span className="font-medium text-slate-800">{((benchmarking.sector_benchmarking.sector_annualized_return || 0) * 100).toFixed(1)}%</span>
+                    <span className="font-medium text-slate-800">{formatPercentage(benchmarking.sector_benchmarking.sector_annualized_return)}</span>
                   </div>
                 </div>
               </div>

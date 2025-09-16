@@ -51,7 +51,11 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
     sector_benchmarking: sectorData = null,
     relative_performance = null,
     sector_risk_metrics: rawSectorRiskMetrics = null,
-    analysis_summary = null
+    analysis_summary = null,
+    // Data quality and error information
+    data_quality = null,
+    error_message = null,
+    is_reliable = true
   } = sectorBenchmarking;
 
   // Since data is now transformed to frontend format, we don't need backend structure fields
@@ -65,32 +69,32 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
     sector_stocks_count: sector_info?.sector_stocks_count ?? 0
   };
 
-  // Ensure all numeric values are safe for toFixed() calls
+  // Handle null values properly - don't default to 0, keep null for unavailable data
   const safeMarketBenchmarking = {
-    cumulative_return: market_benchmarking?.cumulative_return ?? 0,
-    volatility: market_benchmarking?.volatility ?? 0,
-    sharpe_ratio: market_benchmarking?.sharpe_ratio ?? 0,
-    beta: market_benchmarking?.beta ?? 0
+    cumulative_return: market_benchmarking?.cumulative_return,
+    volatility: market_benchmarking?.volatility,
+    sharpe_ratio: market_benchmarking?.sharpe_ratio,
+    beta: market_benchmarking?.beta
   };
 
   const safeSectorData = {
-    sector_cumulative_return: sectorData?.sector_cumulative_return ?? 0,
-    sector_volatility: sectorData?.sector_volatility ?? 0,
-    sector_sharpe_ratio: sectorData?.sector_sharpe_ratio ?? 0,
-    sector_beta: sectorData?.sector_beta ?? 0
+    sector_cumulative_return: sectorData?.sector_cumulative_return,
+    sector_volatility: sectorData?.sector_volatility,
+    sector_sharpe_ratio: sectorData?.sector_sharpe_ratio,
+    sector_beta: sectorData?.sector_beta
   };
 
-  // Handle both frontend and backend relative performance structures
+  // Handle both frontend and backend relative performance structures - keep null values
   const safeRelativePerformance = {
     vs_market: {
-      performance_ratio: relative_performance?.vs_market?.performance_ratio ?? 0,
-      sector_rank: relative_performance?.vs_market?.consistency_score ?? 0,
-      sector_consistency: relative_performance?.vs_market?.consistency_score ?? 0.5
+      performance_ratio: relative_performance?.vs_market?.performance_ratio,
+      sector_rank: relative_performance?.vs_market?.consistency_score,
+      sector_consistency: relative_performance?.vs_market?.consistency_score
     },
     vs_sector: {
-      performance_ratio: relative_performance?.vs_sector?.performance_ratio ?? 0,
-      sector_rank: relative_performance?.vs_sector?.sector_rank ?? 0,
-      sector_consistency: relative_performance?.vs_sector?.sector_consistency ?? 0.5
+      performance_ratio: relative_performance?.vs_sector?.performance_ratio,
+      sector_rank: relative_performance?.vs_sector?.sector_rank,
+      sector_consistency: relative_performance?.vs_sector?.sector_consistency
     }
   };
 
@@ -166,8 +170,51 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
     }
   };
 
+  // Helper functions to handle null values in display
+  const formatPercentage = (value: number | null): string => {
+    return value !== null && value !== undefined ? `${(value * 100).toFixed(2)}%` : 'N/A';
+  };
+
+  const formatNumber = (value: number | null, decimals: number = 2): string => {
+    return value !== null && value !== undefined ? value.toFixed(decimals) : 'N/A';
+  };
+
+  const getPerformanceColorSafe = (value: number | null) => {
+    if (value === null || value === undefined) return "text-gray-600";
+    return getPerformanceColor(value);
+  };
+
+  const getPerformanceIconSafe = (value: number | null) => {
+    if (value === null || value === undefined) return <BarChart3 className="h-4 w-4 text-gray-600" />;
+    return getPerformanceIcon(value);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Data Quality Warning */}
+      {(!is_reliable || error_message) && (
+        <Card className="shadow-xl border-0 bg-yellow-50/80 backdrop-blur-sm border-yellow-200">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div className="space-y-2">
+                <div className="font-medium text-yellow-800">
+                  {error_message ? 'Data Analysis Error' : 'Insufficient Data Warning'}
+                </div>
+                <div className="text-sm text-yellow-700">
+                  {error_message || 'The metrics below may not be reliable due to insufficient historical data. More data points are needed for accurate calculations.'}
+                </div>
+                {data_quality && (
+                  <div className="text-xs text-yellow-600">
+                    Data points: {data_quality.data_points} / {data_quality.minimum_recommended} recommended
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       {/* Sector Information */}
       <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
@@ -251,23 +298,23 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Return:</span>
                     <div className="flex items-center space-x-1">
-                      {getPerformanceIcon(safeMarketBenchmarking.cumulative_return)}
-                      <span className={`font-medium ${getPerformanceColor(safeMarketBenchmarking.cumulative_return)}`}>
-                        {(safeMarketBenchmarking.cumulative_return * 100).toFixed(2)}%
+                      {getPerformanceIconSafe(safeMarketBenchmarking.cumulative_return)}
+                      <span className={`font-medium ${getPerformanceColorSafe(safeMarketBenchmarking.cumulative_return)}`}>
+                        {formatPercentage(safeMarketBenchmarking.cumulative_return)}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Volatility:</span>
-                    <span className="font-medium">{(safeMarketBenchmarking.volatility * 100).toFixed(2)}%</span>
+                    <span className="font-medium">{formatPercentage(safeMarketBenchmarking.volatility)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Sharpe Ratio:</span>
-                    <span className="font-medium">{safeMarketBenchmarking.sharpe_ratio.toFixed(2)}</span>
+                    <span className="font-medium">{formatNumber(safeMarketBenchmarking.sharpe_ratio)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Beta:</span>
-                    <span className="font-medium">{safeMarketBenchmarking.beta.toFixed(2)}</span>
+                    <span className="font-medium">{formatNumber(safeMarketBenchmarking.beta)}</span>
                   </div>
                 </div>
               </div>
@@ -279,23 +326,23 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Return:</span>
                     <div className="flex items-center space-x-1">
-                      {getPerformanceIcon(safeSectorData.sector_cumulative_return)}
-                      <span className={`font-medium ${getPerformanceColor(safeSectorData.sector_cumulative_return)}`}>
-                        {(safeSectorData.sector_cumulative_return * 100).toFixed(2)}%
+                      {getPerformanceIconSafe(safeSectorData.sector_cumulative_return)}
+                      <span className={`font-medium ${getPerformanceColorSafe(safeSectorData.sector_cumulative_return)}`}>
+                        {formatPercentage(safeSectorData.sector_cumulative_return)}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Volatility:</span>
-                    <span className="font-medium">{safeSectorData.sector_volatility.toFixed(2)}%</span>
+                    <span className="font-medium">{formatPercentage(safeSectorData.sector_volatility)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Sharpe Ratio:</span>
-                    <span className="font-medium">{safeSectorData.sector_sharpe_ratio.toFixed(2)}</span>
+                    <span className="font-medium">{formatNumber(safeSectorData.sector_sharpe_ratio)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Beta:</span>
-                    <span className="font-medium">{safeSectorData.sector_beta.toFixed(2)}</span>
+                    <span className="font-medium">{formatNumber(safeSectorData.sector_beta)}</span>
                   </div>
                 </div>
               </div>
@@ -307,30 +354,30 @@ const SectorBenchmarkingCard: React.FC<SectorBenchmarkingCardProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">vs Market:</span>
                     <div className="flex items-center space-x-1">
-                      {getPerformanceIcon(safeRelativePerformance.vs_market.performance_ratio)}
-                      <span className={`font-medium ${getPerformanceColor(safeRelativePerformance.vs_market.performance_ratio)}`}>
-                        {(safeRelativePerformance.vs_market.performance_ratio * 100).toFixed(2)}%
+                      {getPerformanceIconSafe(safeRelativePerformance.vs_market.performance_ratio)}
+                      <span className={`font-medium ${getPerformanceColorSafe(safeRelativePerformance.vs_market.performance_ratio)}`}>
+                        {formatPercentage(safeRelativePerformance.vs_market.performance_ratio)}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">vs Sector:</span>
                     <div className="flex items-center space-x-1">
-                      {getPerformanceIcon(safeRelativePerformance.vs_sector.performance_ratio)}
-                      <span className={`font-medium ${getPerformanceColor(safeRelativePerformance.vs_sector.performance_ratio)}`}>
-                        {(safeRelativePerformance.vs_sector.performance_ratio * 100).toFixed(2)}%
+                      {getPerformanceIconSafe(safeRelativePerformance.vs_sector.performance_ratio)}
+                      <span className={`font-medium ${getPerformanceColorSafe(safeRelativePerformance.vs_sector.performance_ratio)}`}>
+                        {formatPercentage(safeRelativePerformance.vs_sector.performance_ratio)}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Sector Rank:</span>
                     <Badge variant="outline">
-                      {safeRelativePerformance.vs_sector.sector_rank}/{safeSectorInfo.sector_stocks_count}
+                      {safeRelativePerformance.vs_sector.sector_rank !== null ? `${safeRelativePerformance.vs_sector.sector_rank}/${safeSectorInfo.sector_stocks_count}` : 'N/A'}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Consistency:</span>
-                    <span className="font-medium">{(safeRelativePerformance.vs_sector.sector_consistency * 100).toFixed(1)}%</span>
+                    <span className="font-medium">{formatPercentage(safeRelativePerformance.vs_sector.sector_consistency)}</span>
                   </div>
                 </div>
               </div>

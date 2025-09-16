@@ -48,12 +48,13 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
   // Get correlations with respect to the current stock's sector
   const currentSectorCorrelations = correlation_matrix[currentSector] || {};
   
-  // Sort sectors by correlation with current sector (excluding self)
+  // Sort sectors by correlation with current sector (excluding self and null values)
   const sortedSectorCorrelations = Object.entries(currentSectorCorrelations)
-    .filter(([sector]) => sector !== currentSector)
+    .filter(([sector, correlation]) => sector !== currentSector && correlation != null && !isNaN(correlation))
     .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a));
 
   const getCorrelationColor = (correlation: number) => {
+    if (correlation == null || isNaN(correlation)) return 'text-gray-600 bg-gray-50 border-gray-200';
     if (correlation > 0.7) return 'text-red-600 bg-red-50 border-red-200';
     if (correlation > 0.3) return 'text-orange-600 bg-orange-50 border-orange-200';
     if (correlation < -0.3) return 'text-blue-600 bg-blue-50 border-blue-200';
@@ -62,6 +63,7 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
   };
 
   const getCorrelationIcon = (correlation: number) => {
+    if (correlation == null || isNaN(correlation)) return <Minus className="h-4 w-4" />;
     if (correlation > 0.3) return <TrendingUp className="h-4 w-4" />;
     if (correlation < -0.3) return <TrendingDown className="h-4 w-4" />;
     return <Minus className="h-4 w-4" />;
@@ -91,7 +93,7 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-slate-50 rounded-lg">
             <div className="text-2xl font-bold text-slate-800">
-              {(average_correlation * 100).toFixed(1)}%
+              {average_correlation != null ? (average_correlation * 100).toFixed(1) : 'N/A'}%
             </div>
             <div className="text-sm text-slate-600">Average Correlation</div>
           </div>
@@ -105,7 +107,7 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
           </div>
           <div className="text-center p-4 bg-slate-50 rounded-lg">
             <div className="text-lg font-bold text-slate-800">
-              {sector_volatility.toFixed(1)}%
+              {sector_volatility != null ? sector_volatility.toFixed(1) : 'N/A'}%
             </div>
             <div className="text-sm text-slate-600">Sector Volatility</div>
           </div>
@@ -130,7 +132,7 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
                   <span className="font-medium text-slate-700">{sector.replace(/_/g, ' ')}</span>
                 </div>
                 <Badge className={getCorrelationColor(correlation)}>
-                  {correlation > 0 ? '+' : ''}{(correlation * 100).toFixed(1)}%
+                  {correlation != null && correlation > 0 ? '+' : ''}{correlation != null ? (correlation * 100).toFixed(1) : 'N/A'}%
                 </Badge>
               </div>
             ))}
@@ -177,7 +179,7 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
                           isCurrentSector ? 'bg-blue-50 font-medium' : 'bg-white'
                         }`}
                       >
-                        {isDiagonal ? '100%' : `${(correlation * 100).toFixed(0)}%`}
+                        {isDiagonal ? '100%' : correlation != null ? `${(correlation * 100).toFixed(0)}%` : 'N/A'}
                       </div>
                     );
                   })}
