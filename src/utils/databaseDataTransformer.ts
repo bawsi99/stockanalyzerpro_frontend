@@ -613,7 +613,9 @@ function extractSectorBenchmarkingFromEnhanced(data: Record<string, unknown> | A
       sector_beta: sectorBenchmarkingData?.sector_beta as number || 1.0,
       sector_correlation: sectorBenchmarkingData?.sector_correlation as number || 0.5,
       sector_sharpe_ratio: sectorBenchmarkingData?.sector_sharpe_ratio as number || 0,
-      sector_volatility: sectorBenchmarkingData?.sector_volatility as number || 0,
+      // Get sector_volatility from either direct property or from sector_correlation
+      sector_volatility: sectorBenchmarkingData?.sector_volatility as number || 
+                        (sectorContext.sector_correlation as Record<string, unknown>)?.sector_volatility as number || 0,
       sector_max_drawdown: sectorBenchmarkingData?.sector_max_drawdown as number || 0,
       sector_cumulative_return: sectorBenchmarkingData?.sector_cumulative_return as number || 0,
       sector_annualized_return: sectorBenchmarkingData?.sector_annualized_return as number || 0,
@@ -1356,7 +1358,9 @@ function extractSectorBenchmarking(data: Record<string, unknown>): SectorBenchma
       sector_beta: sectorData.sector_beta || 1.0,
       sector_correlation: sectorData.sector_correlation || 0.5,
       sector_sharpe_ratio: sectorData.sector_sharpe_ratio || 0,
-      sector_volatility: sectorData.sector_volatility || 0,
+      // Get sector_volatility from either direct property or from sector_correlation
+      sector_volatility: sectorData.sector_volatility || 
+                        (data.sector_correlation as Record<string, unknown>)?.sector_volatility || 0,
       sector_max_drawdown: sectorData.sector_max_drawdown || 0,
       sector_cumulative_return: sectorData.sector_cumulative_return || 0,
       sector_annualized_return: sectorData.sector_annualized_return || 0,

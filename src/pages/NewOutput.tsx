@@ -693,7 +693,8 @@ const NewOutput: React.FC = () => {
           sector_beta: shouldNullifyValues ? null : (backendData.sector_beta ?? null),
           sector_correlation: shouldNullifyValues ? null : (backendData.sector_correlation ?? null),
           sector_sharpe_ratio: shouldNullifyValues ? null : (backendData.sector_sharpe ?? backendData.sector_sharpe_ratio ?? null),
-          sector_volatility: shouldNullifyValues ? null : (backendData.sector_volatility ?? null),
+          // CRITICAL FIX: Get sector_volatility from sector_correlation where it actually exists
+          sector_volatility: shouldNullifyValues ? null : (backendData.sector_volatility ?? backendData.sector_correlation?.sector_volatility ?? null),
           sector_max_drawdown: shouldNullifyValues ? null : (backendData.sector_max_drawdown ?? null),
           sector_cumulative_return: shouldNullifyValues ? null : (backendData.sector_cumulative_return ?? null),
           sector_annualized_return: shouldNullifyValues ? null : (backendData.sector_annualized_return ?? null),
@@ -774,7 +775,8 @@ const NewOutput: React.FC = () => {
         sector_beta: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_beta ?? null),
         sector_correlation: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_correlation ?? null),
         sector_sharpe_ratio: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_sharpe_ratio ?? null),
-        sector_volatility: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_volatility ?? null),
+        // CRITICAL FIX: Get sector_volatility from sector_correlation where it actually exists
+        sector_volatility: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_volatility ?? backendData.sector_correlation?.sector_volatility ?? null),
         sector_max_drawdown: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_max_drawdown ?? null),
         sector_cumulative_return: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_cumulative_return ?? null),
         sector_annualized_return: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_annualized_return ?? null),
