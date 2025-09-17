@@ -360,9 +360,10 @@ const NewStockAnalysis = () => {
             {/* Prototype Disclaimer */}
             <div className="xl:col-span-4 mb-4 w-full">
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex flex-wrap items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-amber-500 mr-2 flex-shrink-0" />
+                <AlertTriangle className="h-5 w-5 text-amber-500 mr-4 flex-shrink-0" />
                 <p className="text-amber-700 text-center">
-                  <span className="font-semibold">Prototype Notice:</span> This system is currently in prototype stage. Responses might be slow or occasionally unresponsive. Thank you for your patience.
+                  <span className="font-semibold">Prototype Notice:</span> This system is currently in prototype stage. Responses might be slow or occasionally unresponsive.<br/>
+                  Generating new analysis may be inoperational between 5:00AM - 7:30AM IST (4:30PM - 7:00PM PDT). Thank you for your patience.
                 </p>
               </div>
             </div>
