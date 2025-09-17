@@ -1,5 +1,5 @@
 // Updated config.ts for unified backend architecture
-// Uses unified backend for data and database services
+// Replace your current config.ts with this version
 
 // Environment detection - must come first
 export const IS_PRODUCTION = import.meta.env.PROD;
