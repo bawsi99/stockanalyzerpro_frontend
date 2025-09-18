@@ -693,8 +693,13 @@ const NewOutput: React.FC = () => {
           sector_beta: shouldNullifyValues ? null : (backendData.sector_beta ?? null),
           sector_correlation: shouldNullifyValues ? null : (backendData.sector_correlation ?? null),
           sector_sharpe_ratio: shouldNullifyValues ? null : (backendData.sector_sharpe ?? backendData.sector_sharpe_ratio ?? null),
-          // CRITICAL FIX: Get sector_volatility from sector_correlation where it actually exists
-          sector_volatility: shouldNullifyValues ? null : (backendData.sector_volatility ?? backendData.sector_correlation?.sector_volatility ?? null),
+          // CRITICAL FIX: Get sector_volatility from sector_correlation object using current sector key
+          sector_volatility: shouldNullifyValues ? null : (
+            backendData.sector_volatility ?? 
+            backendData.sector_correlation?.sector_volatility?.[backendData.sector] ?? 
+            backendData.sector_correlation?.sector_volatilities?.[backendData.sector] ?? 
+            null
+          ),
           sector_max_drawdown: shouldNullifyValues ? null : (backendData.sector_max_drawdown ?? null),
           sector_cumulative_return: shouldNullifyValues ? null : (backendData.sector_cumulative_return ?? null),
           sector_annualized_return: shouldNullifyValues ? null : (backendData.sector_annualized_return ?? null),
@@ -775,8 +780,13 @@ const NewOutput: React.FC = () => {
         sector_beta: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_beta ?? null),
         sector_correlation: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_correlation ?? null),
         sector_sharpe_ratio: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_sharpe_ratio ?? null),
-        // CRITICAL FIX: Get sector_volatility from sector_correlation where it actually exists
-        sector_volatility: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_volatility ?? backendData.sector_correlation?.sector_volatility ?? null),
+        // CRITICAL FIX: Get sector_volatility from sector_correlation object using current sector key
+        sector_volatility: shouldNullifyValues ? null : (
+          backendData.sector_benchmarking?.sector_volatility ?? 
+          backendData.sector_correlation?.sector_volatility?.[backendData.sector] ?? 
+          backendData.sector_correlation?.sector_volatilities?.[backendData.sector] ?? 
+          null
+        ),
         sector_max_drawdown: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_max_drawdown ?? null),
         sector_cumulative_return: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_cumulative_return ?? null),
         sector_annualized_return: shouldNullifyValues ? null : (backendData.sector_benchmarking?.sector_annualized_return ?? null),
@@ -879,7 +889,10 @@ const NewOutput: React.FC = () => {
       correlation_insights: {
         average_correlation: backendSectorContext.sector_correlation?.average_correlation ?? null,
         diversification_quality: backendSectorContext.sector_correlation?.diversification_insights?.diversification_quality ?? null,
-        sector_volatility: backendSectorContext.sector_correlation?.sector_volatility?.[backendSectorContext.sector] ?? null,
+        sector_volatility: backendSectorContext.sector_correlation?.sector_volatility?.[backendSectorContext.sector] ?? 
+                          backendSectorContext.sector_correlation?.sector_volatilities?.[backendSectorContext.sector] ?? 
+                          (typeof backendSectorContext.sector_correlation?.sector_volatility === 'number' ? 
+                            backendSectorContext.sector_correlation.sector_volatility : null),
         // Store raw correlation data for the new component
         correlation_matrix: backendSectorContext.sector_correlation?.correlation_matrix || {},
         high_correlation_pairs: backendSectorContext.sector_correlation?.high_correlation_pairs || [],

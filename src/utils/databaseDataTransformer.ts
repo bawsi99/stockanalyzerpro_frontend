@@ -613,9 +613,10 @@ function extractSectorBenchmarkingFromEnhanced(data: Record<string, unknown> | A
       sector_beta: sectorBenchmarkingData?.sector_beta as number || 1.0,
       sector_correlation: sectorBenchmarkingData?.sector_correlation as number || 0.5,
       sector_sharpe_ratio: sectorBenchmarkingData?.sector_sharpe_ratio as number || 0,
-      // Get sector_volatility from either direct property or from sector_correlation
+      // Get sector_volatility from either direct property or from sector_correlation object using current sector
       sector_volatility: sectorBenchmarkingData?.sector_volatility as number || 
-                        (sectorContext.sector_correlation as Record<string, unknown>)?.sector_volatility as number || 0,
+                        ((sectorContext.sector_correlation as Record<string, unknown>)?.sector_volatility as Record<string, number>)?.[sectorInfo?.sector as string] || 
+                        ((sectorContext.sector_correlation as Record<string, unknown>)?.sector_volatility as Record<string, number>)?.[sectorContext.sector as string] || 0,
       sector_max_drawdown: sectorBenchmarkingData?.sector_max_drawdown as number || 0,
       sector_cumulative_return: sectorBenchmarkingData?.sector_cumulative_return as number || 0,
       sector_annualized_return: sectorBenchmarkingData?.sector_annualized_return as number || 0,
