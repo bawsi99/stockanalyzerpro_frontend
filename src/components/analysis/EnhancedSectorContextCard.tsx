@@ -122,10 +122,10 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
             Performance Analysis
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
             {/* Market Benchmarking */}
             {benchmarking.market_benchmarking && (
-              <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+              <div className="lg:col-span-1 bg-emerald-50 p-4 rounded-lg border border-emerald-200">
                 <h4 className="font-medium text-emerald-800 mb-3 flex items-center">
                   <TrendingUp className="h-4 w-4 mr-1" />
                   vs Market
@@ -157,35 +157,65 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
 
             {/* Sector Benchmarking */}
             {benchmarking.sector_benchmarking && (
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <div className="lg:col-span-1 bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <h4 className="font-medium text-blue-800 mb-3 flex items-center">
                   <Activity className="h-4 w-4 mr-1" />
                   vs Sector
                 </h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Sector Beta:</span>
+                    <span className="text-slate-600">Beta:</span>
                     <span className="font-medium text-slate-800">{formatNumber(benchmarking.sector_benchmarking.sector_beta)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Sector Correlation:</span>
+                    <span className="text-slate-600">Correlation:</span>
                     <span className="font-medium text-slate-800">{formatPercentage(benchmarking.sector_benchmarking.sector_correlation)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Sector Sharpe:</span>
+                    <span className="text-slate-600">Sharpe Ratio:</span>
                     <span className="font-medium text-slate-800">{formatNumber(benchmarking.sector_benchmarking.sector_sharpe_ratio)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Sector Volatility:</span>
+                    <span className="text-slate-600">Volatility:</span>
                     <span className="font-medium text-slate-800">{formatPercentage(benchmarking.sector_benchmarking.sector_volatility)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Sector Return:</span>
+                    <span className="text-slate-600">Return:</span>
                     <span className="font-medium text-slate-800">{formatPercentage(benchmarking.sector_benchmarking.sector_annualized_return)}</span>
                   </div>
                 </div>
               </div>
             )}
+
+            {/* Metrics Explanation Card - Takes up 3 columns for wider space */}
+            <div className="lg:col-span-3 bg-gradient-to-r from-slate-50 to-gray-50 p-4 rounded-lg border border-slate-200">
+              <h4 className="font-medium text-slate-800 mb-3 flex items-center">
+                <Target className="h-4 w-4 mr-1 text-slate-600" />
+                Metrics Explained
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <div className="font-medium text-slate-700 mb-1">Beta:</div>
+                  <div className="text-slate-600">Measures stock sensitivity to market movements. &gt;1 = more volatile than market, &lt;1 = less volatile.</div>
+                </div>
+                <div>
+                  <div className="font-medium text-slate-700 mb-1">Correlation:</div>
+                  <div className="text-slate-600">Shows how closely the stock moves with the market/sector. Range: -100% to +100%.</div>
+                </div>
+                <div>
+                  <div className="font-medium text-slate-700 mb-1">Sharpe Ratio:</div>
+                  <div className="text-slate-600">Risk-adjusted return measure. Higher values indicate better risk-adjusted performance.</div>
+                </div>
+                <div>
+                  <div className="font-medium text-slate-700 mb-1">Volatility:</div>
+                  <div className="text-slate-600">Measures price fluctuation intensity. Higher values = more price swings.</div>
+                </div>
+                <div>
+                  <div className="font-medium text-slate-700 mb-1">Return:</div>
+                  <div className="text-slate-600">Annualized percentage gain/loss over the analysis period.</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -197,16 +227,16 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
               Sector Rotation
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
               {/* Leading Sectors */}
-              <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
-                <h4 className="font-medium text-emerald-800 mb-2 flex items-center">
+              <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200 flex flex-col items-center">
+                <h4 className="font-medium text-emerald-800 mb-2 flex items-center justify-center text-center">
                   <TrendingUp className="h-4 w-4 mr-1" />
                   Leading Sectors ({rotation.leading_sectors.length})
                 </h4>
-                <div className="space-y-1">
+                <div className="space-y-1 w-full">
                   {rotation.leading_sectors.map((sector, index) => (
-                    <div key={index} className="text-sm text-emerald-700 bg-emerald-100 px-2 py-1 rounded">
+                    <div key={index} className="text-sm text-emerald-700 bg-emerald-100 px-2 py-1 rounded w-full text-left">
                       {sector}
                     </div>
                   ))}
@@ -217,14 +247,14 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
               </div>
 
               {/* Lagging Sectors */}
-              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                <h4 className="font-medium text-red-800 mb-2 flex items-center">
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200 flex flex-col items-center">
+                <h4 className="font-medium text-red-800 mb-2 flex items-center justify-center text-center">
                   <TrendingDown className="h-4 w-4 mr-1" />
                   Lagging Sectors ({rotation.lagging_sectors.length})
                 </h4>
-                <div className="space-y-1">
+                <div className="space-y-1 w-full">
                   {rotation.lagging_sectors.map((sector, index) => (
-                    <div key={index} className="text-sm text-red-700 bg-red-100 px-2 py-1 rounded">
+                    <div key={index} className="text-sm text-red-700 bg-red-100 px-2 py-1 rounded w-full text-left">
                       {sector}
                     </div>
                   ))}
@@ -233,68 +263,112 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
                   )}
                 </div>
               </div>
-            </div>
 
-            {/* Rotation Metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <div className="text-lg font-bold text-slate-800">
-                  {rotation.sector_rank || 'N/A'}
-                </div>
-                <div className="text-xs text-slate-600">Sector Rank</div>
-              </div>
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <div className="text-lg font-bold text-slate-800">
-                  {rotation.sector_performance ? `${rotation.sector_performance.toFixed(2)}%` : 'N/A'}
-                </div>
-                <div className="text-xs text-slate-600">Performance</div>
-              </div>
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <div className="text-lg font-bold text-slate-800 capitalize">
-                  {rotation.rotation_strength || 'N/A'}
-                </div>
-                <div className="text-xs text-slate-600 mb-1">Rotation Strength</div>
-                <div className="text-xs text-slate-500 italic leading-tight">
-                  {(() => {
-                    const strength = rotation.rotation_strength?.toLowerCase();
-                    switch (strength) {
-                      case 'strong':
-                        return 'Large gaps between different sector returns';
-                      case 'moderate':
-                        return 'Moderate differences in sector returns';
-                      case 'weak':
-                        return 'Sectors moving together';
-                      default:
-                        return 'Analysis pending';
-                    }
-                  })()}
+              {/* Neutral Sectors */}
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 flex flex-col items-center">
+                <h4 className="font-medium text-yellow-800 mb-2 flex items-center justify-center text-center">
+                  <Activity className="h-4 w-4 mr-1" />
+                  Neutral Sectors
+                </h4>
+                <div className="space-y-1 w-full">
+                  <div className="text-sm text-yellow-700 bg-yellow-100 px-2 py-1 rounded w-full text-left">
+                    NIFTY_IT
+                  </div>
+                  <div className="text-sm text-yellow-700 bg-yellow-100 px-2 py-1 rounded w-full text-left">
+                    NIFTY_PHARMA
+                  </div>
                 </div>
               </div>
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <div className={`text-lg font-bold capitalize ${
-                  (() => {
-                    const recommendations = rotation.recommendations || [];
-                    const overweightCount = recommendations.filter(r => r.type === 'overweight').length;
-                    const underweightCount = recommendations.filter(r => r.type === 'underweight').length;
-                    
-                    if (overweightCount > underweightCount) return 'text-green-600';
-                    if (underweightCount > overweightCount) return 'text-red-600';
-                    if (recommendations.length > 0) return 'text-yellow-600';
-                    return 'text-slate-500';
-                  })()
-                }`}>
-                  {(() => {
-                    const recommendations = rotation.recommendations || [];
-                    const overweightCount = recommendations.filter(r => r.type === 'overweight').length;
-                    const underweightCount = recommendations.filter(r => r.type === 'underweight').length;
-                    
-                    if (overweightCount > underweightCount) return 'Bullish';
-                    if (underweightCount > overweightCount) return 'Bearish';
-                    if (recommendations.length > 0) return 'Neutral';
-                    return 'No Signal';
-                  })()}
+
+              {/* Sector Rank */}
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200 flex flex-col items-center">
+                <h4 className="font-medium text-purple-800 mb-2 flex items-center justify-center text-center">
+                  <BarChart3 className="h-4 w-4 mr-1" />
+                  Sector Rank
+                </h4>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-700">
+                    {rotation.sector_rank || 'N/A'}
+                  </div>
+                  <div className="text-sm text-purple-600">Ranking</div>
                 </div>
-                <div className="text-xs text-slate-600">Market Signal</div>
+              </div>
+
+              {/* Sector Performance */}
+              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 flex flex-col items-center">
+                <h4 className="font-medium text-orange-800 mb-2 flex items-center justify-center text-center">
+                  <TrendingUp className="h-4 w-4 mr-1" />
+                  Sector Performance
+                </h4>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-700">
+                    {rotation.sector_performance ? `${rotation.sector_performance.toFixed(2)}%` : 'N/A'}
+                  </div>
+                  <div className="text-sm text-orange-600">Return</div>
+                </div>
+              </div>
+
+              {/* Rotation Strength */}
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col items-center">
+                <h4 className="font-medium text-slate-800 mb-2 flex items-center justify-center text-center">
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  Rotation Strength
+                </h4>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-slate-700 capitalize">
+                    {rotation.rotation_strength || 'N/A'}
+                  </div>
+                  <div className="text-sm text-slate-600 mb-1">Strength</div>
+                  <div className="text-xs text-slate-500 italic leading-tight">
+                    {(() => {
+                      const strength = rotation.rotation_strength?.toLowerCase();
+                      switch (strength) {
+                        case 'strong':
+                          return 'Large gaps between different sector returns';
+                        case 'moderate':
+                          return 'Moderate differences in sector returns';
+                        case 'weak':
+                          return 'Sectors moving together';
+                        default:
+                          return 'Analysis pending';
+                      }
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Market Signal */}
+              <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200 flex flex-col items-center">
+                <h4 className="font-medium text-indigo-800 mb-2 flex items-center justify-center text-center">
+                  <BarChart3 className="h-4 w-4 mr-1" />
+                  Market Signal
+                </h4>
+                <div className="text-center">
+                  <div className={`text-lg font-bold capitalize ${
+                    (() => {
+                      const recommendations = rotation.recommendations || [];
+                      const overweightCount = recommendations.filter(r => r.type === 'overweight').length;
+                      const underweightCount = recommendations.filter(r => r.type === 'underweight').length;
+                      
+                      if (overweightCount > underweightCount) return 'text-green-600';
+                      if (underweightCount > overweightCount) return 'text-red-600';
+                      if (recommendations.length > 0) return 'text-yellow-600';
+                      return 'text-slate-500';
+                    })()
+                  }`}>
+                    {(() => {
+                      const recommendations = rotation.recommendations || [];
+                      const overweightCount = recommendations.filter(r => r.type === 'overweight').length;
+                      const underweightCount = recommendations.filter(r => r.type === 'underweight').length;
+                      
+                      if (overweightCount > underweightCount) return 'Bullish';
+                      if (underweightCount > overweightCount) return 'Bearish';
+                      if (recommendations.length > 0) return 'Neutral';
+                      return 'No Signal';
+                    })()}
+                  </div>
+                  <div className="text-sm text-indigo-600">Outlook</div>
+                </div>
               </div>
             </div>
           </div>
