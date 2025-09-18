@@ -427,7 +427,7 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
           <div className="bg-gradient-to-r from-emerald-50 to-green-50 p-4 rounded-lg border border-emerald-200">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-emerald-800">Investment Recommendation</h3>
+                <h3 className="font-semibold text-emerald-800">Investment Recommendation for Sector</h3>
                 <p className="text-sm text-emerald-700 mt-1">
                   Based on sector analysis and market positioning
                 </p>
