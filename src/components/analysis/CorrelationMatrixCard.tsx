@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Network, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { getDiversificationInterpretation, getDiversificationQualityColor } from '@/utils/diversificationUtils';
 
 interface CorrelationMatrixCardProps {
   correlationData: {
@@ -69,15 +70,7 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
     return <Minus className="h-4 w-4" />;
   };
 
-  const getCorrelationQualityColor = (quality: string) => {
-    switch (quality.toLowerCase()) {
-      case 'excellent': return 'bg-green-100 text-green-800';
-      case 'good': return 'bg-blue-100 text-blue-800';
-      case 'moderate': return 'bg-yellow-100 text-yellow-800';
-      case 'poor': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  // Using utility functions for diversification interpretation
 
   return (
     <Card className={`shadow-xl border-0 bg-white/80 backdrop-blur-sm ${className || ''}`}>
@@ -89,55 +82,59 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
       </CardHeader>
       <CardContent className="space-y-6">
         
-        {/* Summary Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-slate-50 rounded-lg">
-            <div className="text-2xl font-bold text-slate-800">
-              {average_correlation != null ? (average_correlation * 100).toFixed(1) : 'N/A'}%
+        {/* Summary Metrics & Top Correlations */}
+        <div className="flex justify-center">
+          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-6 max-w-full px-4">
+            {/* Summary Metrics */}
+            <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[100px] min-w-[140px]">
+              <div className="text-xl font-bold text-slate-800 mb-1">
+                {average_correlation != null ? (average_correlation * 100).toFixed(1) : 'N/A'}%
+              </div>
+              <div className="text-sm text-slate-600 text-center leading-tight">Average Correlation</div>
             </div>
-            <div className="text-sm text-slate-600">Average Correlation</div>
-          </div>
-          <div className="text-center p-4 bg-slate-50 rounded-lg">
-            <div className="text-lg font-bold capitalize">
-              <Badge className={getCorrelationQualityColor(diversification_insights?.diversification_quality || 'unknown')}>
-                {diversification_insights?.diversification_quality || 'unknown'}
-              </Badge>
-            </div>
-            <div className="text-sm text-slate-600">Diversification Quality</div>
-          </div>
-          <div className="text-center p-4 bg-slate-50 rounded-lg">
-            <div className="text-lg font-bold text-slate-800">
-              {sector_volatility != null ? sector_volatility.toFixed(1) : 'N/A'}%
-            </div>
-            <div className="text-sm text-slate-600">Sector Volatility</div>
-          </div>
-          <div className="text-center p-4 bg-slate-50 rounded-lg">
-            <div className="text-lg font-bold text-slate-800">
-              {sectors.length}
-            </div>
-            <div className="text-sm text-slate-600">Sectors Analyzed</div>
-          </div>
-        </div>
-
-        {/* Current Sector Correlations */}
-        <div className="space-y-4">
-          <h4 className="text-lg font-semibold text-slate-800">
-            Correlations with {currentSector} Sector
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {sortedSectorCorrelations.map(([sector, correlation]) => (
-              <div key={sector} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  {getCorrelationIcon(correlation)}
-                  <span className="font-medium text-slate-700">{sector.replace(/_/g, ' ')}</span>
-                </div>
-                <Badge className={getCorrelationColor(correlation)}>
-                  {correlation != null && correlation > 0 ? '+' : ''}{correlation != null ? (correlation * 100).toFixed(1) : 'N/A'}%
+            <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[100px] min-w-[140px]">
+              <div className="mb-1">
+                <Badge className={getDiversificationQualityColor(diversification_insights?.diversification_quality || 'unknown')}>
+                  {diversification_insights?.diversification_quality || 'unknown'}
                 </Badge>
+              </div>
+              <div className="text-sm text-slate-600 text-center mb-1">Diversification Quality</div>
+              <div className="text-xs text-slate-500 italic leading-tight text-center whitespace-pre-line">
+                {getDiversificationInterpretation(diversification_insights?.diversification_quality || 'unknown')}
+              </div>
+            </div>
+            <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[100px] min-w-[140px]">
+              <div className="text-xl font-bold text-slate-800 mb-1">
+                {sector_volatility != null ? sector_volatility.toFixed(1) : 'N/A'}%
+              </div>
+              <div className="text-sm text-slate-600 text-center leading-tight">Sector Volatility</div>
+            </div>
+            <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[100px] min-w-[140px]">
+              <div className="text-xl font-bold text-slate-800 mb-1">
+                {sectors.length}
+              </div>
+              <div className="text-sm text-slate-600 text-center leading-tight">Sectors Analyzed</div>
+            </div>
+            
+            {/* Top 4 Sector Correlations */}
+            {sortedSectorCorrelations.slice(0, 4).map(([sector, correlation]) => (
+              <div key={sector} className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[100px] min-w-[140px]">
+                <div className="flex items-center mb-1">
+                  {getCorrelationIcon(correlation)}
+                </div>
+                <div className="text-lg font-bold text-slate-800 mb-1">
+                  <Badge className={getCorrelationColor(correlation)} variant="secondary">
+                    {correlation != null && correlation > 0 ? '+' : ''}{correlation != null ? (correlation * 100).toFixed(1) : 'N/A'}%
+                  </Badge>
+                </div>
+                <div className="text-sm text-slate-600 text-center leading-tight">
+                  vs {sector.replace(/_/g, ' ')}
+                </div>
               </div>
             ))}
           </div>
         </div>
+
 
         {/* Full Correlation Matrix */}
         <div className="space-y-4">

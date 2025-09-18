@@ -15,6 +15,7 @@ import {
   Lightbulb
 } from "lucide-react";
 import { SectorContext } from "@/types/analysis";
+import { getDiversificationInterpretation, getDiversificationQualityColor } from '@/utils/diversificationUtils';
 
 interface SectorAnalysisCardProps {
   sectorContext: SectorContext;
@@ -39,15 +40,7 @@ const SectorAnalysisCard: React.FC<SectorAnalysisCardProps> = ({
     }
   };
 
-  const getCorrelationQualityColor = (quality: string) => {
-    switch (quality.toLowerCase()) {
-      case 'excellent': return 'bg-green-100 text-green-800';
-      case 'good': return 'bg-blue-100 text-blue-800';
-      case 'fair': return 'bg-yellow-100 text-yellow-800';
-      case 'poor': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const getCorrelationQualityColor = getDiversificationQualityColor;
 
   const getRecommendationTypeColor = (type: string) => {
     switch (type.toLowerCase()) {
@@ -58,6 +51,8 @@ const SectorAnalysisCard: React.FC<SectorAnalysisCardProps> = ({
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // Using utility functions for diversification interpretation
 
   return (
     <div className="space-y-6">
@@ -167,11 +162,16 @@ const SectorAnalysisCard: React.FC<SectorAnalysisCardProps> = ({
                   <span className="text-slate-600">Average Correlation:</span>
                   <span className="font-medium">{correlation_insights.average_correlation.toFixed(3)}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Diversification Quality:</span>
-                  <Badge className={getCorrelationQualityColor(correlation_insights.diversification_quality)}>
-                    {correlation_insights.diversification_quality}
-                  </Badge>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600">Diversification Quality:</span>
+                    <Badge className={getCorrelationQualityColor(correlation_insights.diversification_quality)}>
+                      {correlation_insights.diversification_quality}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-slate-500 italic whitespace-pre-line">
+                    {getDiversificationInterpretation(correlation_insights.diversification_quality)}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600">Sector Volatility:</span>
@@ -300,24 +300,26 @@ const SectorAnalysisCard: React.FC<SectorAnalysisCardProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-800">
-                {rotation_insights.sector_rank || 'N/A'}
+          <div className="flex justify-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl px-4">
+              <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[90px] min-w-[160px]">
+                <div className="text-xl font-bold text-slate-800 mb-1">
+                  {rotation_insights.sector_rank || 'N/A'}
+                </div>
+                <div className="text-sm text-slate-600 text-center leading-tight">Sector Rank</div>
               </div>
-              <div className="text-xs text-slate-600">Sector Rank</div>
-            </div>
-            <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-800">
-                {correlation_insights.diversification_quality}
+              <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[90px] min-w-[160px]">
+                <div className="text-lg font-bold text-slate-800 mb-1 capitalize">
+                  {correlation_insights.diversification_quality}
+                </div>
+                <div className="text-sm text-slate-600 text-center leading-tight">Diversification Quality</div>
               </div>
-              <div className="text-xs text-slate-600">Diversification Quality</div>
-            </div>
-            <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-800">
-                {trading_recommendations.length}
+              <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[90px] min-w-[160px]">
+                <div className="text-xl font-bold text-slate-800 mb-1">
+                  {trading_recommendations.length}
+                </div>
+                <div className="text-sm text-slate-600 text-center leading-tight">Trading Recommendations</div>
               </div>
-              <div className="text-xs text-slate-600">Trading Recommendations</div>
             </div>
           </div>
           
