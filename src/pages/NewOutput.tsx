@@ -1227,8 +1227,8 @@ const NewOutput: React.FC = () => {
               </div>
             </div>
 
-            {/* Second Row - Four Cards: Sector Benchmarking, Volume Analysis, Performance Comparison, Risk Analysis */}
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-[1%] mt-4">
+            {/* Second Row - Three Cards: Sector Benchmarking, Performance Comparison, Risk Analysis */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-[1%] mt-4">
               {/* Sector Benchmarking */}
               <div className="xl:col-span-1 h-full">
                 {analysisLoading ? (
@@ -1319,23 +1319,6 @@ const NewOutput: React.FC = () => {
                       </CardContent>
                     </Card>
                   )
-                )}
-              </div>
-              
-              {/* Volume Analysis */}
-              <div className="xl:col-span-1 h-full">
-                {analysisLoading ? (
-                  <AnalysisCardSkeleton 
-                    title="Volume Analysis" 
-                    description="Loading volume analysis..." 
-                  />
-                ) : (
-                  <VolumeAnalysisCard 
-                    volumeData={enhancedData?.technical_indicators?.enhanced_volume?.comprehensive_analysis || enhancedData?.technical_indicators?.volume || indicators?.volume}
-                    priceData={enhancedData?.technical_indicators?.raw_data || analysisData?.data}
-                    symbol={stockSymbol}
-                    className="h-full"
-                  />
                 )}
               </div>
 
@@ -1622,6 +1605,21 @@ const NewOutput: React.FC = () => {
                   symbol={stockSymbol}
                 />
               )
+            )}
+
+            {/* Volume Analysis */}
+            {analysisLoading ? (
+              <AnalysisCardSkeleton 
+                title="Volume Analysis" 
+                description="Loading volume analysis..." 
+              />
+            ) : (
+              <VolumeAnalysisCard 
+                volumeData={enhancedData?.technical_indicators?.enhanced_volume?.comprehensive_analysis || enhancedData?.technical_indicators?.volume || indicators?.volume}
+                priceData={enhancedData?.technical_indicators?.raw_data || analysisData?.data}
+                symbol={stockSymbol}
+                className=""
+              />
             )}
 
             {/* Advanced Patterns and Multi-timeframe Analysis */}
