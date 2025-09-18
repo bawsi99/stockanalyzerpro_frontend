@@ -371,6 +371,40 @@ export interface DataQualityAssessment {
   confidence_adjustments: ConfidenceAdjustment;
 }
 
+export interface TimeframeAnalysisDetails {
+  horizon: number | string;
+  rationale: string;
+  entry_range: number[];
+  targets: number[];
+}
+
+export interface DecisionChain {
+  overall_assessment: {
+    trend: string;
+    confidence: number;
+    confidence_level: string;
+  };
+  timeframe_analysis: {
+    short_term: TimeframeAnalysisDetails;
+    medium_term: TimeframeAnalysisDetails;
+    long_term: {
+      horizon: number | string;
+      rationale: string;
+      technical_rating: string;
+      fair_value_range: number[];
+    };
+  };
+  risk_assessment: {
+    primary_risks: string[];
+    critical_levels: string[];
+  };
+}
+
+export interface DecisionStory {
+  narrative: string;
+  decision_chain: DecisionChain;
+}
+
 export interface AIAnalysis {
   meta: AIMeta;
   market_outlook: MarketOutlook;
@@ -382,6 +416,7 @@ export interface AIAnalysis {
   key_takeaways: string[];
   indicator_summary_md: string;
   chart_insights: string;
+  decision_story?: DecisionStory;
 }
 
 export interface Charts {
@@ -477,6 +512,7 @@ export interface AnalysisResults {
   flag_patterns?: FlagPattern[];
   volume_anomalies_detailed?: VolumeAnomalyDetailed[];
   overlays: Overlays;
+  decision_story?: DecisionStory;
 }
 
 export interface ChartData {

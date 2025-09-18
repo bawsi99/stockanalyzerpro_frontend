@@ -43,6 +43,7 @@ import {
 import ConsensusSummaryCard from "@/components/analysis/ConsensusSummaryCard";
 import SignalsSummaryCard from "@/components/analysis/SignalsSummaryCard";
 import AITradingAnalysisOverviewCard from "@/components/analysis/AITradingAnalysisOverviewCard";
+import DecisionStoryCard from "@/components/analysis/DecisionStoryCard";
 
 import MultiTimeframeAnalysisCard from "@/components/analysis/MultiTimeframeAnalysisCard";
 import AdvancedRiskAssessmentCard from "@/components/analysis/AdvancedRiskAssessmentCard";
@@ -1225,6 +1226,22 @@ const NewOutput: React.FC = () => {
                   />
                 )}
               </div>
+            </div>
+            
+            {/* Decision Story Card (Full Width) */}
+            <div className="mt-4">
+              {analysisLoading ? (
+                <AnalysisCardSkeleton 
+                  title="Decision Story" 
+                  description="Loading decision analysis..." 
+                />
+              ) : (
+                <DecisionStoryCard 
+                  decisionStory={enhancedData?.decision_story || ai_analysis?.decision_story}
+                  analysisDate={enhancedData?.analysis_timestamp}
+                  analysisPeriod={enhancedData?.analysis_period}
+                />
+              )}
             </div>
           </TabsContent>
 
