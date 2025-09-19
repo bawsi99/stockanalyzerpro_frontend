@@ -29,7 +29,7 @@ const getEnvVar = (key: string, fallback: string): string => {
 
 // UNIFIED SERVICE URL - Single backend for all services
 export const UNIFIED_SERVICE_URL = getEnvVar('VITE_UNIFIED_SERVICE_URL', 
-  IS_PRODUCTION ? 'https://your-render-app.onrender.com' : 'http://localhost:8000'
+  IS_PRODUCTION ? 'https://stockanalyzer-pro.onrender.com' : 'http://localhost:8000'
 );
 
 // Legacy service URLs - now all point to unified backend with different paths
