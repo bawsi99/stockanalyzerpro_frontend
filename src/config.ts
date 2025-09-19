@@ -1,5 +1,5 @@
-// Updated config.ts for unified backend architecture
-// Uses unified backend for data and database services
+// Updated config.ts for distributed services architecture
+// Uses separate services: Data (8001), Analysis (8002), Database (8003)
 
 // Environment detection - must come first
 export const IS_PRODUCTION = import.meta.env.PROD;
@@ -27,17 +27,16 @@ const getEnvVar = (key: string, fallback: string): string => {
   return fallback;
 };
 
-// UNIFIED SERVICE URL - Single backend for all services
-export const UNIFIED_SERVICE_URL = getEnvVar('VITE_UNIFIED_SERVICE_URL', 
-  IS_PRODUCTION ? 'https://stockanalyzer-pro.onrender.com' : 'http://localhost:8000'
+// DISTRIBUTED SERVICES ARCHITECTURE - Separate services on different ports
+export const DATA_SERVICE_URL = getEnvVar('VITE_DATA_SERVICE_URL', 
+  IS_PRODUCTION ? 'https://stockanalyzer-pro-data.onrender.com' : 'http://localhost:8001'
 );
-
-// Legacy service URLs - now all point to unified backend with different paths
-export const DATA_SERVICE_URL = `${UNIFIED_SERVICE_URL}/data`;
 export const ANALYSIS_SERVICE_URL = getEnvVar('VITE_ANALYSIS_SERVICE_URL', 
   IS_PRODUCTION ? 'https://stockanalyzer-pro-1.onrender.com' : 'http://localhost:8002'
 );
-export const DATABASE_SERVICE_URL = `${UNIFIED_SERVICE_URL}/database`;
+export const DATABASE_SERVICE_URL = getEnvVar('VITE_DATABASE_SERVICE_URL', 
+  IS_PRODUCTION ? 'https://stockanalyzer-pro-2.onrender.com' : 'http://localhost:8003'
+);
 
 // Legacy support - keep the old API_BASE_URL for backward compatibility
 export const API_BASE_URL = DATA_SERVICE_URL;
@@ -48,24 +47,24 @@ export const SERVICE_STATUS = {
   ANALYSIS_SERVICE: 'unknown'
 };
 
-// WebSocket URL - derived from unified service URL
+// WebSocket URL - derived from data service URL (port 8001)
 export const WEBSOCKET_URL = (() => {
   const customWebSocketUrl = getEnvVar('WEBSOCKET_URL', '');
   if (customWebSocketUrl) {
     return customWebSocketUrl; // Use custom if provided
   }
   
-  // Auto-derive from unified service URL
-  if (UNIFIED_SERVICE_URL.startsWith('https://')) {
-    return UNIFIED_SERVICE_URL.replace('https://', 'wss://') + '/data/ws/stream';
+  // Auto-derive from data service URL
+  if (DATA_SERVICE_URL.startsWith('https://')) {
+    return DATA_SERVICE_URL.replace('https://', 'wss://') + '/ws/stream';
   } else {
-    return UNIFIED_SERVICE_URL.replace('http://', 'ws://') + '/data/ws/stream';
+    return DATA_SERVICE_URL.replace('http://', 'ws://') + '/ws/stream';
   }
 })();
 
-// Service endpoints mapping - updated for unified backend
+// Service endpoints mapping - distributed services architecture
 export const ENDPOINTS = {
-  // Data Service endpoints - now mounted at /data
+  // Data Service endpoints - direct access to port 8001
   DATA: {
     HEALTH: `${DATA_SERVICE_URL}/health`,
     STOCK_HISTORY: `${DATA_SERVICE_URL}/stock`,
@@ -85,7 +84,7 @@ export const ENDPOINTS = {
     MARKET_OPTIMIZATION_CLEAR_INTERVAL: `${DATA_SERVICE_URL}/market/optimization/clear-interval-cache`,
   },
   
-  // Analysis Service endpoints - still separate for now
+  // Analysis Service endpoints - separate service on port 8002
   ANALYSIS: {
     HEALTH: `${ANALYSIS_SERVICE_URL}/health`,
     ANALYZE: `${ANALYSIS_SERVICE_URL}/analyze`,
@@ -127,7 +126,7 @@ export const ENDPOINTS = {
   },
 };
 
-// Database Service endpoints - now mounted at /database
+// Database Service endpoints - separate service on port 8003
 export const DATABASE_ENDPOINTS = {
   HEALTH: `${DATABASE_SERVICE_URL}/health`,
   STORE_ANALYSIS: `${DATABASE_SERVICE_URL}/analyses/store`,
@@ -141,7 +140,6 @@ export const DATABASE_ENDPOINTS = {
 
 // Configuration object for easy access
 export const CONFIG = {
-  UNIFIED_SERVICE_URL,
   DATA_SERVICE_URL,
   ANALYSIS_SERVICE_URL,
   DATABASE_SERVICE_URL,
@@ -155,11 +153,10 @@ export const CONFIG = {
 
 // Log configuration in development
 if (IS_DEVELOPMENT) {
-  console.log('🔧 Frontend Configuration (Unified Backend):', {
-    UNIFIED_SERVICE_URL,
-    DATA_SERVICE_URL,
-    ANALYSIS_SERVICE_URL,
-    DATABASE_SERVICE_URL,
+  console.log('🔧 Frontend Configuration (Distributed Services):', {
+    DATA_SERVICE_URL: `Port 8001 - ${DATA_SERVICE_URL}`,
+    ANALYSIS_SERVICE_URL: `Port 8002 - ${ANALYSIS_SERVICE_URL}`,
+    DATABASE_SERVICE_URL: `Port 8003 - ${DATABASE_SERVICE_URL}`,
     WEBSOCKET_URL: `Auto-derived: ${WEBSOCKET_URL}`,
     NODE_ENV,
     'DATA_SERVICE_ENDPOINTS': ENDPOINTS.DATA,
@@ -170,8 +167,7 @@ if (IS_DEVELOPMENT) {
 
 // Always log service URLs in production for debugging
 if (IS_PRODUCTION) {
-  console.log('🚀 Production Service URLs (Unified Backend):', {
-    UNIFIED_SERVICE_URL,
+  console.log('🚀 Production Service URLs (Distributed Services):', {
     DATA_SERVICE_URL,
     ANALYSIS_SERVICE_URL,
     DATABASE_SERVICE_URL,
@@ -183,12 +179,16 @@ if (IS_PRODUCTION) {
 export const validateConfig = () => {
   const issues = [];
   
-  if (!UNIFIED_SERVICE_URL || UNIFIED_SERVICE_URL.includes('your-render-app')) {
-    issues.push('UNIFIED_SERVICE_URL not properly configured');
+  if (!DATA_SERVICE_URL || DATA_SERVICE_URL.includes('your-data-service')) {
+    issues.push('DATA_SERVICE_URL not properly configured');
   }
   
   if (!ANALYSIS_SERVICE_URL || ANALYSIS_SERVICE_URL.includes('your-analysis-service')) {
     issues.push('ANALYSIS_SERVICE_URL not properly configured');
+  }
+  
+  if (!DATABASE_SERVICE_URL || DATABASE_SERVICE_URL.includes('your-database-service')) {
+    issues.push('DATABASE_SERVICE_URL not properly configured');
   }
   
   if (issues.length > 0) {
