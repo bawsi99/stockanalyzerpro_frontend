@@ -11,32 +11,19 @@ export const FRONTEND_PORT = window.location.port || (IS_DEVELOPMENT ? '8080' : 
 export const FRONTEND_HOST = window.location.hostname || 'localhost';
 export const FRONTEND_URL = `${window.location.protocol}//${FRONTEND_HOST}:${FRONTEND_PORT}`;
 
-// Get environment variables with fallbacks
-const getEnvVar = (key: string, fallback: string): string => {
-  // Check for Vite environment variables (prefixed with VITE_)
-  const viteKey = `VITE_${key}`;
-  if (import.meta.env[viteKey]) {
-    return import.meta.env[viteKey] as string;
-  }
-  
-  // Check for regular environment variables
-  if (typeof process !== 'undefined' && process.env && process.env[key]) {
-    return process.env[key] as string;
-  }
-  
-  return fallback;
-};
+// Environment variables are accessed directly via import.meta.env.VITE_*
+// If not set, fallback to production/development defaults
 
 // DISTRIBUTED SERVICES ARCHITECTURE - Separate services on different ports
-export const DATA_SERVICE_URL = getEnvVar('VITE_DATA_SERVICE_URL', 
-  IS_PRODUCTION ? 'https://stockanalyzer-pro.onrender.com' : 'http://localhost:8001'
-);
-export const ANALYSIS_SERVICE_URL = getEnvVar('VITE_ANALYSIS_SERVICE_URL', 
-  IS_PRODUCTION ? 'https://stockanalyzer-pro-1.onrender.com' : 'http://localhost:8002'
-);
-export const DATABASE_SERVICE_URL = getEnvVar('VITE_DATABASE_SERVICE_URL', 
-  IS_PRODUCTION ? 'https://stockanalyzer-pro-2.onrender.com' : 'http://localhost:8003'
-);
+// Environment variables take priority, then production/development defaults
+export const DATA_SERVICE_URL = import.meta.env.VITE_DATA_SERVICE_URL || 
+  (IS_PRODUCTION ? 'https://stockanalyzer-pro.onrender.com' : 'http://localhost:8001');
+
+export const ANALYSIS_SERVICE_URL = import.meta.env.VITE_ANALYSIS_SERVICE_URL || 
+  (IS_PRODUCTION ? 'https://stockanalyzer-pro-1.onrender.com' : 'http://localhost:8002');
+
+export const DATABASE_SERVICE_URL = import.meta.env.VITE_DATABASE_SERVICE_URL || 
+  (IS_PRODUCTION ? 'https://stockanalyzer-pro-2.onrender.com' : 'http://localhost:8003');
 
 // Legacy support - keep the old API_BASE_URL for backward compatibility
 export const API_BASE_URL = DATA_SERVICE_URL;
@@ -47,11 +34,12 @@ export const SERVICE_STATUS = {
   ANALYSIS_SERVICE: 'unknown'
 };
 
-// WebSocket URL - derived from data service URL (port 8001)
+// WebSocket URL - derived from data service URL
 export const WEBSOCKET_URL = (() => {
-  const customWebSocketUrl = getEnvVar('WEBSOCKET_URL', '');
+  // Check for custom WebSocket URL first
+  const customWebSocketUrl = import.meta.env.VITE_WEBSOCKET_URL;
   if (customWebSocketUrl) {
-    return customWebSocketUrl; // Use custom if provided
+    return customWebSocketUrl;
   }
   
   // Auto-derive from data service URL
