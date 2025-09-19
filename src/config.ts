@@ -29,7 +29,7 @@ const getEnvVar = (key: string, fallback: string): string => {
 
 // DISTRIBUTED SERVICES ARCHITECTURE - Separate services on different ports
 export const DATA_SERVICE_URL = getEnvVar('VITE_DATA_SERVICE_URL', 
-  IS_PRODUCTION ? 'https://stockanalyzer-pro-data.onrender.com' : 'http://localhost:8001'
+  IS_PRODUCTION ? 'https://stockanalyzer-pro.onrender.com' : 'http://localhost:8001'
 );
 export const ANALYSIS_SERVICE_URL = getEnvVar('VITE_ANALYSIS_SERVICE_URL', 
   IS_PRODUCTION ? 'https://stockanalyzer-pro-1.onrender.com' : 'http://localhost:8002'
