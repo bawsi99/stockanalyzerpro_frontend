@@ -588,6 +588,48 @@ const NewOutput: React.FC = () => {
                                enhancedData?.advanced_risk_metrics ||
                                enhancedData?.risk_metrics ||
                                baseIndicators?.advanced_risk;
+    
+    // Debug: Log what we're getting for liquidity analysis
+    if (backendRiskMetrics && backendRiskMetrics.liquidity_analysis) {
+      console.log('✅ [LIQUIDITY DEBUG] Found liquidity analysis:', {
+        liquidity_score: backendRiskMetrics.liquidity_analysis.liquidity_score,
+        volume_volatility: backendRiskMetrics.liquidity_analysis.volume_volatility,
+        path: 'advanced_risk -> liquidity_analysis'
+      });
+    } else {
+      console.warn('⚠️ [LIQUIDITY DEBUG] No liquidity analysis found in:', {
+        hasBackendRiskMetrics: !!backendRiskMetrics,
+        enhancedMetadata: !!enhancedData?.enhanced_metadata?.advanced_risk_metrics,
+        technicalIndicators: !!enhancedData?.technical_indicators?.advanced_risk_metrics,
+        directAdvancedRisk: !!enhancedData?.advanced_risk_metrics,
+        riskMetrics: !!enhancedData?.risk_metrics,
+        baseAdvancedRisk: !!baseIndicators?.advanced_risk
+      });
+      
+      // Debug: Show the actual structure of backendRiskMetrics
+      console.log('🔍 [LIQUIDITY DEBUG] Actual backendRiskMetrics structure:', backendRiskMetrics);
+      const keys = backendRiskMetrics ? Object.keys(backendRiskMetrics) : [];
+      console.log('🔍 [LIQUIDITY DEBUG] All keys in backendRiskMetrics:', keys);
+      console.log('🔍 [LIQUIDITY DEBUG] Keys containing "liquid":', keys.filter(k => k.toLowerCase().includes('liquid')));
+      console.log('🔍 [LIQUIDITY DEBUG] Keys containing "volume":', keys.filter(k => k.toLowerCase().includes('volume')));
+      
+      // Check if liquidity data exists but with different key names
+      if (backendRiskMetrics) {
+        const liquidityInfo = {
+          liquidity_analysis: !!backendRiskMetrics.liquidity_analysis,
+          liquidity_score: !!backendRiskMetrics.liquidity_score,
+          volume_volatility: !!backendRiskMetrics.volume_volatility,
+          has_liquidity_analysis: 'liquidity_analysis' in backendRiskMetrics,
+          liquidity_analysis_keys: backendRiskMetrics.liquidity_analysis ? Object.keys(backendRiskMetrics.liquidity_analysis) : 'not found',
+          // Check direct values
+          liquidity_analysis_value: backendRiskMetrics.liquidity_analysis,
+          liquidity_score_value: backendRiskMetrics.liquidity_score,
+          volume_volatility_value: backendRiskMetrics.volume_volatility
+        };
+        console.log('🔍 [LIQUIDITY DEBUG] Liquidity-related keys and values:', liquidityInfo);
+      }
+    }
+    
     const transformedRiskMetrics = transformAdvancedRiskMetrics(backendRiskMetrics);
     
     // Transform scenario analysis
