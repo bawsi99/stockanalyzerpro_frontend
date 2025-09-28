@@ -803,8 +803,19 @@ export interface AdvancedPatterns {
 }
 
 // Enhanced Overlays with Advanced Patterns
+export interface VolumeZoneBand {
+  low: number;
+  high: number;
+  center: number;
+  reliability?: string;
+}
+
 export interface EnhancedOverlays extends Overlays {
   advanced_patterns: AdvancedPatterns;
+  volume_zones?: {
+    support: VolumeZoneBand[];
+    resistance: VolumeZoneBand[];
+  };
 }
 
 // Sector Context for AI Analysis

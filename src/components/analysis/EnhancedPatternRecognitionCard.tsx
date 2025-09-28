@@ -19,11 +19,16 @@ import { formatCurrency, formatConfidence } from "@/utils/numberFormatter";
 interface EnhancedPatternRecognitionCardProps {
   overlays: EnhancedOverlays;
   symbol: string;
+  // Optional pivot-based levels for fallback display when overlays SR is empty
+  supportLevels?: number[];
+  resistanceLevels?: number[];
 }
 
 const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardProps> = ({ 
   overlays, 
-  symbol 
+  symbol,
+  supportLevels = [],
+  resistanceLevels = []
 }) => {
   // Add null checks and default values
   if (!overlays) {
@@ -56,6 +61,14 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
   };
 
   const support_resistance = overlays.support_resistance || { support: [], resistance: [] };
+  // Fallback: if overlays have no SR lines, synthesize from provided pivot arrays
+  const overlaySupport = Array.isArray(support_resistance.support) ? support_resistance.support : [];
+  const overlayResistance = Array.isArray(support_resistance.resistance) ? support_resistance.resistance : [];
+  const synthesizedSupport = overlaySupport.length === 0 && supportLevels.length > 0 ? supportLevels.map((n) => ({ level: n })) : overlaySupport;
+  const synthesizedResistance = overlayResistance.length === 0 && resistanceLevels.length > 0 ? resistanceLevels.map((n) => ({ level: n })) : overlayResistance;
+  const sr_for_display = { support: synthesizedSupport, resistance: synthesizedResistance };
+  const usedPivotSupport = overlaySupport.length === 0 && supportLevels.length > 0;
+  const usedPivotResistance = overlayResistance.length === 0 && resistanceLevels.length > 0;
 
   const getPatternIcon = (patternType: string) => {
     switch (patternType.toLowerCase()) {
@@ -158,8 +171,8 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
     || filteredChannelPatterns.length > 0;
 
   const supportResistance = {
-    support: support_resistance.support.length,
-    resistance: support_resistance.resistance.length
+    support: sr_for_display.support.length,
+    resistance: sr_for_display.resistance.length
   };
 
   const renderPatternDetails = (pattern: PatternData) => {
@@ -285,11 +298,16 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                 <div className="flex items-center space-x-2 mb-2">
                   <TrendingUp className="h-4 w-4 text-green-600" />
-                  <h5 className="font-medium text-green-800">Support Levels</h5>
+                  <h5 className="font-medium text-green-800 flex items-center">
+                    Support Levels
+                    {usedPivotSupport && (
+                      <span className="ml-2 text-xs text-slate-500">(Pivot)</span>
+                    )}
+                  </h5>
                 </div>
                 <div className="space-y-1">
                   {supportResistance.support > 0 ? (
-                    support_resistance.support.slice(0, 5).map((level, index) => (
+                    sr_for_display.support.slice(0, 5).map((level, index) => (
                       <div key={index} className="flex justify-between text-sm">
                         <span className="text-green-700">Level {index + 1}:</span>
                         <span className="font-medium text-green-800">{formatCurrency(level.level)}</span>
@@ -303,11 +321,16 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-center space-x-2 mb-2">
                   <TrendingDown className="h-4 w-4 text-red-600" />
-                  <h5 className="font-medium text-red-800">Resistance Levels</h5>
+                  <h5 className="font-medium text-red-800 flex items-center">
+                    Resistance Levels
+                    {usedPivotResistance && (
+                      <span className="ml-2 text-xs text-slate-500">(Pivot)</span>
+                    )}
+                  </h5>
                 </div>
                 <div className="space-y-1">
                   {supportResistance.resistance > 0 ? (
-                    support_resistance.resistance.slice(0, 5).map((level, index) => (
+                    sr_for_display.resistance.slice(0, 5).map((level, index) => (
                       <div key={index} className="flex justify-between text-sm">
                         <span className="text-red-700">Level {index + 1}:</span>
                         <span className="font-medium text-red-800">{formatCurrency(level.level)}</span>
@@ -320,6 +343,7 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
               </div>
             </div>
           </div>
+
 
           {/* Pattern Insights */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">

@@ -67,9 +67,9 @@ const AdvancedPatternAnalysisCard: React.FC<AdvancedPatternAnalysisCardProps> = 
   const getPatternIcon = (type: string) => {
     switch (type) {
       case 'triple_tops':
-        return <TrendingDown className="h-4 w-4 text-red-500" />;
-      case 'triple_bottoms':
         return <TrendingUp className="h-4 w-4 text-green-500" />;
+      case 'triple_bottoms':
+        return <TrendingDown className="h-4 w-4 text-red-500" />;
       case 'wedge_patterns':
         return <Target className="h-4 w-4 text-blue-500" />;
       case 'channel_patterns':
@@ -88,9 +88,9 @@ const AdvancedPatternAnalysisCard: React.FC<AdvancedPatternAnalysisCardProps> = 
   const getPatternColor = (type: string) => {
     switch (type) {
       case 'triple_tops':
-        return 'bg-red-50 border-red-200 text-red-800';
-      case 'triple_bottoms':
         return 'bg-green-50 border-green-200 text-green-800';
+      case 'triple_bottoms':
+        return 'bg-red-50 border-red-200 text-red-800';
       case 'wedge_patterns':
         return 'bg-blue-50 border-blue-200 text-blue-800';
       case 'channel_patterns':

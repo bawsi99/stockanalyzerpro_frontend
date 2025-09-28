@@ -1300,6 +1300,8 @@ const NewOutput: React.FC = () => {
                 <EnhancedPatternRecognitionCard 
                   overlays={overlays as EnhancedOverlays}
                   symbol={stockSymbol}
+                  supportLevels={(enhancedData as any)?.support_levels || []}
+                  resistanceLevels={(enhancedData as any)?.resistance_levels || []}
                 />
               )
             )}

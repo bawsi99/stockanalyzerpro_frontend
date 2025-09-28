@@ -687,16 +687,35 @@ function extractSummaryFromEnhanced(data: Record<string, unknown> | AnalysisResu
 function extractOverlays(data: Record<string, unknown>): EnhancedOverlays {
   const overlays = (data as any).overlays || {};
 
+  // Synthesize support_resistance from pivot arrays when overlays are empty
+  let support_resistance = overlays.support_resistance || { support: [], resistance: [] };
+  const hasOverlaySR = Array.isArray(support_resistance.support) && support_resistance.support.length > 0 || Array.isArray(support_resistance.resistance) && support_resistance.resistance.length > 0;
+  if (!hasOverlaySR) {
+    const pivotSupport = (data as any).support_levels as number[] | undefined;
+    const pivotResistance = (data as any).resistance_levels as number[] | undefined;
+    // Also try technical overview pivot-based levels if present
+    const tech = (data as any).technical_overview || {};
+    const techSupport = tech.key_support_levels as number[] | undefined;
+    const techResistance = tech.key_resistance_levels as number[] | undefined;
+
+    const sup = (pivotSupport && pivotSupport.length > 0 ? pivotSupport : (techSupport || [])).map((n: number) => ({ level: n }));
+    const res = (pivotResistance && pivotResistance.length > 0 ? pivotResistance : (techResistance || [])).map((n: number) => ({ level: n }));
+    if (sup.length > 0 || res.length > 0) {
+      support_resistance = { support: sup, resistance: res };
+    }
+  }
+
   const advanced = overlays.advanced_patterns || (data as any).advanced_patterns || (data as any).technical_indicators?.advanced_patterns || null;
 
   return {
     triangles: overlays.triangles || [],
     flags: overlays.flags || [],
-    support_resistance: overlays.support_resistance || { support: [], resistance: [] },
+    support_resistance,
     double_tops: overlays.double_tops || [],
     double_bottoms: overlays.double_bottoms || [],
     divergences: overlays.divergences || [],
     volume_anomalies: overlays.volume_anomalies || [],
+    volume_zones: overlays.volume_zones || { support: [], resistance: [] },
     advanced_patterns: advanced || {
       head_and_shoulders: [],
       inverse_head_and_shoulders: [],
@@ -1439,15 +1458,39 @@ function extractChartInsights(data: Record<string, unknown>): string {
 }
 
 function extractSupportLevels(data: Record<string, unknown>): number[] {
-  const overlays = data.overlays || {};
+  // Prefer pivot-based arrays when present in enhanced results
+  const pivotSupport = (data as any).support_levels as number[] | undefined;
+  if (pivotSupport && Array.isArray(pivotSupport) && pivotSupport.length > 0) {
+    return pivotSupport.filter((n) => typeof n === 'number');
+  }
+  // Fallback to overlays (structure-based S/R)
+  const overlays = (data as any).overlays || {};
   const supportResistance = overlays.support_resistance || {};
-  return (supportResistance.support || []).map((s: Record<string, unknown>) => (s as Record<string, unknown>).level as number || 0);
+  const srFromOverlays = (supportResistance.support || []).map((s: Record<string, unknown>) => (s as Record<string, unknown>).level as number || 0);
+  if (srFromOverlays.length > 0) return srFromOverlays;
+  // Last resort: try technical overview pivot-based levels if nested
+  const tech = (data as any).technical_overview || {};
+  const techSupport = tech.key_support_levels as number[] | undefined;
+  if (techSupport && Array.isArray(techSupport) && techSupport.length > 0) return techSupport;
+  return [];
 }
 
 function extractResistanceLevels(data: Record<string, unknown>): number[] {
-  const overlays = data.overlays || {};
+  // Prefer pivot-based arrays when present in enhanced results
+  const pivotResistance = (data as any).resistance_levels as number[] | undefined;
+  if (pivotResistance && Array.isArray(pivotResistance) && pivotResistance.length > 0) {
+    return pivotResistance.filter((n) => typeof n === 'number');
+  }
+  // Fallback to overlays (structure-based S/R)
+  const overlays = (data as any).overlays || {};
   const supportResistance = overlays.support_resistance || {};
-  return (supportResistance.resistance || []).map((r: Record<string, unknown>) => (r as Record<string, unknown>).level as number || 0);
+  const srFromOverlays = (supportResistance.resistance || []).map((r: Record<string, unknown>) => (r as Record<string, unknown>).level as number || 0);
+  if (srFromOverlays.length > 0) return srFromOverlays;
+  // Last resort: try technical overview pivot-based levels if nested
+  const tech = (data as any).technical_overview || {};
+  const techRes = tech.key_resistance_levels as number[] | undefined;
+  if (techRes && Array.isArray(techRes) && techRes.length > 0) return techRes;
+  return [];
 }
 
 function extractTrianglePatterns(data: Record<string, unknown>): unknown[] {
