@@ -12,8 +12,10 @@ import {
   Target,
   Clock,
   BarChart3,
-  Shield
+  Shield,
+  Info
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface StressScenario {
   scenario_name: string;
@@ -85,7 +87,7 @@ const AdvancedRiskMetricsCard: React.FC<AdvancedRiskMetricsCardProps> = ({
     }
   };
 
-  const formatPercentage = (value: number) => {
+  const formatPercentage = (value: number | null | undefined) => {
     if (typeof value !== 'number' || isNaN(value)) return 'N/A';
     return `${(value * 100).toFixed(1)}%`;
   };
@@ -95,9 +97,98 @@ const AdvancedRiskMetricsCard: React.FC<AdvancedRiskMetricsCardProps> = ({
     return `₹${value.toFixed(2)}`;
   };
 
+  // Number with thousands separators
+  const formatNumberWithSeparators = (value: number) => {
+    if (typeof value !== 'number' || isNaN(value)) return 'N/A';
+    return new Intl.NumberFormat('en-IN').format(value);
+  };
+
+  // Normalize percent-like numbers whether provided as 0..1 or 0..100
+  const formatPercentAuto = (value: number, decimals: number = 1) => {
+    if (typeof value !== 'number' || isNaN(value)) return 'N/A';
+    const scaled = Math.abs(value) > 1 ? value : value * 100;
+    return `${scaled.toFixed(decimals)}%`;
+  };
+
   // Helper function to safely check if data is an array
   const isArray = (data: any): data is any[] => {
     return Array.isArray(data);
+  };
+
+  // Normalize stress summary across different backend shapes
+  const getNormalizedStressSummary = () => {
+    if (!stress_testing) return null;
+    const rawSummary: any = (stress_testing as any).stress_summary || {};
+    const level = rawSummary.stress_level || (stress_testing as any).stress_level || 'unknown';
+
+    // Derive overall impact as a 0..1 fraction for percentage display
+    let overallImpact: number | null = null;
+    if (typeof rawSummary.overall_impact === 'number') {
+      overallImpact = rawSummary.overall_impact; // already fractional
+    } else if (typeof rawSummary.overall_stress_score === 'number') {
+      overallImpact = Math.max(0, Math.min(1, rawSummary.overall_stress_score / 100));
+    } else if (typeof (stress_testing as any).stress_score === 'number') {
+      overallImpact = Math.max(0, Math.min(1, (stress_testing as any).stress_score / 100));
+    }
+
+    // Derive worst case label
+    let worstCase: string | null = null;
+    // 1) Direct string in summary
+    if (typeof rawSummary.worst_case_scenario === 'string') {
+      worstCase = rawSummary.worst_case_scenario;
+    }
+    // 2) Top-level numeric worst_case_scenario
+    if (!worstCase && typeof (stress_testing as any).worst_case_scenario === 'number') {
+      worstCase = `${((stress_testing as any).worst_case_scenario * 100).toFixed(1)}%`;
+    }
+    // 3) Monte Carlo worst_case in stress_scenarios
+    if (!worstCase && typeof (stress_testing as any).stress_scenarios === 'object') {
+      const sc: any = (stress_testing as any).stress_scenarios;
+      const mc = sc?.monte_carlo_stress;
+      if (mc && typeof mc.worst_case === 'number') {
+        worstCase = `${(mc.worst_case * 100).toFixed(1)}%`;
+      }
+    }
+    // 4) Compute from available stress_scenarios if still missing
+    if (!worstCase && typeof (stress_testing as any).stress_scenarios === 'object') {
+      const sc: any = (stress_testing as any).stress_scenarios;
+      const candidates: number[] = [];
+      try {
+        // Historical windows (technical_indicators shape)
+        if (sc.worst_20d && typeof sc.worst_20d.return === 'number') candidates.push(sc.worst_20d.return);
+        if (sc.worst_60d && typeof sc.worst_60d.return === 'number') candidates.push(sc.worst_60d.return);
+        if (sc.worst_252d && typeof sc.worst_252d.return === 'number') candidates.push(sc.worst_252d.return);
+        // Drawdown stress
+        if (sc.drawdown_stress && typeof sc.drawdown_stress.max_drawdown === 'number') candidates.push(sc.drawdown_stress.max_drawdown);
+        // Tail risk stress
+        if (sc.tail_risk_stress && typeof sc.tail_risk_stress.largest_daily_loss === 'number') candidates.push(sc.tail_risk_stress.largest_daily_loss);
+        // Crash scenarios (advanced_analysis shape)
+        if (sc.crash_scenarios && typeof sc.crash_scenarios === 'object') {
+          Object.values(sc.crash_scenarios).forEach((v: any) => { if (typeof v === 'number') candidates.push(v as number); });
+        }
+      } catch {}
+      if (candidates.length > 0) {
+        const minReturn = candidates.reduce((min, v) => (v < min ? v : min), candidates[0]);
+        worstCase = `${(minReturn * 100).toFixed(1)}%`;
+      }
+    }
+    // 5) Fall back to scenario_analysis summary worst_case if available
+    if (!worstCase && (scenario_analysis as any)?.scenario_summary?.worst_case) {
+      const s = (scenario_analysis as any).scenario_summary.worst_case;
+      if (typeof s === 'string') worstCase = s;
+    }
+
+    // Collect recommendations
+    let recommendations: string[] = [];
+    if (Array.isArray(rawSummary.recommendations)) {
+      recommendations = rawSummary.recommendations;
+    } else if (Array.isArray(rawSummary.mitigation_recommendations)) {
+      recommendations = rawSummary.mitigation_recommendations;
+    } else if (Array.isArray((stress_testing as any).risk_mitigation_recommendations)) {
+      recommendations = (stress_testing as any).risk_mitigation_recommendations;
+    }
+
+    return { stress_level: level, overall_impact: overallImpact, worst_case: worstCase, recommendations };
   };
 
   // Helper function to safely get stress scenarios
@@ -145,9 +236,6 @@ const AdvancedRiskMetricsCard: React.FC<AdvancedRiskMetricsCardProps> = ({
   const getScenarioResults = (): ScenarioResult[] => {
     if (!scenario_analysis?.scenario_results) return [];
     
-    // Debug: Log the scenario_results to see what we're working with
-    // console.log('🔍 DEBUG: scenario_results:', scenario_analysis.scenario_results);
-    
     // If it's already an array, return it
     if (isArray(scenario_analysis.scenario_results)) {
       return scenario_analysis.scenario_results;
@@ -158,31 +246,183 @@ const AdvancedRiskMetricsCard: React.FC<AdvancedRiskMetricsCardProps> = ({
       const results: ScenarioResult[] = [];
       const obj = scenario_analysis.scenario_results as Record<string, any>;
       
-      // Handle different possible object structures
+      // 1) Advanced analysis shape: entries with outcome/probability
       Object.entries(obj).forEach(([key, value]) => {
         if (typeof value === 'object' && value !== null) {
-          // If the value is an object with outcome/probability, treat it as a scenario result
           if ('outcome' in value || 'probability' in value) {
             results.push({
               scenario_name: key,
-              outcome: value.outcome || 'unknown',
-              probability: value.probability || 0,
-              impact: value.impact || 0,
-              risk_level: value.risk_level || 'medium'
+              outcome: (value as any).outcome || 'unknown',
+              probability: (value as any).probability || 0,
+              impact: (value as any).impact || 0,
+              risk_level: (value as any).risk_level || 'medium'
             });
           }
         }
       });
-      
+
       if (results.length > 0) {
         return results;
       }
+
+      // 2) Technical indicators shape: synthesize display cards from known groups
+      const rp = obj['return_probabilities'];
+      const ev = obj['expected_values'];
+      const dd = obj['drawdown_scenarios'];
+      const vrs = obj['volatility_regime_scenarios'];
+      const corr = obj['correlation_scenarios'];
+      const rec = obj['recovery_analysis'];
+
+      const synthesized: ScenarioResult[] = [];
+
+      // Return probabilities - key risk-focused cards
+      if (rp && typeof rp === 'object') {
+        if (typeof rp.probability_20_percent_loss === 'number') {
+          synthesized.push({
+            scenario_name: '20% Loss Risk',
+            outcome: 'Probability of >20% loss',
+            probability: rp.probability_20_percent_loss,
+            impact: 0.20,
+            risk_level: rp.probability_20_percent_loss > 0.15 ? 'high' : rp.probability_20_percent_loss > 0.08 ? 'medium' : 'low'
+          });
+        }
+        if (typeof rp.probability_30_percent_loss === 'number') {
+          synthesized.push({
+            scenario_name: '30% Loss Risk',
+            outcome: 'Probability of >30% loss',
+            probability: rp.probability_30_percent_loss,
+            impact: 0.30,
+            risk_level: rp.probability_30_percent_loss > 0.10 ? 'high' : rp.probability_30_percent_loss > 0.05 ? 'medium' : 'low'
+          });
+        }
+        if (typeof rp.probability_positive_return === 'number') {
+          synthesized.push({
+            scenario_name: 'Positive Return Odds',
+            outcome: 'Probability of positive return',
+            probability: rp.probability_positive_return,
+            impact: 0.0,
+            risk_level: rp.probability_positive_return < 0.5 ? 'high' : rp.probability_positive_return < 0.65 ? 'medium' : 'low'
+          });
+        }
+      }
+
+      // Expected values
+      if (ev && typeof ev === 'object') {
+        if (typeof ev.worst_case_scenario === 'number') {
+          synthesized.push({
+            scenario_name: 'Worst Case (Expected Values)',
+            outcome: '5th percentile outcome',
+            probability: 0.05,
+            impact: Math.abs(ev.worst_case_scenario),
+            risk_level: Math.abs(ev.worst_case_scenario) > 0.20 ? 'high' : Math.abs(ev.worst_case_scenario) > 0.10 ? 'medium' : 'low'
+          });
+        }
+        if (typeof ev.best_case_scenario === 'number') {
+          synthesized.push({
+            scenario_name: 'Best Case (Expected Values)',
+            outcome: '95th percentile outcome',
+            probability: 0.05,
+            impact: Math.abs(ev.best_case_scenario),
+            risk_level: 'low'
+          });
+        }
+      }
+
+      // Drawdown scenarios
+      if (dd && typeof dd === 'object') {
+        if (typeof dd.expected_max_drawdown === 'number') {
+          synthesized.push({
+            scenario_name: 'Expected Max Drawdown',
+            outcome: 'Average max peak-to-trough',
+            probability: 0.5,
+            impact: Math.abs(dd.expected_max_drawdown),
+            risk_level: Math.abs(dd.expected_max_drawdown) > 0.25 ? 'high' : Math.abs(dd.expected_max_drawdown) > 0.15 ? 'medium' : 'low'
+          });
+        }
+        if (typeof dd.worst_case_drawdown === 'number') {
+          synthesized.push({
+            scenario_name: 'Worst Case Drawdown',
+            outcome: '5th percentile drawdown',
+            probability: 0.05,
+            impact: Math.abs(dd.worst_case_drawdown),
+            risk_level: Math.abs(dd.worst_case_drawdown) > 0.30 ? 'high' : Math.abs(dd.worst_case_drawdown) > 0.20 ? 'medium' : 'low'
+          });
+        }
+      }
+
+      // Volatility regime scenarios (pick high and extreme)
+      if (vrs && typeof vrs === 'object') {
+        const high = vrs['high_volatility'];
+        const extreme = vrs['extreme_volatility'];
+        if (high && typeof high === 'object') {
+          synthesized.push({
+            scenario_name: 'High Volatility Regime',
+            outcome: 'Elevated volatility environment',
+            probability: high.probability_positive_return ?? 0,
+            impact: Math.abs(high.expected_volatility ?? 0),
+            risk_level: (high.probability_20_percent_loss ?? 0) > 0.10 ? 'high' : 'medium'
+          });
+        }
+        if (extreme && typeof extreme === 'object') {
+          synthesized.push({
+            scenario_name: 'Extreme Volatility Regime',
+            outcome: 'Stressful volatility regime',
+            probability: extreme.probability_positive_return ?? 0,
+            impact: Math.abs(extreme.expected_volatility ?? 0),
+            risk_level: (extreme.probability_20_percent_loss ?? 0) > 0.10 ? 'high' : 'medium'
+          });
+        }
+      }
+
+      // Correlation scenarios (optional informative)
+      if (corr && typeof corr === 'object') {
+        const highCorr = corr['high_correlation'] || corr['extreme_correlation'];
+        if (highCorr) {
+          synthesized.push({
+            scenario_name: 'High Correlation Shock',
+            outcome: 'Market correlation spike with downturn',
+            probability: 0.1,
+            impact: Math.abs(highCorr.market_impact ?? 0.10),
+            risk_level: Math.abs(highCorr.market_impact ?? 0.10) > 0.15 ? 'high' : 'medium'
+          });
+        }
+      }
+
+      if (synthesized.length > 0) {
+        return synthesized;
+      }
     }
     
-    // If we can't convert it, log a warning and return empty array
-    // console.warn('scenario_results is not in expected format:', scenario_analysis.scenario_results);
     return [];
   };
+
+  // Normalize specific stress sub-analyses that have known shapes in backend
+  const getVolatilityStress = () => {
+    // Preferred: technical_indicators shape
+    const vs = (stress_testing as any)?.stress_scenarios?.volatility_stress;
+    if (vs && typeof vs === 'object') return vs;
+    // Fallback: if someone put these keys under scenario_analysis by mistake
+    const sa = (stress_testing as any)?.scenario_analysis;
+    if (sa && typeof sa === 'object' && ('current_vol' in sa || '95th_percentile' in sa || '99th_percentile' in sa || 'vol_percentile' in sa)) {
+      return sa;
+    }
+    return null;
+  };
+
+  const getTailRiskStress = () => {
+    // Preferred: technical_indicators shape
+    const tr = (stress_testing as any)?.stress_scenarios?.tail_risk_stress;
+    if (tr && typeof tr === 'object') return tr;
+    // Fallback: if present under scenario_analysis mistakenly
+    const sa = (stress_testing as any)?.scenario_analysis;
+    if (sa && typeof sa === 'object' && ('2std_events' in sa || '3std_events' in sa || '2std_frequency' in sa || 'largest_daily_loss' in sa)) {
+      return sa;
+    }
+    return null;
+  };
+
+  // Memoize normalized summary to avoid repeated computation in render
+  const normalizedSummary = React.useMemo(() => getNormalizedStressSummary(), [stress_testing, scenario_analysis]);
 
   if (!stress_testing && !scenario_analysis) {
     return (
@@ -248,56 +488,56 @@ const AdvancedRiskMetricsCard: React.FC<AdvancedRiskMetricsCardProps> = ({
             {stress_testing && (
               <>
                 {/* Stress Summary */}
-                {stress_testing.stress_summary && (
+                {normalizedSummary && (
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <div className="flex items-center justify-between mb-4">
                       <h4 className="font-semibold text-lg">Stress Test Summary</h4>
-                      <Badge className={getStressLevelColor(stress_testing.stress_summary.stress_level)}>
-                        {stress_testing.stress_summary.stress_level?.toUpperCase() || 'UNKNOWN'}
+                      <Badge className={getStressLevelColor(normalizedSummary.stress_level)}>
+                        {normalizedSummary.stress_level?.toUpperCase() || 'UNKNOWN'}
                       </Badge>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
                       <div className="text-center p-3 bg-white rounded-lg border">
                         <div className="text-2xl font-bold text-blue-600">
-                          {formatPercentage(stress_testing.stress_summary.overall_impact)}
+                          {formatPercentage(normalizedSummary.overall_impact as number)}
                         </div>
                         <div className="text-sm text-gray-600">Overall Impact</div>
                       </div>
                       <div className="text-center p-3 bg-white rounded-lg border">
                         <div className="text-lg font-semibold text-red-600">
-                          {stress_testing.stress_summary.worst_case_scenario || 'N/A'}
+                          {normalizedSummary.worst_case || 'N/A'}
                         </div>
                         <div className="text-sm text-gray-600">Worst Case</div>
                       </div>
                       <div className="text-center p-3 bg-white rounded-lg border">
                         <div className="text-lg font-semibold text-purple-600">
-                          {stress_testing.stress_summary.recommendations?.length || 0}
+                          {normalizedSummary.recommendations.length}
                         </div>
                         <div className="text-sm text-gray-600">Recommendations</div>
                       </div>
                       <div className="text-center p-3 bg-white rounded-lg border">
                         <div className="text-lg font-semibold text-green-600">
-                          {stress_testing.stress_summary.stress_level || 'N/A'}
+                          {normalizedSummary.stress_level || 'N/A'}
                         </div>
                         <div className="text-sm text-gray-600">Stress Level</div>
                       </div>
                       <div className="text-center p-3 bg-white rounded-lg border">
                         <div className="text-lg font-semibold text-orange-600">
-                          {stress_testing.stress_summary.overall_impact ? 
-                           (stress_testing.stress_summary.overall_impact > 0.15 ? 'High' : 
-                            stress_testing.stress_summary.overall_impact > 0.08 ? 'Medium' : 'Low') : 'N/A'}
+                          {typeof normalizedSummary.overall_impact === 'number' ? 
+                           (normalizedSummary.overall_impact! > 0.15 ? 'High' : 
+                            normalizedSummary.overall_impact! > 0.08 ? 'Medium' : 'Low') : 'N/A'}
                         </div>
                         <div className="text-sm text-gray-600">Risk Level</div>
                       </div>
                     </div>
 
                     {/* Recommendations */}
-                    {stress_testing.stress_summary.recommendations && isArray(stress_testing.stress_summary.recommendations) && (
+                    {normalizedSummary.recommendations.length > 0 && (
                       <div className="mt-4">
                         <h5 className="font-medium mb-2">Key Recommendations:</h5>
                         <ul className="space-y-1 text-sm">
-                          {stress_testing.stress_summary.recommendations.map((rec, index) => (
+                          {normalizedSummary.recommendations.map((rec, index) => (
                             <li key={index} className="text-gray-700">• {rec}</li>
                           ))}
                         </ul>
@@ -313,124 +553,161 @@ const AdvancedRiskMetricsCard: React.FC<AdvancedRiskMetricsCardProps> = ({
                     
                     {/* Worst Periods */}
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                      {getStressScenarios().map((scenario, index) => (
-                        <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <h5 className="font-medium text-gray-800">{scenario.scenario_name || 'Unknown Scenario'}</h5>
-                          <p className="text-sm text-gray-600">{scenario.description || 'No description available'}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge className={getRiskLevelColor(scenario.risk_level)}>
-                              {scenario.risk_level?.toUpperCase() || 'UNKNOWN'}
-                            </Badge>
-                            <span className="text-sm text-gray-600">
-                              Impact: {typeof scenario.impact === 'number' ? scenario.impact.toFixed(2) : 'N/A'}%
-                            </span>
-                            <span className="text-sm text-gray-600">
-                              Probability: {typeof scenario.probability === 'number' ? scenario.probability.toFixed(1) : 'N/A'}%
-                            </span>
+                      {getStressScenarios().map((scenario, index) => {
+                        const name = (scenario.scenario_name || '').toLowerCase();
+                        const isLiquidity = name.includes('liquidity stress');
+                        const isVolumeCount = isLiquidity && (
+                          name.includes('5th percentile volume') ||
+                          name.includes('1st percentile volume') ||
+                          name.includes('current volume') ||
+                          name.includes('low volume')
+                        );
+                        const isEventCount = name.includes('2std events') || name.includes('3std events') || name.includes('events');
+                        const isPercentLike = !isVolumeCount && !isEventCount;
+
+                        const impactLabel = isVolumeCount || isEventCount ? 'Value' : 'Impact';
+                        const impactDisplay = typeof scenario.impact === 'number'
+                          ? (isPercentLike ? formatPercentAuto(scenario.impact, 2) : formatNumberWithSeparators(scenario.impact))
+                          : 'N/A';
+
+                        return (
+                          <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <h5 className="font-medium text-gray-800">{scenario.scenario_name || 'Unknown Scenario'}</h5>
+                            <p className="text-sm text-gray-600">{scenario.description || 'No description available'}</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge className={getRiskLevelColor(scenario.risk_level)}>
+                                {scenario.risk_level?.toUpperCase() || 'UNKNOWN'}
+                              </Badge>
+                              <span className="text-sm text-gray-600">
+                                {impactLabel}: {impactDisplay}
+                              </span>
+                              <span className="text-sm text-gray-600">
+                                Probability: {typeof scenario.probability === 'number' ? formatPercentAuto(scenario.probability, 1) : 'N/A'}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {/* Volatility Stress */}
-                    {stress_testing.scenario_analysis && typeof stress_testing.scenario_analysis === 'object' && (
+                    {getVolatilityStress() && (
+                      (() => { const vol = getVolatilityStress() as any; return (
                       <div className="p-4 bg-blue-50 rounded-lg">
                         <h5 className="font-medium mb-3">Volatility Stress Analysis</h5>
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                           <div>
                             <span className="font-medium">Current Vol:</span>
                             <div className="font-bold">
-                              {typeof stress_testing.scenario_analysis.current_vol === 'number' 
-                                ? formatPercentage(stress_testing.scenario_analysis.current_vol) 
+                              {typeof vol.current_vol === 'number' 
+                                ? formatPercentage(vol.current_vol) 
                                 : 'N/A'}
                             </div>
                           </div>
                           <div>
                             <span className="font-medium">95th Percentile:</span>
                             <div className="font-bold">
-                              {typeof stress_testing.scenario_analysis['95th_percentile'] === 'number' 
-                                ? formatPercentage(stress_testing.scenario_analysis['95th_percentile']) 
+                              {typeof vol['95th_percentile'] === 'number' 
+                                ? formatPercentage(vol['95th_percentile']) 
                                 : 'N/A'}
                             </div>
                           </div>
                           <div>
                             <span className="font-medium">99th Percentile:</span>
                             <div className="font-bold">
-                              {typeof stress_testing.scenario_analysis['99th_percentile'] === 'number' 
-                                ? formatPercentage(stress_testing.scenario_analysis['99th_percentile']) 
+                              {typeof vol['99th_percentile'] === 'number' 
+                                ? formatPercentage(vol['99th_percentile']) 
                                 : 'N/A'}
                             </div>
                           </div>
                           <div>
                             <span className="font-medium">Vol Percentile:</span>
                             <div className="font-bold">
-                              {typeof stress_testing.scenario_analysis.vol_percentile === 'number' 
-                                ? stress_testing.scenario_analysis.vol_percentile.toFixed(1) + '%' 
+                              {typeof vol.vol_percentile === 'number' 
+                                ? vol.vol_percentile.toFixed(1) + '%' 
                                 : 'N/A'}
                             </div>
                           </div>
                           <div>
                             <span className="font-medium">Vol Regime:</span>
                             <div className="font-bold">
-                              {typeof stress_testing.scenario_analysis.current_vol === 'number' 
-                                ? (stress_testing.scenario_analysis.current_vol > 0.3 ? 'High' : 
-                                   stress_testing.scenario_analysis.current_vol > 0.2 ? 'Medium' : 'Low')
+                              {typeof vol.current_vol === 'number' 
+                                ? (vol.current_vol > 0.3 ? 'High' : 
+                                   vol.current_vol > 0.2 ? 'Medium' : 'Low')
                                 : 'N/A'}
                             </div>
                           </div>
                         </div>
                       </div>
+                      ); })()
                     )}
 
                     {/* Tail Risk Stress */}
-                    {stress_testing.scenario_analysis && typeof stress_testing.scenario_analysis === 'object' && (
+                    {getTailRiskStress() && (
+                      (() => { const tr = getTailRiskStress() as any; return (
                       <div className="p-4 bg-purple-50 rounded-lg">
-                        <h5 className="font-medium mb-3">Tail Risk Analysis</h5>
+                        <h5 className="font-medium mb-3 flex items-center gap-2">
+                          Tail Risk Analysis
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-4 w-4 text-purple-600 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs text-xs">
+                                <p className="mb-1"><strong>2σ Events:</strong> Days where returns fall below -2 standard deviations. Under a normal model, this is rare (~2.3% per left tail).</p>
+                                <p className="mb-1"><strong>3σ Events:</strong> Extreme downside days below -3 standard deviations (~0.13% per left tail).</p>
+                                <p className="mb-1"><strong>2σ Frequency:</strong> Share of days breaching the -2σ threshold. Heuristics: &gt;5% = High risk, 2.5–5% = Medium, &lt;2.5% = Low.</p>
+                                <p><em>Note:</em> Real markets have fat tails; frequencies can exceed normal-theory odds.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </h5>
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                           <div>
                             <span className="font-medium">2σ Events:</span>
                             <div className="font-bold">
-                              {typeof stress_testing.scenario_analysis['2std_events'] === 'number' 
-                                ? stress_testing.scenario_analysis['2std_events'] 
+                              {typeof tr['2std_events'] === 'number' 
+                                ? tr['2std_events'] 
                                 : 'N/A'}
                             </div>
                           </div>
                           <div>
                             <span className="font-medium">3σ Events:</span>
                             <div className="font-bold">
-                              {typeof stress_testing.scenario_analysis['3std_events'] === 'number' 
-                                ? stress_testing.scenario_analysis['3std_events'] 
+                              {typeof tr['3std_events'] === 'number' 
+                                ? tr['3std_events'] 
                                 : 'N/A'}
                             </div>
                           </div>
                           <div>
                             <span className="font-medium">2σ Frequency:</span>
                             <div className="font-bold">
-                              {typeof stress_testing.scenario_analysis['2std_frequency'] === 'number' 
-                                ? formatPercentage(stress_testing.scenario_analysis['2std_frequency']) 
+                              {typeof tr['2std_frequency'] === 'number' 
+                                ? formatPercentage(tr['2std_frequency']) 
                                 : 'N/A'}
                             </div>
                           </div>
                           <div>
                             <span className="font-medium">Largest Loss:</span>
                             <div className="font-bold">
-                              {typeof stress_testing.scenario_analysis.largest_daily_loss === 'number' 
-                                ? formatPercentage(stress_testing.scenario_analysis.largest_daily_loss) 
+                              {typeof tr.largest_daily_loss === 'number' 
+                                ? formatPercentage(tr.largest_daily_loss) 
                                 : 'N/A'}
                             </div>
                           </div>
                           <div>
                             <span className="font-medium">Tail Risk:</span>
                             <div className="font-bold">
-                              {typeof stress_testing.scenario_analysis['3std_events'] === 'number' && 
-                               typeof stress_testing.scenario_analysis['2std_events'] === 'number' 
-                                ? (stress_testing.scenario_analysis['3std_events'] > 5 ? 'High' : 
-                                   stress_testing.scenario_analysis['3std_events'] > 2 ? 'Medium' : 'Low')
+                              {typeof tr['3std_events'] === 'number' && 
+                               typeof tr['2std_events'] === 'number' 
+                                ? (tr['3std_events'] > 5 ? 'High' : 
+                                   tr['3std_events'] > 2 ? 'Medium' : 'Low')
                                 : 'N/A'}
                             </div>
                           </div>
                         </div>
                       </div>
+                      ); })()
                     )}
                   </div>
                 )}
@@ -538,13 +815,13 @@ const AdvancedRiskMetricsCard: React.FC<AdvancedRiskMetricsCardProps> = ({
                             <div>
                               <span className="font-medium">Probability:</span>
                               <div className="text-gray-700">
-                                {typeof result.probability === 'number' ? result.probability.toFixed(1) + '%' : 'N/A'}
+                                {typeof result.probability === 'number' ? formatPercentAuto(result.probability, 1) : 'N/A'}
                               </div>
                             </div>
                             <div>
                               <span className="font-medium">Impact:</span>
                               <div className="text-gray-700">
-                                {typeof result.impact === 'number' ? result.impact.toFixed(2) + '%' : 'N/A'}
+                                {typeof result.impact === 'number' ? formatPercentAuto(result.impact, 2) : 'N/A'}
                               </div>
                             </div>
                           </div>
