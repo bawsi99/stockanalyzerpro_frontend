@@ -143,6 +143,18 @@ const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol }: Enhanced
       return tfData && (!tfData.trend || tfData.trend === 'neutral' || tfData.trend === 'unknown');
     });
     
+    // Calculate conflict severity for backend structure
+    const calculateConflictSeverity = (conflictCount: number, totalCount: number) => {
+      if (conflictCount === 0) return 'None';
+      const conflictRatio = conflictCount / totalCount;
+      if (conflictRatio >= 0.6) return 'Very High';
+      if (conflictRatio >= 0.4) return 'High';
+      if (conflictRatio >= 0.25) return 'Medium';
+      if (conflictRatio >= 0.1) return 'Low';
+      if (conflictRatio >= 0.05) return 'Very Low';
+      return 'Insignificant';
+    };
+    
     validation = {
       consensus_trend: overallSignal,
       signal_strength: confidence,
@@ -151,7 +163,8 @@ const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol }: Enhanced
       conflicting_timeframes: conflictingTimeframes,
       neutral_timeframes: neutralTimeframes,
       divergence_detected: conflictingTimeframes.length > 0,
-      key_conflicts: conflictingTimeframes.map(tf => `${tf} timeframe shows conflicting signal`)
+      key_conflicts: conflictingTimeframes.map(tf => `${tf} timeframe shows conflicting signal`),
+      conflict_severity: calculateConflictSeverity(conflictingTimeframes.length, timeframes.length)
     };
     
 
@@ -171,7 +184,8 @@ const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol }: Enhanced
     validation = {
       consensus_trend: 'Neutral',
       signal_strength: 0.5,
-      confidence_score: 0.5
+      confidence_score: 0.5,
+      conflict_severity: 'None'
     };
   }
 
@@ -311,10 +325,18 @@ const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol }: Enhanced
               <div className="text-xs text-slate-600">Divergence</div>
             </div>
             <div className="text-center p-3 bg-slate-50 rounded-lg">
-              <div className="text-lg font-bold text-slate-800">
-                {(validation.key_conflicts || []).length}
+              <div className={`text-lg font-bold ${
+                validation.conflict_severity === 'Very High' ? 'text-red-700' :
+                validation.conflict_severity === 'High' ? 'text-red-600' :
+                validation.conflict_severity === 'Medium' ? 'text-orange-600' :
+                validation.conflict_severity === 'Low' ? 'text-yellow-600' :
+                validation.conflict_severity === 'Very Low' ? 'text-yellow-500' :
+                validation.conflict_severity === 'Insignificant' ? 'text-gray-600' :
+                'text-slate-800'
+              }`}>
+                {validation.conflict_severity || 'None'}
               </div>
-              <div className="text-xs text-slate-600">Conflicts</div>
+              <div className="text-xs text-slate-600">Conflict Severity</div>
             </div>
           </div>
         </div>
@@ -489,7 +511,7 @@ const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol }: Enhanced
           <div className="bg-red-50 p-4 rounded-lg border border-red-200">
             <h3 className="font-semibold text-red-800 mb-2 flex items-center">
               <AlertTriangle className="h-4 w-4 mr-2" />
-              Key Conflicts ({(validation.key_conflicts || []).length})
+              Key Conflicts ({(validation.key_conflicts || []).length}) - {validation.conflict_severity || 'None'} Severity
             </h3>
             <div className="space-y-1">
               {(validation.key_conflicts || []).map((conflict, index) => (

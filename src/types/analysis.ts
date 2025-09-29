@@ -1018,6 +1018,7 @@ export interface CrossTimeframeValidation {
   divergence_detected: boolean;
   divergence_type: string | null;
   key_conflicts: string[];
+  conflict_severity: string;
 }
 
 export interface MultiTimeframeSummary {
