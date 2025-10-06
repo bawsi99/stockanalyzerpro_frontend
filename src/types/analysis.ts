@@ -788,7 +788,12 @@ export interface PatternData {
   start_price: number;
   end_price: number;
   confidence: number;
+  quality_score?: number;
+  target?: number;
+  target_level?: number;
+  stop_level?: number;
   type: string;
+  pattern_type?: string;
   description: string;
 }
 

@@ -15,6 +15,8 @@ import {
 import { EnhancedOverlays } from "@/types/analysis";
 import AdvancedPatternAnalysisCard from "./AdvancedPatternAnalysisCard";
 import { formatCurrency, formatConfidence } from "@/utils/numberFormatter";
+import PatternChart from "@/components/PatternChart";
+import { useHistoricalData } from "@/hooks/useHistoricalData";
 
 interface EnhancedPatternRecognitionCardProps {
   overlays: EnhancedOverlays;
@@ -22,13 +24,18 @@ interface EnhancedPatternRecognitionCardProps {
   // Optional pivot-based levels for fallback display when overlays SR is empty
   supportLevels?: number[];
   resistanceLevels?: number[];
+  // Chart data parameters
+  analysisPeriod?: string;
+  interval?: string;
 }
 
 const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardProps> = ({ 
   overlays, 
   symbol,
   supportLevels = [],
-  resistanceLevels = []
+  resistanceLevels = [],
+  analysisPeriod = '90 days',
+  interval = '1day'
 }) => {
   // Add null checks and default values
   if (!overlays) {
@@ -148,67 +155,119 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
   };
 
   // Filter to ensure cards have meaningful data (non-empty)
-  const hasLevels = (p: any) => p && (p.target_level !== undefined || p.stop_level !== undefined);
-  const filteredTripleTops = (advanced_patterns.triple_tops || []).filter(hasLevels);
-  const filteredTripleBottoms = (advanced_patterns.triple_bottoms || []).filter(hasLevels);
-  const filteredChannelPatterns = (advanced_patterns.channel_patterns || []).filter(hasLevels);
+  const hasValidPattern = (p: any) => p && (
+    p.target_level !== undefined || 
+    p.target !== undefined ||
+    p.stop_level !== undefined || 
+    p.quality_score !== undefined ||
+    p.confidence !== undefined ||
+    (p.start_date && p.end_date)
+  );
+  const filteredTripleTops = (advanced_patterns.triple_tops || []).filter(hasValidPattern);
+  const filteredTripleBottoms = (advanced_patterns.triple_bottoms || []).filter(hasValidPattern);
+  const filteredChannelPatterns = (advanced_patterns.channel_patterns || []).filter(hasValidPattern);
+  const filteredWedgePatterns = (advanced_patterns.wedge_patterns || []).filter(hasValidPattern);
+  const filteredHeadAndShoulders = (advanced_patterns.head_and_shoulders || []).filter(hasValidPattern);
+  const filteredInverseHeadAndShoulders = (advanced_patterns.inverse_head_and_shoulders || []).filter(hasValidPattern);
 
   const allPatterns = [
     ...formatPatternData(filteredTripleTops, 'triple_tops') || [],
     ...formatPatternData(filteredTripleBottoms, 'triple_bottoms') || [],
-    ...formatPatternData(filteredChannelPatterns, 'channel') || []
+    ...formatPatternData(filteredChannelPatterns, 'channel') || [],
+    ...formatPatternData(filteredWedgePatterns, 'wedge') || [],
+    ...formatPatternData(filteredHeadAndShoulders, 'head_and_shoulders') || [],
+    ...formatPatternData(filteredInverseHeadAndShoulders, 'inverse_head_and_shoulders') || []
   ];
 
   const basicPatterns = [
     { name: 'Triple Tops', count: filteredTripleTops.length, type: 'triple_top' },
     { name: 'Triple Bottoms', count: filteredTripleBottoms.length, type: 'triple_bottom' },
-    { name: 'Channel Patterns', count: filteredChannelPatterns.length, type: 'channel_pattern' }
+    { name: 'Channel Patterns', count: filteredChannelPatterns.length, type: 'channel_pattern' },
+    { name: 'Wedge Patterns', count: filteredWedgePatterns.length, type: 'wedge_pattern' },
+    { name: 'Head & Shoulders', count: filteredHeadAndShoulders.length, type: 'head_and_shoulders' },
+    { name: 'Inverse Head & Shoulders', count: filteredInverseHeadAndShoulders.length, type: 'inverse_head_and_shoulders' }
   ];
 
   const nonEmptyBasicPatterns = basicPatterns.filter(p => p.count > 0);
   const hasAnyAdvanced = filteredTripleTops.length > 0
     || filteredTripleBottoms.length > 0
-    || filteredChannelPatterns.length > 0;
+    || filteredChannelPatterns.length > 0
+    || filteredWedgePatterns.length > 0
+    || filteredHeadAndShoulders.length > 0
+    || filteredInverseHeadAndShoulders.length > 0;
+
+  // Fetch historical data for the chart
+  const { data: historicalResponse, loading: chartLoading, error: chartError } = useHistoricalData(
+    symbol,
+    analysisPeriod,
+    interval
+  );
+
+  // Transform historical data to format expected by PatternChart
+  const chartData = historicalResponse?.candles ? historicalResponse.candles.map(point => ({
+    time: point.time,
+    open: point.open,
+    high: point.high,
+    low: point.low,
+    close: point.close,
+    volume: point.volume
+  })) : [];
+
+  // Transform pattern data to format expected by PatternChart
+  const patternChartData = {
+    triple_tops: filteredTripleTops,
+    triple_bottoms: filteredTripleBottoms,
+    channel_patterns: filteredChannelPatterns,
+    wedge_patterns: filteredWedgePatterns,
+    head_and_shoulders: filteredHeadAndShoulders,
+    inverse_head_and_shoulders: filteredInverseHeadAndShoulders,
+    cup_and_handle: advanced_patterns.cup_and_handle || []
+  };
 
   const supportResistance = {
     support: sr_for_display.support.length,
     resistance: sr_for_display.resistance.length
   };
 
-  const renderPatternDetails = (pattern: PatternData) => {
+  const renderPatternDetails = (pattern: any) => {
     return (
       <div className="space-y-2">
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <span className="font-medium">Start Date:</span>
             <div className="text-xs text-gray-600">
-              {new Date(pattern.start_date).toLocaleDateString()}
+              {pattern.start_date ? new Date(pattern.start_date).toLocaleDateString() : 'N/A'}
             </div>
           </div>
           <div>
             <span className="font-medium">End Date:</span>
             <div className="text-xs text-gray-600">
-              {new Date(pattern.end_date).toLocaleDateString()}
+              {pattern.end_date ? new Date(pattern.end_date).toLocaleDateString() : 'N/A'}
             </div>
           </div>
           <div>
             <span className="font-medium">Start Price:</span>
             <div className="text-xs text-gray-600">
-              {formatCurrency(pattern.start_price)}
+              {pattern.start_price ? formatCurrency(pattern.start_price) : 'N/A'}
             </div>
           </div>
           <div>
             <span className="font-medium">End Price:</span>
             <div className="text-xs text-gray-600">
-              {formatCurrency(pattern.end_price)}
+              {pattern.end_price ? formatCurrency(pattern.end_price) : 'N/A'}
             </div>
           </div>
         </div>
+        {pattern.target && (
+          <div className="text-sm">
+            <span className="font-medium">Target:</span> {formatCurrency(pattern.target)}
+          </div>
+        )}
         <div className="text-sm">
-          <span className="font-medium">Confidence:</span> {formatConfidence(pattern.confidence)}
+          <span className="font-medium">Confidence:</span> {formatConfidence(pattern.confidence || pattern.quality_score || 0)}
         </div>
         <div className="text-sm">
-          <span className="font-medium">Description:</span> {pattern.description}
+          <span className="font-medium">Description:</span> {pattern.description || 'Pattern detected'}
         </div>
       </div>
     );
@@ -225,47 +284,6 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
           </div>
         </CardHeader>
         <CardContent className="p-6">
-          {/* Pattern Summary */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Pattern Summary</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <div className="text-2xl font-bold text-slate-800">{allPatterns.length}</div>
-                <div className="text-xs text-slate-600">Advanced Patterns</div>
-              </div>
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <div className="text-2xl font-bold text-slate-800">{basicPatterns.reduce((sum, p) => sum + p.count, 0)}</div>
-                <div className="text-xs text-slate-600">Basic Patterns</div>
-              </div>
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <div className="text-2xl font-bold text-slate-800">{supportResistance.support + supportResistance.resistance}</div>
-                <div className="text-xs text-slate-600">Support/Resistance</div>
-              </div>
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <div className="text-2xl font-bold text-slate-800">
-                  {allPatterns.length > 0 ? 'High' : basicPatterns.reduce((sum, p) => sum + p.count, 0) > 0 ? 'Medium' : 'Low'}
-                </div>
-                <div className="text-xs text-slate-600">Pattern Activity</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Advanced Pattern Analysis Card */}
-          {hasAnyAdvanced && (
-            <div className="mb-6">
-              <AdvancedPatternAnalysisCard 
-                patterns={{
-                  triple_tops: filteredTripleTops as any,
-                  triple_bottoms: filteredTripleBottoms as any,
-                  channel_patterns: filteredChannelPatterns as any
-                }}
-                symbol={symbol}
-              />
-            </div>
-          )}
-
-
-
           {/* Basic Patterns (curated) */}
           {nonEmptyBasicPatterns.length > 0 && (
             <div className="mb-6">
@@ -290,6 +308,40 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
               </div>
             </div>
           )}
+
+          {/* Pattern Chart - Only show if patterns are detected */}
+          {(allPatterns.length > 0 || basicPatterns.reduce((sum, p) => sum + p.count, 0) > 0) && (
+            <div className="mb-6">
+              <PatternChart 
+                data={chartData}
+                patterns={patternChartData}
+                symbol={symbol}
+                loading={chartLoading}
+                error={chartError}
+                height={400}
+              />
+            </div>
+          )}
+
+          {/* Advanced Pattern Analysis Card */}
+          {hasAnyAdvanced && (
+            <div className="mb-6">
+              <AdvancedPatternAnalysisCard 
+                patterns={{
+                  triple_tops: filteredTripleTops as any,
+                  triple_bottoms: filteredTripleBottoms as any,
+                  channel_patterns: filteredChannelPatterns as any,
+                  wedge_patterns: filteredWedgePatterns as any,
+                  head_and_shoulders: filteredHeadAndShoulders as any,
+                  inverse_head_and_shoulders: filteredInverseHeadAndShoulders as any
+                }}
+                symbol={symbol}
+              />
+            </div>
+          )}
+
+
+
 
           {/* Support and Resistance */}
           <div>

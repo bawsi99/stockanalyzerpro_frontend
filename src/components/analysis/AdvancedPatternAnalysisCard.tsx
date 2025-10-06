@@ -21,6 +21,10 @@ interface AdvancedPattern {
   quality_score?: number;
   completion_status?: string;
   target?: number;
+  start_date?: string;
+  end_date?: string;
+  start_price?: number;
+  end_price?: number;
   left_shoulder?: PatternComponent;
   head?: PatternComponent;
   right_shoulder?: PatternComponent;
@@ -123,22 +127,56 @@ const AdvancedPatternAnalysisCard: React.FC<AdvancedPatternAnalysisCardProps> = 
     }
   };
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch {
+      return 'N/A';
+    }
+  };
+
   const renderPatternDetails = (pattern: AdvancedPattern) => {
-    // Handle new pattern structure with target_level and stop_level
-    if (pattern.target_level !== undefined || pattern.stop_level !== undefined) {
+    // Handle pattern structure with target_level/target and stop_level fields
+    const targetLevel = pattern.target_level || pattern.target;
+    const stopLevel = pattern.stop_level;
+    
+    if (targetLevel !== undefined || stopLevel !== undefined) {
       return (
         <div className="space-y-2">
+          {/* Date Range Row - only show if real dates are available */}
+          {(pattern.start_date || pattern.end_date) && (
+            <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+              <div>
+                <span className="font-medium">From:</span>
+                <div className="text-xs text-gray-600">
+                  {formatDate(pattern.start_date)}
+                </div>
+              </div>
+              <div>
+                <span className="font-medium">To:</span>
+                <div className="text-xs text-gray-600">
+                  {formatDate(pattern.end_date)}
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
               <span className="font-medium">Target Level:</span>
               <div className="text-xs text-gray-600">
-                ₹{pattern.target_level?.toFixed(2) || 'N/A'}
+                ₹{targetLevel?.toFixed(2) || 'N/A'}
               </div>
             </div>
             <div>
               <span className="font-medium">Stop Level:</span>
               <div className="text-xs text-gray-600">
-                ₹{pattern.stop_level?.toFixed(2) || 'N/A'}
+                ₹{stopLevel?.toFixed(2) || 'N/A'}
               </div>
             </div>
             <div>
@@ -164,6 +202,24 @@ const AdvancedPatternAnalysisCard: React.FC<AdvancedPatternAnalysisCardProps> = 
       case 'inverse_head_and_shoulders':
         return (
           <div className="space-y-2">
+            {/* Date Range Row */}
+            {(pattern.start_date || pattern.end_date) && (
+              <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                <div>
+                  <span className="font-medium">From:</span>
+                  <div className="text-xs text-gray-600">
+                    {formatDate(pattern.start_date)}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium">To:</span>
+                  <div className="text-xs text-gray-600">
+                    {formatDate(pattern.end_date)}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
                 <span className="font-medium">Left Shoulder:</span>
@@ -201,6 +257,24 @@ const AdvancedPatternAnalysisCard: React.FC<AdvancedPatternAnalysisCardProps> = 
       case 'cup_and_handle':
         return (
           <div className="space-y-2">
+            {/* Date Range Row */}
+            {(pattern.start_date || pattern.end_date) && (
+              <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                <div>
+                  <span className="font-medium">From:</span>
+                  <div className="text-xs text-gray-600">
+                    {formatDate(pattern.start_date)}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium">To:</span>
+                  <div className="text-xs text-gray-600">
+                    {formatDate(pattern.end_date)}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
                 <span className="font-medium">Cup Depth:</span>
