@@ -537,7 +537,7 @@ const NewStockAnalysis = () => {
                       </div>
 
                       <div className="text-center text-sm text-slate-500">
-                        Typical duration 3–4 minutes.
+                        Typical duration 2-3 minutes.
                       </div>
                     </div>
                   </form>
