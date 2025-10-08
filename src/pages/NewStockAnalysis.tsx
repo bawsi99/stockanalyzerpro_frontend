@@ -372,15 +372,22 @@ const NewStockAnalysis = () => {
             <div className="xl:col-span-3 h-full">
               <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm h-[800px] grid grid-rows-[auto,1fr]">
                 <CardHeader className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-t-xl">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-white/20 rounded-lg">
-                      <TrendingUp className="h-6 w-6" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-white/20 rounded-lg">
+                        <TrendingUp className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-2xl">Analysis Configuration</CardTitle>
+                        <CardDescription className="text-emerald-100">
+                          Set up your stock analysis parameters
+                        </CardDescription>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-2xl">Analysis Configuration</CardTitle>
-                      <CardDescription className="text-emerald-100">
-                        Set up your stock analysis parameters
-                      </CardDescription>
+                    <div className="flex-shrink-0">
+                      <span className="inline-block bg-white/20 text-white text-sm font-semibold px-3 py-1 rounded-full border border-white/30">
+                        🚀 Now 2x faster!
+                      </span>
                     </div>
                   </div>
                 </CardHeader>
@@ -537,7 +544,7 @@ const NewStockAnalysis = () => {
                       </div>
 
                       <div className="text-center text-sm text-slate-500">
-                        Typical duration 2-3 minutes.
+                        Typical duration 1-2 minutes.
                       </div>
                     </div>
                   </form>
