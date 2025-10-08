@@ -21,7 +21,7 @@ import { useHistoricalData } from "@/hooks/useHistoricalData";
 interface EnhancedPatternRecognitionCardProps {
   overlays: EnhancedOverlays;
   symbol: string;
-  // Optional pivot-based levels for fallback display when overlays SR is empty
+  // Pivot-based levels (prioritized when available, overlays used as fallback)
   supportLevels?: number[];
   resistanceLevels?: number[];
   // Chart data parameters
@@ -68,14 +68,14 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
   };
 
   const support_resistance = overlays.support_resistance || { support: [], resistance: [] };
-  // Fallback: if overlays have no SR lines, synthesize from provided pivot arrays
+  // Always prefer pivot-based levels when available, fallback to overlays if pivot data is missing
   const overlaySupport = Array.isArray(support_resistance.support) ? support_resistance.support : [];
   const overlayResistance = Array.isArray(support_resistance.resistance) ? support_resistance.resistance : [];
-  const synthesizedSupport = overlaySupport.length === 0 && supportLevels.length > 0 ? supportLevels.map((n) => ({ level: n })) : overlaySupport;
-  const synthesizedResistance = overlayResistance.length === 0 && resistanceLevels.length > 0 ? resistanceLevels.map((n) => ({ level: n })) : overlayResistance;
+  const synthesizedSupport = supportLevels.length > 0 ? supportLevels.map((n) => ({ level: n, source: "pivot" })) : overlaySupport;
+  const synthesizedResistance = resistanceLevels.length > 0 ? resistanceLevels.map((n) => ({ level: n, source: "pivot" })) : overlayResistance;
   const sr_for_display = { support: synthesizedSupport, resistance: synthesizedResistance };
-  const usedPivotSupport = overlaySupport.length === 0 && supportLevels.length > 0;
-  const usedPivotResistance = overlayResistance.length === 0 && resistanceLevels.length > 0;
+  const usedPivotSupport = supportLevels.length > 0;
+  const usedPivotResistance = resistanceLevels.length > 0;
 
   const getPatternIcon = (patternType: string) => {
     switch (patternType.toLowerCase()) {
