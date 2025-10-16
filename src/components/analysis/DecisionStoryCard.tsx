@@ -8,9 +8,10 @@ interface DecisionStoryCardProps {
   decisionStory: DecisionStory | null | undefined;
   analysisDate?: string;
   analysisPeriod?: string;
+  fallbackFairValueRange?: number[] | null;
 }
 
-const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod }: DecisionStoryCardProps) => {
+const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallbackFairValueRange }: DecisionStoryCardProps) => {
   if (!decisionStory) {
     return (
       <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full flex flex-col">
@@ -221,37 +222,48 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod }: Deci
                 </div>
               )}
 
-              {/* Long Term */}
-              {decision_chain.timeframe_analysis.long_term && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-blue-800">Long Term</h4>
-                    <Badge className="bg-blue-100 text-blue-700 border-blue-300">
-                      {decision_chain.timeframe_analysis.long_term.horizon} days
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-blue-700 mb-3">
-                    {decision_chain.timeframe_analysis.long_term.rationale}
-                  </p>
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <span className="font-medium text-blue-800">Rating:</span>
-                      <div className="text-blue-700 capitalize">
-                        {decision_chain.timeframe_analysis.long_term.technical_rating || 'Not specified'}
+{/* Long Term */}
+              {decision_chain.timeframe_analysis.long_term && (() => {
+                const rawFv = decision_chain.timeframe_analysis.long_term.fair_value_range;
+                const isValidNum = (n: any) => typeof n === 'number' && isFinite(n);
+                const fvPrimary = Array.isArray(rawFv) && rawFv.length >= 2 && isValidNum(rawFv[0]) && isValidNum(rawFv[1])
+                  ? rawFv
+                  : null;
+                const fvFallback = Array.isArray(fallbackFairValueRange) && fallbackFairValueRange.length >= 2 &&
+                                   isValidNum(fallbackFairValueRange[0]) && isValidNum(fallbackFairValueRange[1])
+                  ? fallbackFairValueRange
+                  : null;
+                const fvToShow = fvPrimary || fvFallback;
+                return (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-blue-800">Long Term</h4>
+                      <Badge className="bg-blue-100 text-blue-700 border-blue-300">
+                        {decision_chain.timeframe_analysis.long_term.horizon} days
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-blue-700 mb-3">
+                      {decision_chain.timeframe_analysis.long_term.rationale}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="font-medium text-blue-800">Rating:</span>
+                        <div className="text-blue-700 capitalize">
+                          {decision_chain.timeframe_analysis.long_term.technical_rating || 'Not specified'}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="font-medium text-blue-800">Fair Value:</span>
+                        <div className="text-blue-700">
+                          {fvToShow
+                            ? `₹${(fvToShow[0] as number).toFixed(2)} - ₹${(fvToShow[1] as number).toFixed(2)}`
+                            : 'Not specified'}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <span className="font-medium text-blue-800">Fair Value:</span>
-                      <div className="text-blue-700">
-                        {decision_chain.timeframe_analysis.long_term.fair_value_range?.length > 0
-                          ? `₹${decision_chain.timeframe_analysis.long_term.fair_value_range[0]?.toFixed(2) || 'N/A'} - ₹${decision_chain.timeframe_analysis.long_term.fair_value_range[1]?.toFixed(2) || 'N/A'}`
-                          : 'Not specified'
-                        }
-                      </div>
-                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         )}

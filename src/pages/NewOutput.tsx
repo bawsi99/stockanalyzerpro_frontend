@@ -1278,10 +1278,12 @@ const NewOutput: React.FC = () => {
                   description="Loading decision analysis..." 
                 />
               ) : (
-                <DecisionStoryCard 
+<DecisionStoryCard 
                   decisionStory={enhancedData?.decision_story || ai_analysis?.decision_story}
                   analysisDate={enhancedData?.analysis_timestamp}
                   analysisPeriod={enhancedData?.analysis_period}
+                  fallbackFairValueRange={(enhancedData as any)?.ai_analysis?.trading_strategy?.long_term?.fair_value_range ||
+                                         (ai_analysis as any)?.trading_strategy?.long_term?.fair_value_range || null}
                 />
               )}
             </div>
