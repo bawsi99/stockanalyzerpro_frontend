@@ -1,8 +1,23 @@
 import { Card } from "@/components/ui/card";
 import { CheckCircle2 } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
+import { useElementAnimation } from "@/hooks/use-element-animation";
 
 const TechnicalAgent = () => {
+  const headerAnimation = useElementAnimation({
+    minY: 25,
+    maxY: 75,
+    maxScale: 1.05,
+    minScale: 0.92,
+  });
+  
+  const cardAnimation = useElementAnimation({
+    minY: 30,
+    maxY: 70,
+    maxScale: 1.05,
+    minScale: 0.9,
+  });
+  
   const subAgents = [
     "Indicator Agent - Analyzes different technical indicators",
     "Pattern Agent - Identifies chart patterns and formations",
@@ -29,7 +44,7 @@ const TechnicalAgent = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
       </div>
       <div className="container mx-auto max-w-6xl relative z-10">
-        <div className="text-center mb-16">
+        <div className="text-center mb-16" ref={headerAnimation.ref} style={headerAnimation.style}>
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full text-sm font-medium mb-6">
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
             <span className="text-green-400">LIVE - Proof of Concept</span>
@@ -44,7 +59,7 @@ const TechnicalAgent = () => {
           </p>
         </div>
 
-        <Card className="p-8 md:p-12 bg-card border-primary/20">
+        <Card className="p-8 md:p-12 bg-card border-primary/20" ref={cardAnimation.ref} style={cardAnimation.style}>
           <div className="grid md:grid-cols-2 gap-6">
             {subAgents.map((agent, index) => (
               <div 

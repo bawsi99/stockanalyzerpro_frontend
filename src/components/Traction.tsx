@@ -3,8 +3,44 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, CheckCircle, Users, Rocket } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
+import { useElementAnimation } from "@/hooks/use-element-animation";
 
 const Traction = () => {
+  const headerAnimation = useElementAnimation({
+    minY: 25,
+    maxY: 75,
+    maxScale: 1.05,
+    minScale: 0.92,
+  });
+  
+  const card1Animation = useElementAnimation({
+    minY: 30,
+    maxY: 70,
+    maxScale: 1.05,
+    minScale: 0.9,
+  });
+  
+  const card2Animation = useElementAnimation({
+    minY: 30,
+    maxY: 70,
+    maxScale: 1.05,
+    minScale: 0.9,
+  });
+  
+  const card3Animation = useElementAnimation({
+    minY: 30,
+    maxY: 70,
+    maxScale: 1.05,
+    minScale: 0.9,
+  });
+  
+  const ctaAnimation = useElementAnimation({
+    minY: 30,
+    maxY: 70,
+    maxScale: 1.05,
+    minScale: 0.9,
+  });
+  
   const achievements = [
     {
       icon: CheckCircle,
@@ -37,7 +73,7 @@ const Traction = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
       </div>
       <div className="container mx-auto max-w-6xl relative z-10">
-        <div className="text-center mb-16">
+        <div className="text-center mb-16" ref={headerAnimation.ref} style={headerAnimation.style}>
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
             Early Traction
           </h2>
@@ -49,10 +85,13 @@ const Traction = () => {
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           {achievements.map((item, index) => {
             const Icon = item.icon;
+            const cardAnimation = index === 0 ? card1Animation : index === 1 ? card2Animation : card3Animation;
             return (
               <Card 
                 key={index}
+                ref={cardAnimation.ref}
                 className="p-8 text-center bg-gradient-to-br from-card to-secondary/20 border-transparent transition-all duration-300"
+                style={cardAnimation.style}
               >
                 <div className="inline-flex p-4 bg-primary/10 rounded-full mb-4">
                   <Icon className="w-8 h-8 text-primary" />
@@ -65,7 +104,7 @@ const Traction = () => {
         </div>
 
         <div className="text-center">
-          <Card className="p-8 md:p-12 bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30 inline-block">
+          <Card className="p-8 md:p-12 bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30 inline-block" ref={ctaAnimation.ref} style={ctaAnimation.style}>
             <h3 className="text-2xl font-bold mb-4">
               Experience Live Technical Analysis
             </h3>
