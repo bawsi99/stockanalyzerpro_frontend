@@ -518,7 +518,7 @@ const NewStockAnalysis = () => {
 
                     {/* Analysis Action */}
                     <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <Button 
                           type="submit" 
                           className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
@@ -543,7 +543,7 @@ const NewStockAnalysis = () => {
                         </Button>
                       </div>
 
-                      <div className="text-center text-sm text-slate-500">
+<div className="!mt-10 text-center text-sm text-slate-500">
                         Typical duration 1-2 minutes.
                       </div>
                     </div>
