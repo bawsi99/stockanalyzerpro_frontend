@@ -4,8 +4,18 @@ import Solution from "@/components/Solution";
 import TechnicalAgent from "@/components/TechnicalAgent";
 import Traction from "@/components/Traction";
 import Footer from "@/components/Footer";
+import { useEffect } from "react";
 
 const Index = () => {
+  // Ensure dark theme variables apply at the document level for proper blending
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.add("dark");
+    return () => {
+      el.classList.remove("dark");
+    };
+  }, []);
+
   const sections = [
     <Hero key="hero" />,
     <Problem key="problem" />,
