@@ -65,7 +65,7 @@ const StockList = React.memo<{
         >
           <div className="flex items-center justify-between w-full">
             <div>
-              <span className="font-semibold">{stock.symbol}</span>
+              <span className="font-semibold text-black">{stock.symbol}</span>
               <span className="ml-2 text-slate-600">{stock.name}</span>
             </div>
             <span className="text-xs text-slate-400">{stock.exchange}</span>
@@ -159,7 +159,7 @@ export const StockSelector = forwardRef<StockSelectorHandle, StockSelectorProps>
       )}
       <button
         type="button"
-        className="w-full flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-left shadow-sm hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors disabled:opacity-50"
+        className="w-full flex items-center justify-between rounded-md border bg-white text-black px-3 py-2 text-left ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 border-slate-300 focus:border-emerald-400"
         onClick={() => setDialogOpen(true)}
         disabled={disabled}
       >

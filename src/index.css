@@ -10,8 +10,8 @@
     --card: 160 26% 9%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 160 32% 5%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
 
     --primary: 160 84% 39%;
     --primary-foreground: 0 0% 98%;
@@ -58,8 +58,8 @@
     --card: 160 26% 9%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 160 32% 5%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
 
     --primary: 160 84% 39%;
     --primary-foreground: 0 0% 98%;

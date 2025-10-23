@@ -413,7 +413,7 @@ const NewStockAnalysis = () => {
 
                         <div className="space-y-2">
                           <label className="block text-sm font-medium mb-2 text-slate-700">Exchange</label>
-                          <div className="w-full flex items-center rounded-md border border-input bg-background px-3 py-2 text-slate-700">
+                          <div className="w-full flex items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-700">
                             <span className="font-medium">NSE</span>
                             <span className="ml-2 text-xs text-slate-500">(Fixed)</span>
                           </div>
@@ -534,7 +534,7 @@ const NewStockAnalysis = () => {
                           type="button"
                           variant="outline"
                           onClick={() => navigate('/charts')}
-                          className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
+                          className="w-full border-slate-300 text-slate-700 bg-white hover:bg-slate-50 font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
                         >
                           <div className="flex items-center space-x-2">
                             <BarChart3 className="h-5 w-5" />

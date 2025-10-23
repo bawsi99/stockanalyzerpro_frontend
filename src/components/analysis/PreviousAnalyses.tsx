@@ -75,7 +75,7 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
                 {runningAnalyses.map((run) => {
                   const elapsedSec = Math.max(0, Math.floor((now - run.startedAt) / 1000));
                   return (
-                    <div key={run.id} className="border rounded-lg p-3 bg-amber-50/80 hover:bg-amber-100 transition-colors">
+                    <div key={run.id} className="rounded-lg p-3 bg-amber-50/80 hover:bg-amber-100 transition-colors">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="flex items-center space-x-2 mb-1">
@@ -99,7 +99,7 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
             )}
 
             {analyses.map((analysis) => (
-              <div key={analysis.id} className="border rounded-lg p-3 bg-slate-50 hover:bg-slate-100 transition-colors">
+              <div key={analysis.id} className="rounded-lg p-3 bg-slate-50 hover:bg-slate-100 transition-colors">
                 <div className="space-y-2">
                   {/* Header with stock symbol and signal */}
                   <div className="flex flex-wrap items-start justify-between gap-2">
