@@ -44,13 +44,13 @@ type ChartType = 'candlestick' | 'line';
 
 // Pattern color mapping
 const PATTERN_COLORS = {
-  // Bullish patterns - Green
-  triple_bottoms: '#22c55e',
+  // Bullish patterns - Green (requested color swap applied)
+  triple_bottoms: '#ef4444',
   inverse_head_and_shoulders: '#16a34a', 
   cup_and_handle: '#15803d',
   
-  // Bearish patterns - Red  
-  triple_tops: '#ef4444',
+  // Bearish patterns - Red (requested color swap applied)
+  triple_tops: '#22c55e',
   head_and_shoulders: '#dc2626',
   
   // Neutral patterns - Yellow/Purple
