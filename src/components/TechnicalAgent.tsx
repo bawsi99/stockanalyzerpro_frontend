@@ -27,7 +27,6 @@ const TechnicalAgent = () => {
     "Multi-Timeframe Agent - Analyzes multiple timeframes for context",
     "Risk Scoring - Risk assessment, scenario analysis, and stress testing",
     "ML Quant Scoring - Supports price predictions with quantitative models",
-    "Final Decision Agent - Synthesizes all agent insights for final recommendation",
   ];
 
   return (
@@ -72,13 +71,6 @@ const TechnicalAgent = () => {
             ))}
           </div>
 
-          <div className="mt-10 p-6 bg-primary/5 border border-primary/20 rounded-xl">
-            <p className="text-center text-muted-foreground">
-              <span className="font-semibold text-foreground">All sub-agents work together</span> to provide 
-              the Final Decision Agent with comprehensive insights, enabling accurate buy, sell, or hold recommendations 
-              with confidence scores and risk assessments.
-            </p>
-          </div>
         </Card>
       </div>
     </section>
