@@ -35,3 +35,6 @@ coverage/
 .turbo/
 .vercel/
 *.tsbuildinfo
+
+warp.md
+WARP.md
