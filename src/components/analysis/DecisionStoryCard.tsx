@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { BookOpen, TrendingUp, TrendingDown, AlertTriangle, Target, Clock, DollarSign } from "lucide-react";
+import { BookOpen, TrendingUp, TrendingDown, AlertTriangle, Target, Clock, DollarSign, BarChart3, Shield, Activity, LineChart, Brain, TrendingUp as Indicator } from "lucide-react";
+import { useState } from "react";
 import { DecisionStory } from "@/types/analysis";
 
 interface DecisionStoryCardProps {
@@ -12,6 +13,44 @@ interface DecisionStoryCardProps {
 }
 
 const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallbackFairValueRange }: DecisionStoryCardProps) => {
+  const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
+
+  const toggleAgentExpansion = (agentName: string) => {
+    setExpandedAgents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(agentName)) {
+        newSet.delete(agentName);
+      } else {
+        newSet.add(agentName);
+      }
+      return newSet;
+    });
+  };
+
+  const getAgentIcon = (agentName: string) => {
+    const name = agentName.toLowerCase();
+    if (name.includes('volume')) return <BarChart3 className="h-4 w-4" />;
+    if (name.includes('risk')) return <Shield className="h-4 w-4" />;
+    if (name.includes('sector')) return <Activity className="h-4 w-4" />;
+    if (name.includes('pattern')) return <LineChart className="h-4 w-4" />;
+    if (name.includes('multi') || name.includes('timeframe')) return <Clock className="h-4 w-4" />;
+    if (name.includes('technical') || name.includes('indicator')) return <Indicator className="h-4 w-4" />;
+    if (name.includes('final') || name.includes('decision')) return <Brain className="h-4 w-4" />;
+    return <Target className="h-4 w-4" />;
+  };
+
+  const getAgentColor = (agentName: string) => {
+    const name = agentName.toLowerCase();
+    if (name.includes('volume')) return { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800', icon: 'text-blue-600' };
+    if (name.includes('risk')) return { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800', icon: 'text-red-600' };
+    if (name.includes('sector')) return { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-800', icon: 'text-green-600' };
+    if (name.includes('pattern')) return { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-800', icon: 'text-purple-600' };
+    if (name.includes('multi') || name.includes('timeframe')) return { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800', icon: 'text-orange-600' };
+    if (name.includes('technical') || name.includes('indicator')) return { bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-800', icon: 'text-teal-600' };
+    if (name.includes('final') || name.includes('decision')) return { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-800', icon: 'text-indigo-600' };
+    return { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-800', icon: 'text-gray-600' };
+  };
+
   if (!decisionStory) {
     return (
       <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full flex flex-col">
@@ -45,7 +84,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     );
   }
 
-  const { narrative, decision_chain } = decisionStory;
+  const { narrative, decision_chain, agent_summaries } = decisionStory;
 
   const getConfidenceBadge = (confidence: number, level: string) => {
     const badgeColors = {
@@ -108,6 +147,64 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
             {narrative}
           </p>
         </div>
+
+        {/* Agent Summaries */}
+        {agent_summaries && Object.keys(agent_summaries).length > 0 && (
+          <div>
+            <h3 className="font-semibold text-slate-800 mb-3 flex items-center">
+              <Brain className="h-4 w-4 mr-2 text-slate-600" />
+              Agent Analysis
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {Object.entries(agent_summaries).map(([agentName, summary]) => {
+                const colors = getAgentColor(agentName);
+                const isExpanded = expandedAgents.has(agentName);
+                const previewText = summary.length > 100 ? summary.substring(0, 100) + '...' : summary;
+                
+                return (
+                  <div 
+                    key={agentName} 
+                    className={`${colors.bg} ${colors.border} border rounded-lg p-3 transition-all duration-200 hover:shadow-sm`}
+                  >
+                    <div 
+                      className="flex items-center justify-between cursor-pointer" 
+                      onClick={() => toggleAgentExpansion(agentName)}
+                    >
+                      <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
+                        <span className={colors.icon}>{getAgentIcon(agentName)}</span>
+                        <span className="ml-2">{agentName}</span>
+                      </h4>
+                      <button 
+                        className={`${colors.text} hover:opacity-70 transition-transform duration-200 ${
+                          isExpanded ? 'rotate-180' : ''
+                        }`}
+                      >
+                        <TrendingDown className="h-3 w-3" />
+                      </button>
+                    </div>
+                    
+                    <div className="mt-2">
+                      <p className={`text-xs ${colors.text.replace('-800', '-700')} leading-relaxed`}>
+                        {isExpanded ? summary : previewText}
+                        {summary.length > 100 && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleAgentExpansion(agentName);
+                            }}
+                            className={`ml-1 ${colors.text} hover:opacity-70 font-medium`}
+                          >
+                            {isExpanded ? 'Show less' : 'Show more'}
+                          </button>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Overall Assessment */}
         {decision_chain.overall_assessment && (

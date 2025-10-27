@@ -403,6 +403,7 @@ export interface DecisionChain {
 export interface DecisionStory {
   narrative: string;
   decision_chain: DecisionChain;
+  agent_summaries?: { [agentName: string]: string };
 }
 
 export interface AIAnalysis {
