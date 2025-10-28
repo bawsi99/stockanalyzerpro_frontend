@@ -64,9 +64,14 @@ interface RiskMetrics {
 interface AdvancedRiskAssessmentCardProps {
   riskMetrics: RiskMetrics;
   symbol: string;
+  advancedRiskAssessment?: {
+    short_term?: string;
+    medium_term?: string;
+    long_term?: string;
+  } | null;
 }
 
-const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({ riskMetrics, symbol }) => {
+const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({ riskMetrics, symbol, advancedRiskAssessment }) => {
   // Debug: Log the risk metrics received by the component
   // console.log('🔍 DEBUG: AdvancedRiskAssessmentCard received riskMetrics:', riskMetrics);
   // console.log('🔍 DEBUG: AdvancedRiskAssessmentCard liquidity_analysis:', riskMetrics?.liquidity_analysis);
@@ -149,6 +154,27 @@ const AdvancedRiskAssessmentCard: React.FC<AdvancedRiskAssessmentCardProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
+        {/* Advanced Risk Assessment by Timeframe (LLM) */}
+        {advancedRiskAssessment && Object.keys(advancedRiskAssessment || {}).length > 0 && (
+          <div className="border rounded-lg p-4 bg-white">
+            <h3 className="font-bold text-lg mb-3">Advanced Risk Assessment (LLM)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="p-3 bg-gray-50 rounded border">
+                <div className="font-semibold mb-1">Short Term</div>
+                <div className="text-slate-700 whitespace-pre-wrap">{advancedRiskAssessment?.short_term || '—'}</div>
+              </div>
+              <div className="p-3 bg-gray-50 rounded border">
+                <div className="font-semibold mb-1">Medium Term</div>
+                <div className="text-slate-700 whitespace-pre-wrap">{advancedRiskAssessment?.medium_term || '—'}</div>
+              </div>
+              <div className="p-3 bg-gray-50 rounded border">
+                <div className="font-semibold mb-1">Long Term</div>
+                <div className="text-slate-700 whitespace-pre-wrap">{advancedRiskAssessment?.long_term || '—'}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Overall Risk Score */}
         <div className="border-2 border-red-200 rounded-lg p-4 bg-red-50">
           <div className="flex items-center justify-between mb-3">

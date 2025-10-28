@@ -1436,9 +1436,10 @@ const NewOutput: React.FC = () => {
                 
                 <div className="space-y-6">
                   {(indicators as ExtendedIndicators)?.advanced_risk && !(indicators as ExtendedIndicators).advanced_risk.error && (
-                    <AdvancedRiskAssessmentCard 
+<AdvancedRiskAssessmentCard 
                       riskMetrics={(indicators as ExtendedIndicators).advanced_risk}
                       symbol={stockSymbol}
+                      advancedRiskAssessment={(enhancedData as any)?.advanced_risk_assessment || (enhancedData as any)?.results?.advanced_risk_assessment || null}
                     />
                   )}
 
