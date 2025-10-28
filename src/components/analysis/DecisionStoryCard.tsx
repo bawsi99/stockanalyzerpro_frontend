@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { BookOpen, TrendingUp, TrendingDown, AlertTriangle, Target, Clock, DollarSign, BarChart3, Shield, Activity, LineChart, Brain, TrendingUp as Indicator } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { DecisionStory } from "@/types/analysis";
 
 interface DecisionStoryCardProps {
@@ -10,10 +10,149 @@ interface DecisionStoryCardProps {
   analysisDate?: string;
   analysisPeriod?: string;
   fallbackFairValueRange?: number[] | null;
+  agentRadiusOffsets?: Record<string, number>; // per-agent radius delta in px (positive = farther)
+  agentTranslateOffsets?: Record<string, { dx?: number; dy?: number }>; // per-agent x/y pixel offsets
+  invertOffsets?: boolean; // invert signs for all offsets
 }
 
-const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallbackFairValueRange }: DecisionStoryCardProps) => {
+const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallbackFairValueRange, agentRadiusOffsets, agentTranslateOffsets, invertOffsets }: DecisionStoryCardProps) => {
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
+
+  // Connector types and refs (must be declared before any early return)
+  type Point = { x: number; y: number };
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const execRef = useRef<HTMLDivElement | null>(null);
+  const agentRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [edges, setEdges] = useState<Array<{ from: Point; to: Point; c1: Point; c2: Point; key: string; stroke?: string; width?: number; marker?: string }>>([]);
+  const [agentPositions, setAgentPositions] = useState<Record<string, { left: number; top: number }>>({});
+
+  // Compute connectors from each agent card to Executive Summary
+  useLayoutEffect(() => {
+    const update = () => {
+      const container = containerRef.current;
+      const exec = execRef.current;
+      if (!container || !exec) return;
+      const base = container.getBoundingClientRect();
+      const execRect = exec.getBoundingClientRect();
+      const execCenter: Point = {
+        x: Math.round(execRect.left - base.left + execRect.width / 2),
+        y: Math.round(execRect.top - base.top + execRect.height / 2),
+      };
+
+      // Compute radial positions based on data (not refs) so first paint works
+      const names = agent_summaries ? Object.keys(agent_summaries) : [];
+      const N = names.length || 1;
+      const EXTRA_RADIUS = 140; // push cards farther from center
+      const radius = Math.max(
+        260,
+        Math.min(base.width, base.height) / 2 - Math.max(execRect.width, execRect.height) / 2 - 10 + EXTRA_RADIUS
+      );
+      const CARD_W = 240;
+      const CARD_H = 120;
+      const newPositions: Record<string, { left: number; top: number }> = {};
+      const newEdges: Array<{ from: Point; to: Point; c1: Point; c2: Point; key: string; stroke?: string; width?: number; marker?: string }> = [];
+
+      names.forEach((name, i) => {
+        const angle = (i / N) * Math.PI * 2 - Math.PI / 2; // start at top
+        const r = radius + ((invertOffsets ? -1 : 1) * (agentRadiusOffsets?.[name] ?? 0));
+        let cx = execCenter.x + r * Math.cos(angle);
+        let cy = execCenter.y + r * Math.sin(angle);
+        const t = agentTranslateOffsets?.[name];
+        if (t) {
+          const m = invertOffsets ? -1 : 1;
+          cx += (t.dx ?? 0) * m;
+          cy += (t.dy ?? 0) * m;
+        }
+        newPositions[name] = { left: cx, top: cy };
+
+        // Start edge toward center using assumed card size
+        const dx = execCenter.x - cx;
+        const dy = execCenter.y - cy;
+        let start: Point;
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          start = { x: dx > 0 ? Math.round(cx + CARD_W / 2) : Math.round(cx - CARD_W / 2), y: Math.round(cy) };
+        } else {
+          start = { x: Math.round(cx), y: dy > 0 ? Math.round(cy + CARD_H / 2) : Math.round(cy - CARD_H / 2) };
+        }
+
+        // Compute "to" point on exec summary edge toward start
+        const ex = execCenter.x, ey = execCenter.y;
+        const edx = start.x - ex;
+        const edy = start.y - ey;
+        let to: Point;
+        if (Math.abs(edx) >= Math.abs(edy)) {
+          to = { x: edx > 0 ? Math.round(execRect.right - base.left) : Math.round(execRect.left - base.left), y: ey };
+        } else {
+          to = { x: ex, y: edy > 0 ? Math.round(execRect.bottom - base.top) : Math.round(execRect.top - base.top) };
+        }
+
+        // Curved inward path using cubic Bezier
+        const c1: Point = { x: Math.round(start.x + (ex - start.x) * 0.5), y: Math.round(start.y + (ey - start.y) * 0.15) };
+        const c2: Point = { x: Math.round(start.x + (ex - start.x) * 0.85), y: Math.round(start.y + (ey - start.y) * 0.6) };
+
+        // Highlight specific arrows
+        const lower = name.toLowerCase();
+        const isVolumeAnomaly = name === 'Volume Anomaly' || (lower.includes('volume') && (lower.includes('anomaly') || lower.includes('anomoly')));
+        const isRiskAnalysis = name === 'Risk Analysis' || lower.includes('risk analysis') || (lower.includes('risk') && lower.includes('analysis'));
+        const isHighlighted = isVolumeAnomaly || isRiskAnalysis;
+        const stroke = isHighlighted ? '#ef4444' : '#7c3aed';
+        const width = isHighlighted ? 4 : 2.5;
+        const marker = isHighlighted ? 'arrow-red' : 'arrow-purple';
+
+        newEdges.push({ from: start, to, c1, c2, key: name, stroke, width, marker });
+      });
+
+      // Add precise edges for specific cards using actual DOM rects (ensures visibility)
+      const addPrecise = (label: string) => {
+        const el = agentRefs.current[label];
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const cx = Math.round(r.left - base.left + r.width / 2);
+        const cy = Math.round(r.top - base.top + r.height / 2);
+        const dx = execCenter.x - cx;
+        const dy = execCenter.y - cy;
+        let start: Point;
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          start = { x: dx > 0 ? Math.round(r.right - base.left) : Math.round(r.left - base.left), y: cy };
+        } else {
+          start = { x: cx, y: dy > 0 ? Math.round(r.bottom - base.top) : Math.round(r.top - base.top) };
+        }
+        const ex = execCenter.x, ey = execCenter.y;
+        const edx = start.x - ex;
+        const edy = start.y - ey;
+        let to: Point;
+        if (Math.abs(edx) >= Math.abs(edy)) {
+          to = { x: edx > 0 ? Math.round(execRect.right - base.left) : Math.round(execRect.left - base.left), y: ey };
+        } else {
+          to = { x: ex, y: edy > 0 ? Math.round(execRect.bottom - base.top) : Math.round(execRect.top - base.top) };
+        }
+        const c1: Point = { x: Math.round(start.x + (ex - start.x) * 0.5), y: Math.round(start.y + (ey - start.y) * 0.15) };
+        const c2: Point = { x: Math.round(start.x + (ex - start.x) * 0.85), y: Math.round(start.y + (ey - start.y) * 0.6) };
+        newEdges.push({ from: start, to, c1, c2, key: label + '_precise', stroke: '#ef4444', width: 4, marker: 'arrow-red' });
+      };
+      addPrecise('Volume Anomaly');
+      addPrecise('Risk Analysis');
+
+      setAgentPositions(newPositions);
+      setEdges(newEdges);
+    };
+
+    update();
+    const RO: typeof ResizeObserver | undefined = typeof window !== "undefined" ? (window as any).ResizeObserver : undefined;
+    let ro: ResizeObserver | undefined;
+    if (RO) {
+      ro = new RO(() => update());
+      if (containerRef.current) ro.observe(containerRef.current);
+      if (execRef.current) ro.observe(execRef.current);
+    }
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, { passive: true });
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update);
+    };
+  }, [decisionStory?.agent_summaries, JSON.stringify(agentRadiusOffsets), JSON.stringify(agentTranslateOffsets), invertOffsets]);
 
   const toggleAgentExpansion = (agentName: string) => {
     setExpandedAgents(prev => {
@@ -110,6 +249,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     return <Target className="h-4 w-4 text-slate-600" />;
   };
 
+
   return (
     <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full flex flex-col">
       <CardHeader className="flex-shrink-0">
@@ -137,74 +277,104 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
           </div>
         )}
 
-        {/* Executive Summary */}
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-100">
-          <h3 className="font-semibold text-slate-800 mb-2 flex items-center">
-            <BookOpen className="h-4 w-4 mr-2 text-purple-600" />
-            Executive Summary
-          </h3>
-          <p className="text-sm text-slate-700 leading-relaxed">
-            {narrative}
-          </p>
-        </div>
+        {/* Radial layout container */}
+        <div ref={containerRef} className="relative h-[1400px] md:h-[1600px]">
+          {/* SVG overlay for connectors */}
+          {edges.length > 0 && (
+            <svg
+              className="pointer-events-none absolute inset-0 z-50"
+              width="100%"
+              height="100%"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                  <path d="M0,0 L10,5 L0,10 L3,5 Z" fill="#7c3aed" />
+                </marker>
+                <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                  <path d="M0,0 L10,5 L0,10 L3,5 Z" fill="#16a34a" />
+                </marker>
+                <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                  <path d="M0,0 L10,5 L0,10 L3,5 Z" fill="#ef4444" />
+                </marker>
+                <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                  <feMerge>
+                    <feMergeNode in="coloredBlur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              {edges
+                .slice()
+                .sort((a, b) => (a.width || 2.5) - (b.width || 2.5))
+                .map((e) => (
+                  <path
+                    key={e.key}
+                    d={`M ${e.from.x} ${e.from.y} C ${e.c1.x} ${e.c1.y}, ${e.c2.x} ${e.c2.y}, ${e.to.x} ${e.to.y}`}
+                    stroke={e.stroke || '#7c3aed'}
+                    strokeWidth={e.width || 2.5}
+                    strokeOpacity={(e.width && e.width > 2.5) ? 1 : 0.6}
+                    fill="none"
+                    markerEnd={`url(#${e.marker || 'arrow-purple'})`}
+                    filter="url(#soft-glow)"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                ))}
+            </svg>
+          )}
 
-        {/* Agent Summaries */}
-        {agent_summaries && Object.keys(agent_summaries).length > 0 && (
-          <div>
-            <h3 className="font-semibold text-slate-800 mb-3 flex items-center">
-              <Brain className="h-4 w-4 mr-2 text-slate-600" />
-              Agent Analysis
+          {/* Executive Summary centered */}
+          <div ref={execRef} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 z-30 shadow-sm w-[560px] md:w-[720px]">
+            <h3 className="font-semibold text-slate-800 mb-1 flex items-center">
+              <BookOpen className="h-4 w-4 mr-2 text-purple-600" />
+              Executive Summary
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {Object.entries(agent_summaries).map(([agentName, summary]) => {
+            <p className="text-sm text-slate-700 leading-relaxed text-center">
+              {narrative}
+            </p>
+          </div>
+
+          {/* Radial agent ring */}
+          {agent_summaries && Object.keys(agent_summaries).length > 0 && (
+            <div className="pointer-events-none">
+              {Object.entries(agent_summaries).map(([agentName, summary], i) => {
                 const colors = getAgentColor(agentName);
                 const isExpanded = expandedAgents.has(agentName);
                 const previewText = summary.length > 100 ? summary.substring(0, 100) + '...' : summary;
-                
+                const pos = agentPositions[agentName];
+
+                if (!agentRefs.current[agentName]) agentRefs.current[agentName] = null;
+
                 return (
-                  <div 
-                    key={agentName} 
-                    className={`${colors.bg} ${colors.border} border rounded-lg p-3 transition-all duration-200 hover:shadow-sm`}
+                  <div
+                    key={agentName}
+                    ref={(el) => (agentRefs.current[agentName] = el)}
+                    style={pos ? { position: 'absolute', left: pos.left, top: pos.top, transform: 'translate(-50%, -50%)' } as React.CSSProperties : undefined}
+                    className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg p-3 transition-all duration-200 hover:shadow-sm z-20 w-[240px] h-[120px]`}
+                    onClick={() => toggleAgentExpansion(agentName)}
                   >
-                    <div 
-                      className="flex items-center justify-between cursor-pointer" 
-                      onClick={() => toggleAgentExpansion(agentName)}
-                    >
+                    <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
                         <span className={colors.icon}>{getAgentIcon(agentName)}</span>
                         <span className="ml-2">{agentName}</span>
                       </h4>
-                      <button 
-                        className={`${colors.text} hover:opacity-70 transition-transform duration-200 ${
-                          isExpanded ? 'rotate-180' : ''
-                        }`}
-                      >
+                      <button className={`${colors.text} hover:opacity-70 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}> 
                         <TrendingDown className="h-3 w-3" />
                       </button>
                     </div>
-                    
                     <div className="mt-2">
                       <p className={`text-xs ${colors.text.replace('-800', '-700')} leading-relaxed`}>
                         {isExpanded ? summary : previewText}
-                        {summary.length > 100 && (
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleAgentExpansion(agentName);
-                            }}
-                            className={`ml-1 ${colors.text} hover:opacity-70 font-medium`}
-                          >
-                            {isExpanded ? 'Show less' : 'Show more'}
-                          </button>
-                        )}
                       </p>
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Overall Assessment */}
         {decision_chain.overall_assessment && (
