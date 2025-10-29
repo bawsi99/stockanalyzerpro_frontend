@@ -95,9 +95,9 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         const isVolumeAnomaly = name === 'Volume Anomaly' || (lower.includes('volume') && (lower.includes('anomaly') || lower.includes('anomoly')));
         const isRiskAnalysis = name === 'Risk Analysis' || lower.includes('risk analysis') || (lower.includes('risk') && lower.includes('analysis'));
         const isHighlighted = isVolumeAnomaly || isRiskAnalysis;
-        const stroke = isHighlighted ? '#ef4444' : '#7c3aed';
+        const stroke = '#d4af37';
         const width = isHighlighted ? 4 : 2.5;
-        const marker = isHighlighted ? 'arrow-red' : 'arrow-purple';
+        const marker = 'arrow-gold';
 
         newEdges.push({ from: start, to, c1, c2, key: name, stroke, width, marker });
       });
@@ -136,7 +136,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         }
         const c1: Point = { x: Math.round(start.x + (ex - start.x) * 0.5), y: Math.round(start.y + (ey - start.y) * 0.15) };
         const c2: Point = { x: Math.round(start.x + (ex - start.x) * 0.85), y: Math.round(start.y + (ey - start.y) * 0.6) };
-        newEdges.push({ from: start, to, c1, c2, key: label + '_precise', stroke: '#ef4444', width: 4, marker: 'arrow-red' });
+        newEdges.push({ from: start, to, c1, c2, key: label + '_precise', stroke: '#d4af37', width: 4, marker: 'arrow-gold' });
       };
       addPrecise('Volume Anomaly');
       addPrecise('Risk Analysis');
@@ -289,22 +289,13 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         <div ref={containerRef} className="relative h-[1400px] md:h-[1600px]">
           {/* Connectors */}
           <svg className="absolute inset-0 pointer-events-none z-10" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto-start-reverse">
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed" />
-              </marker>
-              <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto-start-reverse">
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
-              </marker>
-            </defs>
             {edges.map(e => (
               <path
                 key={e.key}
                 d={`M ${e.from.x},${e.from.y} C ${e.c1.x},${e.c1.y} ${e.c2.x},${e.c2.y} ${e.to.x},${e.to.y}`}
                 fill="none"
-                stroke={e.stroke || '#7c3aed'}
+                stroke="#d4af37"
                 strokeWidth={e.width || 2.5}
-                markerEnd={`url(#${e.marker || 'arrow-purple'})`}
                 opacity="0.9"
               />
             ))}
