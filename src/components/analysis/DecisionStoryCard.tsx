@@ -27,6 +27,22 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
   const [adjustOpen, setAdjustOpen] = useState<Set<string>>(new Set());
   const [debugMode, setDebugMode] = useState<boolean>(false);
 
+  // Hardcoded agent order
+  const HARDCODED_ORDER = [
+    'Technical Indicators',
+    'Institutional Activity (volume based)',
+    'Support Resistance (volume based)',
+    'Volume Anomaly',
+    'Volume Confirmation',
+    'Volume Momentum',
+    'Sector Analysis',
+    'Multi-Timeframe Analysis',
+    'Risk Analysis',
+    'Cross-Validation Analysis',
+    'Market Structure Analysis'
+  ];
+  const effectiveAgentOrder = agentOrder || HARDCODED_ORDER;
+
   // Resolve per-agent offsets with forgiving matching (exact, case-insensitive, substring)
   const resolveRadius = (name: string): number => {
     if (!agentRadiusOffsets) return 0;
@@ -85,9 +101,9 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       const norm = (s: string) => s.toLowerCase();
       const findIndexInOrder = (name: string): number => {
         const lname = norm(name);
-        if (Array.isArray(agentOrder) && agentOrder.length) {
-          for (let i = 0; i < agentOrder.length; i++) {
-            const pat = agentOrder[i];
+        if (Array.isArray(effectiveAgentOrder) && effectiveAgentOrder.length) {
+          for (let i = 0; i < effectiveAgentOrder.length; i++) {
+            const pat = effectiveAgentOrder[i];
             const lp = norm(pat);
             if (lp === lname || lname.includes(lp) || lp.includes(lname)) return i;
           }
@@ -107,6 +123,8 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         if (ia !== ib) return ia - ib;
         return a.localeCompare(b);
       });
+      // eslint-disable-next-line no-console
+      console.log('Current agent order:', names);
       const N = names.length || 1;
       const EXTRA_RADIUS = 140 + (globalRadiusDelta ?? 0); // push cards farther/closer from center
       const MIN_R = typeof minRadiusOverride === 'number' ? minRadiusOverride : 260;
@@ -220,7 +238,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     invertOffsets,
     globalRadiusDelta,
     minRadiusOverride,
-    JSON.stringify(agentOrder || []),
+    JSON.stringify(effectiveAgentOrder),
     JSON.stringify(agentOrderPriority || {}),
     debugMode,
     expandedAgents

@@ -937,12 +937,12 @@ const NewOutput: React.FC = () => {
     "Volume Confirmation": { dx: 130, dy: -35 },
     "Support Resistance (volume based)": { dx: 199, dy: 0 },
     "Volume Momentum": { dx: 40, dy: -100 },
-    "Risk Analysis": { dx: 0, dy: 160 },
+    "Risk Analysis": { dx: -215, dy: 0 },
     "Sector Analysis": { dx: 40, dy: -100 },
     "Cross-Validation Analysis": { dx: -199, dy: 0 },
     "Market Structure Analysis": { dx: -100, dy: 100 },
     "Multi-Timeframe Analysis": { dx: -40, dy: -35 },
-    "technical": { dx: -215, dy: 0 }
+    "Technical Indicators": { dx: 0, dy: 160 }
   });
   const onAgentTranslateChange = React.useCallback((name: string, delta: { dx?: number; dy?: number }) => {
     setAgentTranslateOffsets(prev => ({
@@ -975,15 +975,19 @@ const NewOutput: React.FC = () => {
 
   const enhancedTechnicalIndicators = enhancedData?.technical_indicators;
   
-  // Fixed agent order (patterns allowed; matching is forgiving)
+  // Fixed agent order - exact names
   const AGENT_ORDER: string[] = [
-    'Final Decision',
-    'Risk',
-    'Volume',
-    'Sector',
-    'Pattern',
-    'Multi',
-    'Technical'
+    'Technical Indicators',
+    'Institutional Activity (volume based)',
+    'Support Resistance (volume based)',
+    'Volume Anomaly',
+    'Volume Confirmation',
+    'Volume Momentum',
+    'Sector Analysis',
+    'Multi-Timeframe Analysis',
+    'Risk Analysis',
+    'Cross-Validation Analysis',
+    'Market Structure Analysis'
   ];
   
   // Calculate current price and price change
