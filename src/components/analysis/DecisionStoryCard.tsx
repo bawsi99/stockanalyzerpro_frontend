@@ -530,7 +530,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
                     key={agentName}
                     ref={(el) => (agentRefs.current[agentName] = el)}
                     style={pos ? { position: 'absolute', left: pos.left, top: pos.top, transform: 'translate(-50%, -50%)' } as React.CSSProperties : undefined}
-className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 w-[240px] ${debugMode ? 'h-[170px]' : 'h-[130px]'} p-2 overflow-hidden relative`}
+className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 w-[240px] ${isExpanded ? 'h-auto' : (debugMode ? 'h-[170px]' : 'h-auto')} px-2 py-1.5 overflow-hidden relative`}
                   >
                     <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
@@ -557,10 +557,10 @@ className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg 
                         </button>
                       )}
                     </div>
-                    <div className="mt-1 pr-0">
+                    <div className="mt-0.5 pr-0">
                       <p
                         ref={(el) => (textRefs.current[agentName] = el)}
-                        className={`text-xs text-justify ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? 'max-h-[64px] overflow-auto' : 'max-h-16 overflow-hidden'}`}
+                        className={`text-xs text-justify ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? 'max-h-none overflow-visible' : 'max-h-20 overflow-hidden'}`}
                       >
                         {isExpanded ? (
                           summary
