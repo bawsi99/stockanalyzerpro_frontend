@@ -933,15 +933,15 @@ const NewOutput: React.FC = () => {
   const agentRadiusOffsets: Record<string, number> = {};
   const [agentTranslateOffsets, setAgentTranslateOffsets] = React.useState<Record<string, { dx?: number; dy?: number }>>({
     "Volume Anomaly": { dx: 215, dy: 0 },
-    "Institutional Activity (volume based)": { dx: 100, dy: 85 },
-    "Volume Confirmation": { dx: 130, dy: -20 },
+    "Institutional Activity (volume based)": { dx: 100, dy: 100 },
+    "Volume Confirmation": { dx: 130, dy: -35 },
     "Support Resistance (volume based)": { dx: 199, dy: 0 },
-    "Volume Momentum": { dx: 40, dy: -85 },
-    "Risk Analysis": { dx: 0, dy: 145 },
-    "Sector Analysis": { dx: 40, dy: -85 },
+    "Volume Momentum": { dx: 40, dy: -100 },
+    "Risk Analysis": { dx: 0, dy: 160 },
+    "Sector Analysis": { dx: 40, dy: -100 },
     "Cross-Validation Analysis": { dx: -199, dy: 0 },
-    "Market Structure Analysis": { dx: -100, dy: 85 },
-    "Multi-Timeframe Analysis": { dx: -40, dy: -20 },
+    "Market Structure Analysis": { dx: -100, dy: 100 },
+    "Multi-Timeframe Analysis": { dx: -40, dy: -35 },
     "technical": { dx: -215, dy: 0 }
   });
   const onAgentTranslateChange = React.useCallback((name: string, delta: { dx?: number; dy?: number }) => {
