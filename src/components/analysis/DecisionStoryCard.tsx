@@ -366,7 +366,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
                     key={agentName}
                     ref={(el) => (agentRefs.current[agentName] = el)}
                     style={pos ? { position: 'absolute', left: pos.left, top: pos.top, transform: 'translate(-50%, -50%)' } as React.CSSProperties : undefined}
-                    className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg p-3 transition-all duration-200 hover:shadow-sm z-20 w-[240px] ${isExpanded ? 'h-auto max-w-[360px]' : 'h-[170px]'} overflow-hidden relative`}
+className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 w-[240px] ${isExpanded ? 'p-3 h-auto max-w-[360px]' : 'pt-2 pr-2 pb-1 pl-2 h-auto min-h-[110px]'} overflow-hidden relative`}
                   >
                     <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
@@ -374,7 +374,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
                         <span className="ml-2">{agentName}</span>
                       </h4>
                     </div>
-                    <div className="mt-2 pr-0">
+                    <div className="mt-1 pr-0">
                       <p
                         ref={(el) => (textRefs.current[agentName] = el)}
                         className={`text-xs ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? '' : 'max-h-20 overflow-hidden'}`}
