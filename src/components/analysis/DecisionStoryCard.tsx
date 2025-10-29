@@ -104,7 +104,15 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
 
       // Add precise edges for specific cards using actual DOM rects (ensures visibility)
       const addPrecise = (label: string) => {
-        const el = agentRefs.current[label];
+        // Find by exact key or relaxed match
+        let el = agentRefs.current[label];
+        if (!el) {
+          const entries = Object.entries(agentRefs.current);
+          const lower = label.toLowerCase();
+          const match = entries.find(([k]) => k.toLowerCase() === lower) ||
+                        entries.find(([k]) => k.toLowerCase().includes(lower));
+          if (match) el = match[1];
+        }
         if (!el) return;
         const r = el.getBoundingClientRect();
         const cx = Math.round(r.left - base.left + r.width / 2);
@@ -134,7 +142,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       addPrecise('Risk Analysis');
 
       setAgentPositions(newPositions);
-      setEdges(newEdges);
+      setEdges([]);
     };
 
     update();
@@ -279,51 +287,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
 
         {/* Radial layout container */}
         <div ref={containerRef} className="relative h-[1400px] md:h-[1600px]">
-          {/* SVG overlay for connectors */}
-          {edges.length > 0 && (
-            <svg
-              className="pointer-events-none absolute inset-0 z-50"
-              width="100%"
-              height="100%"
-              preserveAspectRatio="none"
-            >
-              <defs>
-                <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-                  <path d="M0,0 L10,5 L0,10 L3,5 Z" fill="#7c3aed" />
-                </marker>
-                <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-                  <path d="M0,0 L10,5 L0,10 L3,5 Z" fill="#16a34a" />
-                </marker>
-                <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-                  <path d="M0,0 L10,5 L0,10 L3,5 Z" fill="#ef4444" />
-                </marker>
-                <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-                  <feMerge>
-                    <feMergeNode in="coloredBlur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-              {edges
-                .slice()
-                .sort((a, b) => (a.width || 2.5) - (b.width || 2.5))
-                .map((e) => (
-                  <path
-                    key={e.key}
-                    d={`M ${e.from.x} ${e.from.y} C ${e.c1.x} ${e.c1.y}, ${e.c2.x} ${e.c2.y}, ${e.to.x} ${e.to.y}`}
-                    stroke={e.stroke || '#7c3aed'}
-                    strokeWidth={e.width || 2.5}
-                    strokeOpacity={(e.width && e.width > 2.5) ? 1 : 0.6}
-                    fill="none"
-                    markerEnd={`url(#${e.marker || 'arrow-purple'})`}
-                    filter="url(#soft-glow)"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                ))}
-            </svg>
-          )}
+          {/* Connectors disabled */}
 
           {/* Executive Summary centered */}
           <div ref={execRef} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 z-30 shadow-sm w-[560px] md:w-[720px]">
