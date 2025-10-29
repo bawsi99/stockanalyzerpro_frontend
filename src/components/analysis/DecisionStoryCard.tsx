@@ -25,6 +25,11 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
   const agentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [edges, setEdges] = useState<Array<{ from: Point; to: Point; c1: Point; c2: Point; key: string; stroke?: string; width?: number; marker?: string }>>([]);
   const [agentPositions, setAgentPositions] = useState<Record<string, { left: number; top: number }>>({});
+  const textRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
+  const [overflowedAgents, setOverflowedAgents] = useState<Record<string, boolean>>({});
+  const measurerRef = useRef<HTMLDivElement | null>(null);
+  const [truncatedMap, setTruncatedMap] = useState<Record<string, string>>({});
+  const agentSummariesRef = useRef<Record<string, string>>({});
 
   // Compute connectors from each agent card to Executive Summary
   useLayoutEffect(() => {
@@ -148,6 +153,81 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     };
   }, [decisionStory?.agent_summaries, JSON.stringify(agentRadiusOffsets), JSON.stringify(agentTranslateOffsets), invertOffsets]);
 
+  // Measure overflow per card; avoid scroll-induced flicker by reacting only to resize/layout or expansion changes
+  useLayoutEffect(() => {
+    const clampPx = 80; // ~ max-h-20
+
+    const measureAll = () => {
+      const names = Object.keys(agentRefs.current);
+      const nextOverflow: Record<string, boolean> = {};
+      const nextTruncated: Record<string, string> = {};
+      const FALLBACK_LIMIT = 120;
+
+      const ensureTruncated = (name: string, full: string, p: HTMLParagraphElement) => {
+        const meas = measurerRef.current;
+        if (!meas) return;
+        const width = p.clientWidth || 200;
+        meas.style.width = width + 'px';
+        meas.style.maxHeight = clampPx + 'px';
+        const postfix = ' … See more';
+        let lo = 0, hi = full.length, best = 0;
+        while (lo <= hi) {
+          const mid = Math.floor((lo + hi) / 2);
+          meas.textContent = full.slice(0, mid) + postfix;
+          if (meas.scrollHeight <= clampPx) {
+            best = mid;
+            lo = mid + 1;
+          } else {
+            hi = mid - 1;
+          }
+        }
+        const trimmed = full.slice(0, Math.max(0, best)).replace(/\s+$/, '');
+        nextTruncated[name] = trimmed;
+      };
+
+      names.forEach((name) => {
+        const p = textRefs.current[name];
+        if (!p) return;
+        if (expandedAgents.has(name)) {
+          nextOverflow[name] = false;
+          return;
+        }
+        const isOverflow = p.scrollHeight > p.clientHeight + 1;
+        const full = agentSummariesRef.current[name] || (p.textContent || '');
+        const needsLong = full.length > FALLBACK_LIMIT;
+        nextOverflow[name] = isOverflow || needsLong;
+        if ((isOverflow || needsLong) && full) ensureTruncated(name, full, p);
+      });
+
+      // Commit only if changed to avoid rerenders/flicker
+      setOverflowedAgents((prev) => {
+        const same = Object.keys(nextOverflow).every((k) => prev[k] === nextOverflow[k]);
+        return same ? prev : { ...prev, ...nextOverflow };
+      });
+      setTruncatedMap((prev) => {
+        const same = Object.keys(nextTruncated).every((k) => prev[k] === nextTruncated[k]);
+        return same ? prev : { ...prev, ...nextTruncated };
+      });
+    };
+
+    measureAll();
+
+    // Observe layout/size changes, not scroll
+    const RO: typeof ResizeObserver | undefined = typeof window !== 'undefined' ? (window as any).ResizeObserver : undefined;
+    let ro: ResizeObserver | undefined;
+    if (RO) {
+      ro = new RO(() => measureAll());
+      if (containerRef.current) ro.observe(containerRef.current);
+      if (execRef.current) ro.observe(execRef.current);
+    }
+    const onResize = () => measureAll();
+    window.addEventListener('resize', onResize);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', onResize);
+    };
+  }, [expandedAgents]);
+
   const toggleAgentExpansion = (agentName: string) => {
     setExpandedAgents(prev => {
       const newSet = new Set(prev);
@@ -195,22 +275,6 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto">
           {/* Analysis Date and Period */}
-          {(analysisDate || analysisPeriod) && (
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm text-slate-600 border-b border-slate-200 pb-3 mb-4">
-              {analysisDate && (
-                <div className="flex items-center gap-1">
-                  <span className="font-medium">Analysis Date:</span>
-                  <span>{new Date(analysisDate).toLocaleDateString()}</span>
-                </div>
-              )}
-              {analysisPeriod && (
-                <div className="flex items-center gap-1">
-                  <span className="font-medium">Period:</span>
-                  <span>{analysisPeriod}</span>
-                </div>
-              )}
-            </div>
-          )}
           <p className="text-slate-500">No decision story data available</p>
         </CardContent>
       </Card>
@@ -254,25 +318,9 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto space-y-6">
         {/* Analysis Date and Period */}
-        {(analysisDate || analysisPeriod) && (
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm text-slate-600 border-b border-slate-200 pb-3">
-            {analysisDate && (
-              <div className="flex items-center gap-1">
-                <span className="font-medium">Analysis Date:</span>
-                <span>{new Date(analysisDate).toLocaleDateString()}</span>
-              </div>
-            )}
-            {analysisPeriod && (
-              <div className="flex items-center gap-1">
-                <span className="font-medium">Period:</span>
-                <span>{analysisPeriod}</span>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Radial layout container */}
-        <div ref={containerRef} className="relative h-[1400px] md:h-[1600px]">
+        <div ref={containerRef} className="relative h-[1400px] md:h-[1600px] bg-black rounded-xl">
           {/* Connectors */}
           <svg className="absolute inset-0 pointer-events-none z-10" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             {edges.map(e => (
@@ -304,32 +352,65 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
               {Object.entries(agent_summaries).map(([agentName, summary], i) => {
                 const colors = getAgentColor(agentName);
                 const isExpanded = expandedAgents.has(agentName);
-                const previewText = summary.length > 100 ? summary.substring(0, 100) + '...' : summary;
                 const pos = agentPositions[agentName];
+                const fallbackLimit = 120;
+                const needsFallback = summary.length > fallbackLimit;
+                const showToggle = (!isExpanded) && ((overflowedAgents[agentName] || false) || needsFallback);
 
                 if (!agentRefs.current[agentName]) agentRefs.current[agentName] = null;
+                if (!textRefs.current[agentName]) textRefs.current[agentName] = null;
+                agentSummariesRef.current[agentName] = summary;
 
                 return (
                   <div
                     key={agentName}
                     ref={(el) => (agentRefs.current[agentName] = el)}
                     style={pos ? { position: 'absolute', left: pos.left, top: pos.top, transform: 'translate(-50%, -50%)' } as React.CSSProperties : undefined}
-                    className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg p-3 transition-all duration-200 hover:shadow-sm z-20 w-[240px] h-[120px]`}
-                    onClick={() => toggleAgentExpansion(agentName)}
+                    className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg p-3 transition-all duration-200 hover:shadow-sm z-20 w-[240px] ${isExpanded ? 'h-auto max-w-[360px]' : 'h-[170px]'} overflow-hidden relative`}
                   >
                     <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
                         <span className={colors.icon}>{getAgentIcon(agentName)}</span>
                         <span className="ml-2">{agentName}</span>
                       </h4>
-                      <button className={`${colors.text} hover:opacity-70 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}> 
-                        <TrendingDown className="h-3 w-3" />
-                      </button>
                     </div>
-                    <div className="mt-2">
-                      <p className={`text-xs ${colors.text.replace('-800', '-700')} leading-relaxed`}>
-                        {isExpanded ? summary : previewText}
+                    <div className="mt-2 pr-0">
+                      <p
+                        ref={(el) => (textRefs.current[agentName] = el)}
+                        className={`text-xs ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? '' : 'max-h-20 overflow-hidden'}`}
+                      >
+                        {isExpanded ? (
+                          summary
+                        ) : (
+                          <>
+                            {(overflowedAgents[agentName] && truncatedMap[agentName])
+                              ? truncatedMap[agentName]
+                              : (needsFallback ? summary.slice(0, fallbackLimit).replace(/\s+$/,'') : summary)}
+                            {showToggle && (
+                              <>
+                                {' '}
+                                …{' '}
+                                <button
+                                  className="inline text-blue-600 hover:text-blue-700 text-xs underline"
+                                  onClick={(e) => { e.stopPropagation(); toggleAgentExpansion(agentName); }}
+                                >
+                                  See more
+                                </button>
+                              </>
+                            )}
+                          </>
+                        )}
                       </p>
+                      {isExpanded && (
+                        <div className="mt-1 text-right">
+                          <button
+                            className="text-blue-600 hover:text-blue-700 text-xs underline"
+                            onClick={(e) => { e.stopPropagation(); toggleAgentExpansion(agentName); }}
+                          >
+                            See less
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -337,6 +418,13 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
             </div>
           )}
         </div>
+
+        {/* Hidden measurer for truncation */}
+        <div
+          ref={measurerRef}
+          className="fixed -left-[9999px] -top-[9999px] text-xs leading-relaxed whitespace-normal break-words"
+          style={{ visibility: 'hidden', pointerEvents: 'none' }}
+        />
 
         {/* Overall Assessment */}
         {decision_chain.overall_assessment && (
