@@ -589,46 +589,6 @@ const NewOutput: React.FC = () => {
                                enhancedData?.risk_metrics ||
                                baseIndicators?.advanced_risk;
     
-    // Debug: Log what we're getting for liquidity analysis
-    if (backendRiskMetrics && backendRiskMetrics.liquidity_analysis) {
-      console.log('✅ [LIQUIDITY DEBUG] Found liquidity analysis:', {
-        liquidity_score: backendRiskMetrics.liquidity_analysis.liquidity_score,
-        volume_volatility: backendRiskMetrics.liquidity_analysis.volume_volatility,
-        path: 'advanced_risk -> liquidity_analysis'
-      });
-    } else {
-      console.warn('⚠️ [LIQUIDITY DEBUG] No liquidity analysis found in:', {
-        hasBackendRiskMetrics: !!backendRiskMetrics,
-        enhancedMetadata: !!enhancedData?.enhanced_metadata?.advanced_risk_metrics,
-        technicalIndicators: !!enhancedData?.technical_indicators?.advanced_risk_metrics,
-        directAdvancedRisk: !!enhancedData?.advanced_risk_metrics,
-        riskMetrics: !!enhancedData?.risk_metrics,
-        baseAdvancedRisk: !!baseIndicators?.advanced_risk
-      });
-      
-      // Debug: Show the actual structure of backendRiskMetrics
-      console.log('🔍 [LIQUIDITY DEBUG] Actual backendRiskMetrics structure:', backendRiskMetrics);
-      const keys = backendRiskMetrics ? Object.keys(backendRiskMetrics) : [];
-      console.log('🔍 [LIQUIDITY DEBUG] All keys in backendRiskMetrics:', keys);
-      console.log('🔍 [LIQUIDITY DEBUG] Keys containing "liquid":', keys.filter(k => k.toLowerCase().includes('liquid')));
-      console.log('🔍 [LIQUIDITY DEBUG] Keys containing "volume":', keys.filter(k => k.toLowerCase().includes('volume')));
-      
-      // Check if liquidity data exists but with different key names
-      if (backendRiskMetrics) {
-        const liquidityInfo = {
-          liquidity_analysis: !!backendRiskMetrics.liquidity_analysis,
-          liquidity_score: !!backendRiskMetrics.liquidity_score,
-          volume_volatility: !!backendRiskMetrics.volume_volatility,
-          has_liquidity_analysis: 'liquidity_analysis' in backendRiskMetrics,
-          liquidity_analysis_keys: backendRiskMetrics.liquidity_analysis ? Object.keys(backendRiskMetrics.liquidity_analysis) : 'not found',
-          // Check direct values
-          liquidity_analysis_value: backendRiskMetrics.liquidity_analysis,
-          liquidity_score_value: backendRiskMetrics.liquidity_score,
-          volume_volatility_value: backendRiskMetrics.volume_volatility
-        };
-        console.log('🔍 [LIQUIDITY DEBUG] Liquidity-related keys and values:', liquidityInfo);
-      }
-    }
     
     const transformedRiskMetrics = transformAdvancedRiskMetrics(backendRiskMetrics);
     
@@ -970,58 +930,32 @@ const NewOutput: React.FC = () => {
   const summary = enhancedData?.summary || analysisData?.summary;
 
   // Optional per-agent radial distance and translate offsets for DecisionStoryCard
-  const DEFAULT_AGENT_RADIUS_OFFSETS: Record<string, number> = {};
-  const DEFAULT_AGENT_TRANSLATE_OFFSETS: Record<string, { dx?: number; dy?: number }> = {};
-
-  const agentRadiusOffsets = React.useMemo(() => {
-    try {
-      const raw = localStorage.getItem('agentRadiusOffsets');
-      const parsed = raw ? JSON.parse(raw) : {};
-      return {
-        ...DEFAULT_AGENT_RADIUS_OFFSETS,
-        ...(parsed && typeof parsed === 'object' ? parsed as Record<string, number> : {}),
-      } as Record<string, number>;
-    } catch {
-      return { ...DEFAULT_AGENT_RADIUS_OFFSETS } as Record<string, number>;
-    }
-  }, []);
-
-  const agentTranslateOffsets = React.useMemo(() => {
-    try {
-      const raw = localStorage.getItem('agentTranslateOffsets');
-      const parsed = raw ? JSON.parse(raw) : {};
-      return {
-        ...DEFAULT_AGENT_TRANSLATE_OFFSETS,
-        ...(parsed && typeof parsed === 'object' ? parsed as Record<string, { dx?: number; dy?: number }> : {}),
-      } as Record<string, { dx?: number; dy?: number }>;
-    } catch {
-      return { ...DEFAULT_AGENT_TRANSLATE_OFFSETS } as Record<string, { dx?: number; dy?: number }>;
-    }
+  const agentRadiusOffsets: Record<string, number> = {};
+  const [agentTranslateOffsets, setAgentTranslateOffsets] = React.useState<Record<string, { dx?: number; dy?: number }>>({
+    "Volume Anomaly": { dx: 215, dy: 0 },
+    "Institutional Activity (volume based)": { dx: 100, dy: 85 },
+    "Volume Confirmation": { dx: 130, dy: -20 },
+    "Support Resistance (volume based)": { dx: 199, dy: 0 },
+    "Volume Momentum": { dx: 40, dy: -85 },
+    "Risk Analysis": { dx: 0, dy: 145 },
+    "Sector Analysis": { dx: 40, dy: -85 },
+    "Cross-Validation Analysis": { dx: -199, dy: 0 },
+    "Market Structure Analysis": { dx: -100, dy: 85 },
+    "Multi-Timeframe Analysis": { dx: -40, dy: -20 },
+    "technical": { dx: -215, dy: 0 }
+  });
+  const onAgentTranslateChange = React.useCallback((name: string, delta: { dx?: number; dy?: number }) => {
+    setAgentTranslateOffsets(prev => ({
+      ...prev,
+      [name]: { ...prev[name], ...delta }
+    }));
   }, []);
 
   const invertAgentOffsets = false;
 
-  // Global radius controls (adjust overall radial distance)
-  const globalRadiusDelta = React.useMemo(() => {
-    try {
-      const raw = localStorage.getItem('agentGlobalRadiusDelta');
-      if (!raw) return -160; // default: pull cards even closer
-      const n = Number(raw);
-      return Number.isFinite(n) ? n : -160;
-    } catch {
-      return -160;
-    }
-  }, []);
-  const minRadiusOverride = React.useMemo(() => {
-    try {
-      const raw = localStorage.getItem('agentMinRadius');
-      if (!raw) return 140; // default: smaller minimum radius
-      const n = Number(raw);
-      return Number.isFinite(n) ? n : 140;
-    } catch {
-      return 140;
-    }
-  }, []);
+  // Global radius controls (adjust overall radial distance) - session-only (no localStorage)
+  const [globalRadiusDelta, setGlobalRadiusDelta] = React.useState<number>(60);
+  const [minRadiusOverride, setMinRadiusOverride] = React.useState<number>(140);
   
   
   
@@ -1040,6 +974,17 @@ const NewOutput: React.FC = () => {
   const enhancedMultiTimeframe = enhancedData?.multi_timeframe_analysis;
 
   const enhancedTechnicalIndicators = enhancedData?.technical_indicators;
+  
+  // Fixed agent order (patterns allowed; matching is forgiving)
+  const AGENT_ORDER: string[] = [
+    'Final Decision',
+    'Risk',
+    'Volume',
+    'Sector',
+    'Pattern',
+    'Multi',
+    'Technical'
+  ];
   
   // Calculate current price and price change
   const currentPrice = enhancedData?.current_price || getCurrentPrice(analysisData?.data || null);
@@ -1325,13 +1270,14 @@ const NewOutput: React.FC = () => {
             
             {/* Decision Story Card (Full Width) */}
             <div className="mt-4">
+
               {analysisLoading ? (
                 <AnalysisCardSkeleton 
                   title="Decision Story" 
                   description="Loading decision analysis..." 
                 />
               ) : (
-<DecisionStoryCard 
+                <DecisionStoryCard 
                   decisionStory={enhancedData?.decision_story || ai_analysis?.decision_story}
                   analysisDate={enhancedData?.analysis_timestamp}
                   analysisPeriod={enhancedData?.analysis_period}
@@ -1342,6 +1288,10 @@ const NewOutput: React.FC = () => {
                   invertOffsets={invertAgentOffsets}
                   globalRadiusDelta={globalRadiusDelta}
                   minRadiusOverride={minRadiusOverride}
+                  onGlobalRadiusDeltaChange={setGlobalRadiusDelta}
+                  onMinRadiusOverrideChange={setMinRadiusOverride}
+                  onAgentTranslateChange={onAgentTranslateChange}
+                  agentOrder={AGENT_ORDER}
                 />
               )}
             </div>

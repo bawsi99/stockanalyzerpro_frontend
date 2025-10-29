@@ -15,10 +15,17 @@ interface DecisionStoryCardProps {
   invertOffsets?: boolean; // invert signs for all offsets
   globalRadiusDelta?: number; // adjusts overall radial distance (negative = closer)
   minRadiusOverride?: number; // overrides the minimum clamped radius
+  onGlobalRadiusDeltaChange?: (n: number) => void; // optional controller from parent
+  onMinRadiusOverrideChange?: (n: number) => void; // optional controller from parent
+  onAgentTranslateChange?: (name: string, delta: { dx?: number; dy?: number }) => void; // per-agent XY tweak
+  agentOrder?: string[]; // fixed ordering (patterns allowed)
+  agentOrderPriority?: Record<string, number>; // alternative priority map
 }
 
-const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallbackFairValueRange, agentRadiusOffsets, agentTranslateOffsets, invertOffsets, globalRadiusDelta, minRadiusOverride }: DecisionStoryCardProps) => {
+const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallbackFairValueRange, agentRadiusOffsets, agentTranslateOffsets, invertOffsets, globalRadiusDelta, minRadiusOverride, onGlobalRadiusDeltaChange, onMinRadiusOverrideChange, onAgentTranslateChange, agentOrder, agentOrderPriority }: DecisionStoryCardProps) => {
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
+  const [adjustOpen, setAdjustOpen] = useState<Set<string>>(new Set());
+  const [debugMode, setDebugMode] = useState<boolean>(false);
 
   // Resolve per-agent offsets with forgiving matching (exact, case-insensitive, substring)
   const resolveRadius = (name: string): number => {
@@ -26,9 +33,9 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     if (Object.prototype.hasOwnProperty.call(agentRadiusOffsets, name)) return agentRadiusOffsets[name] ?? 0;
     const lower = name.toLowerCase();
     const keys = Object.keys(agentRadiusOffsets);
-    let key = keys.find(k => k.toLowerCase() === lower) ||
-              keys.find(k => lower.includes(k.toLowerCase())) ||
-              keys.find(k => k.toLowerCase().includes(lower));
+    const key = keys.find(k => k.toLowerCase() === lower) ||
+                keys.find(k => lower.includes(k.toLowerCase())) ||
+                keys.find(k => k.toLowerCase().includes(lower));
     return key ? (agentRadiusOffsets[key] ?? 0) : 0;
   };
   const resolveTranslate = (name: string): { dx?: number; dy?: number } | undefined => {
@@ -36,9 +43,9 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     if (Object.prototype.hasOwnProperty.call(agentTranslateOffsets, name)) return agentTranslateOffsets[name];
     const lower = name.toLowerCase();
     const keys = Object.keys(agentTranslateOffsets);
-    let key = keys.find(k => k.toLowerCase() === lower) ||
-              keys.find(k => lower.includes(k.toLowerCase())) ||
-              keys.find(k => k.toLowerCase().includes(lower));
+    const key = keys.find(k => k.toLowerCase() === lower) ||
+                keys.find(k => lower.includes(k.toLowerCase())) ||
+                keys.find(k => k.toLowerCase().includes(lower));
     return key ? agentTranslateOffsets[key] : undefined;
   };
 
@@ -57,7 +64,8 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
 
   // Unified agent card dimensions (Executive Summary not affected)
   const AGENT_CARD_W = 240; // px
-  const AGENT_CARD_H = 130; // px
+  const AGENT_CARD_H_DEFAULT = 130; // px (normal)
+  const AGENT_CARD_H_DEBUG = 170; // px (debug)
 
   // Compute connectors from each agent card to Executive Summary
   useLayoutEffect(() => {
@@ -73,7 +81,32 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       };
 
       // Compute radial positions based on data (not refs) so first paint works
-      const names = agent_summaries ? Object.keys(agent_summaries) : [];
+      const baseNames = agent_summaries ? Object.keys(agent_summaries) : [];
+      const norm = (s: string) => s.toLowerCase();
+      const findIndexInOrder = (name: string): number => {
+        const lname = norm(name);
+        if (Array.isArray(agentOrder) && agentOrder.length) {
+          for (let i = 0; i < agentOrder.length; i++) {
+            const pat = agentOrder[i];
+            const lp = norm(pat);
+            if (lp === lname || lname.includes(lp) || lp.includes(lname)) return i;
+          }
+        }
+        if (agentOrderPriority) {
+          const keys = Object.keys(agentOrderPriority);
+          for (let k of keys) {
+            const lk = norm(k);
+            if (lk === lname || lname.includes(lk) || lk.includes(lname)) return agentOrderPriority[k] as number;
+          }
+        }
+        return Number.POSITIVE_INFINITY; // unknowns go last
+      };
+      const names = baseNames.sort((a, b) => {
+        const ia = findIndexInOrder(a);
+        const ib = findIndexInOrder(b);
+        if (ia !== ib) return ia - ib;
+        return a.localeCompare(b);
+      });
       const N = names.length || 1;
       const EXTRA_RADIUS = 140 + (globalRadiusDelta ?? 0); // push cards farther/closer from center
       const MIN_R = typeof minRadiusOverride === 'number' ? minRadiusOverride : 260;
@@ -82,7 +115,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         Math.min(base.width, base.height) / 2 - Math.max(execRect.width, execRect.height) / 2 - 10 + EXTRA_RADIUS
       );
       const CARD_W = AGENT_CARD_W;
-      const CARD_H = AGENT_CARD_H;
+      const CARD_H = debugMode ? AGENT_CARD_H_DEBUG : AGENT_CARD_H_DEFAULT;
       const newPositions: Record<string, { left: number; top: number }> = {};
       const newEdges: Array<{ from: Point; to: Point; c1: Point; c2: Point; key: string; stroke?: string; width?: number; marker?: string }> = [];
 
@@ -180,7 +213,17 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update);
     };
-  }, [decisionStory?.agent_summaries, JSON.stringify(agentRadiusOffsets), JSON.stringify(agentTranslateOffsets), invertOffsets]);
+  }, [
+    decisionStory?.agent_summaries,
+    JSON.stringify(agentRadiusOffsets),
+    JSON.stringify(agentTranslateOffsets),
+    invertOffsets,
+    globalRadiusDelta,
+    minRadiusOverride,
+    JSON.stringify(agentOrder || []),
+    JSON.stringify(agentOrderPriority || {}),
+    debugMode
+  ]);
 
   // Measure overflow per card; avoid scroll-induced flicker by reacting only to resize/layout or expansion changes
   useLayoutEffect(() => {
@@ -293,6 +336,27 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     return { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-800', icon: 'text-gray-600' };
   };
 
+  // Expose helpers to console for exporting offsets
+  useEffect(() => {
+    const w: any = typeof window !== 'undefined' ? window : undefined;
+    if (!w) return;
+    w.getAgentOffsets = () => {
+      const names = decisionStory?.agent_summaries ? Object.keys(decisionStory.agent_summaries) : [];
+      const out: Record<string, { dx?: number; dy?: number }> = {};
+      names.forEach((n) => {
+        const t = resolveTranslate(n) || {};
+        const dx = t.dx ?? 0;
+        const dy = t.dy ?? 0;
+        if (dx !== 0 || dy !== 0) out[n] = { dx, dy };
+      });
+      return out;
+    };
+    w.exportAgentOffsets = () => JSON.stringify(w.getAgentOffsets(), null, 2);
+    return () => {
+      // leave functions available; no cleanup to avoid breaking console refs during HMR
+    };
+  }, [decisionStory?.agent_summaries, JSON.stringify(agentTranslateOffsets)]);
+
   if (!decisionStory) {
     return (
       <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full flex flex-col">
@@ -336,14 +400,43 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     return <Target className="h-4 w-4 text-slate-600" />;
   };
 
+  const onDebug = () => {
+    try {
+      setDebugMode((prev) => !prev);
+      const w: any = typeof window !== 'undefined' ? window : undefined;
+      const exported = w?.getAgentOffsets ? w.exportAgentOffsets?.() : undefined;
+      // eslint-disable-next-line no-console
+      console.group('DecisionStory Debug');
+      // eslint-disable-next-line no-console
+      console.log({ globalRadiusDelta, minRadiusOverride });
+      // eslint-disable-next-line no-console
+      console.log('agentTranslateOffsets', agentTranslateOffsets);
+      // eslint-disable-next-line no-console
+      console.log('exportedOffsets', exported);
+      // eslint-disable-next-line no-console
+      console.log('agentPositions', agentPositions);
+      // eslint-disable-next-line no-console
+      console.log('edgesCount', edges.length);
+      // eslint-disable-next-line no-console
+      console.groupEnd();
+    } catch {}
+  };
 
   return (
     <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full flex flex-col">
       <CardHeader className="flex-shrink-0">
-        <CardTitle className="flex items-center text-slate-800 text-lg">
-          <BookOpen className="h-4 w-4 mr-2 text-purple-500" />
-          Decision Story
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center text-slate-800 text-lg">
+            <BookOpen className="h-4 w-4 mr-2 text-purple-500" />
+            Decision Story
+          </CardTitle>
+          <button
+            className="ml-3 text-xs px-2 py-1 rounded border border-slate-300 text-slate-600 hover:bg-slate-100"
+            onClick={onDebug}
+          >
+            Debug
+          </button>
+        </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto space-y-6">
         {/* Analysis Date and Period */}
@@ -365,14 +458,56 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
           </svg>
 
           {/* Executive Summary centered */}
-          <div ref={execRef} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 z-30 shadow-sm w-[800px] md:w-[1000px] h-[220px] md:h-[260px] overflow-hidden">
+          <div ref={execRef} className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 z-30 shadow-sm ${debugMode ? 'w-[800px] md:w-[1000px]' : 'w-[700px] md:w-[900px]'} h-auto overflow-hidden`}>
             <h3 className="font-semibold text-slate-800 mb-1 flex items-center">
               <BookOpen className="h-4 w-4 mr-2 text-purple-600" />
               Executive Summary
             </h3>
-            <p className="text-sm text-slate-700 leading-relaxed text-center max-h-[170px] md:max-h-[210px] overflow-auto">
+            <p className={`text-sm text-slate-700 leading-relaxed text-justify`}>
               {narrative}
             </p>
+            {(debugMode && typeof globalRadiusDelta === 'number' && typeof minRadiusOverride === 'number') && (
+              <div className="mt-2 border-t border-purple-100 pt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-700">
+                  <div className="flex items-center gap-2">
+                    <span className="whitespace-nowrap">Ring radius</span>
+                    <input
+                      type="range"
+                      min={-400}
+                      max={400}
+                      step={10}
+                      value={globalRadiusDelta}
+                      onChange={(e) => onGlobalRadiusDeltaChange?.(Number(e.target.value))}
+                      className="flex-1"
+                    />
+                    <input
+                      type="number"
+                      value={globalRadiusDelta}
+                      onChange={(e) => onGlobalRadiusDeltaChange?.(Number(e.target.value))}
+                      className="w-16 border rounded px-1 py-0.5 bg-white"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="whitespace-nowrap">Min radius</span>
+                    <input
+                      type="range"
+                      min={80}
+                      max={500}
+                      step={10}
+                      value={minRadiusOverride}
+                      onChange={(e) => onMinRadiusOverrideChange?.(Number(e.target.value))}
+                      className="flex-1"
+                    />
+                    <input
+                      type="number"
+                      value={minRadiusOverride}
+                      onChange={(e) => onMinRadiusOverrideChange?.(Number(e.target.value))}
+                      className="w-16 border rounded px-1 py-0.5 bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Radial agent ring */}
@@ -395,18 +530,37 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
                     key={agentName}
                     ref={(el) => (agentRefs.current[agentName] = el)}
                     style={pos ? { position: 'absolute', left: pos.left, top: pos.top, transform: 'translate(-50%, -50%)' } as React.CSSProperties : undefined}
-className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 w-[240px] h-[130px] p-2 overflow-hidden relative`}
+className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 w-[240px] ${debugMode ? 'h-[170px]' : 'h-[130px]'} p-2 overflow-hidden relative`}
                   >
                     <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
                         <span className={colors.icon}>{getAgentIcon(agentName)}</span>
                         <span className="ml-2">{agentName}</span>
                       </h4>
+                      {debugMode && (
+                        <button
+                          className="text-[10px] text-slate-600 hover:text-slate-800 underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAdjustOpen(prev => {
+                              const ns = new Set(prev);
+                              if (ns.has(agentName)) {
+                                ns.delete(agentName);
+                              } else {
+                                ns.add(agentName);
+                              }
+                              return ns;
+                            });
+                          }}
+                        >
+                          Adjust
+                        </button>
+                      )}
                     </div>
                     <div className="mt-1 pr-0">
                       <p
                         ref={(el) => (textRefs.current[agentName] = el)}
-                        className={`text-xs ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? 'max-h-[84px] overflow-auto' : 'max-h-20 overflow-hidden'}`}
+                        className={`text-xs text-justify ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? 'max-h-[64px] overflow-auto' : 'max-h-16 overflow-hidden'}`}
                       >
                         {isExpanded ? (
                           summary
@@ -438,6 +592,56 @@ className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg 
                           >
                             See less
                           </button>
+                        </div>
+                      )}
+
+                      {(debugMode && (adjustOpen.has(agentName) || true)) && (
+                        <div className="mt-1 space-y-1">
+                          {(() => {
+                            const current = resolveTranslate(agentName) || {};
+                            const dx = current.dx ?? 0;
+                            const dy = current.dy ?? 0;
+                            return (
+                              <>
+                                <div className="flex items-center gap-2 text-[10px]">
+                                  <span className="w-14 text-right">X offset</span>
+                                  <input
+                                    type="range"
+                                    min={-400}
+                                    max={400}
+                                    step={5}
+                                    value={dx}
+                                    onChange={(e) => { e.stopPropagation(); onAgentTranslateChange?.(agentName, { dx: Number(e.target.value) }); }}
+                                    className="flex-1"
+                                  />
+                                  <input
+                                    type="number"
+                                    value={dx}
+                                    onChange={(e) => { e.stopPropagation(); onAgentTranslateChange?.(agentName, { dx: Number(e.target.value) }); }}
+                                    className="w-14 border rounded px-1 py-0.5 bg-white"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px]">
+                                  <span className="w-14 text-right">Y offset</span>
+                                  <input
+                                    type="range"
+                                    min={-400}
+                                    max={400}
+                                    step={5}
+                                    value={dy}
+                                    onChange={(e) => { e.stopPropagation(); onAgentTranslateChange?.(agentName, { dy: Number(e.target.value) }); }}
+                                    className="flex-1"
+                                  />
+                                  <input
+                                    type="number"
+                                    value={dy}
+                                    onChange={(e) => { e.stopPropagation(); onAgentTranslateChange?.(agentName, { dy: Number(e.target.value) }); }}
+                                    className="w-14 border rounded px-1 py-0.5 bg-white"
+                                  />
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>

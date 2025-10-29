@@ -25,9 +25,6 @@ export default function SignalsSummaryCard({ signals }: { signals: {
     const trend = signals.regime?.trend || 'unknown';
     const volatility = signals.regime?.volatility || 'normal';
     
-    // Debug logging to see what regime data we're receiving
-    console.log('Regime data received:', { trend, volatility, fullRegime: signals.regime });
-    
     // Check if we have meaningful regime data
     const hasRegimeData = trend !== 'unknown' || volatility !== 'normal';
     
