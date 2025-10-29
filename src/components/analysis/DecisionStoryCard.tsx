@@ -88,9 +88,9 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         const isVolumeAnomaly = name === 'Volume Anomaly' || (lower.includes('volume') && (lower.includes('anomaly') || lower.includes('anomoly')));
         const isRiskAnalysis = name === 'Risk Analysis' || lower.includes('risk analysis') || (lower.includes('risk') && lower.includes('analysis'));
         const isHighlighted = isVolumeAnomaly || isRiskAnalysis;
-        const stroke = '#d4af37';
-        const width = isHighlighted ? 4 : 2.5;
-        const marker = 'arrow-gold';
+        const stroke = '#fde047'; // lighter yellow
+        const width = 2.5; // uniform thickness
+        const marker = undefined;
 
         newEdges.push({ from: start, to, c1, c2, key: name, stroke, width, marker });
       });
@@ -122,7 +122,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         const to: Point = { x: ex, y: ey };
         const c1: Point = { x: Math.round(start.x + (ex - start.x) * 0.5), y: Math.round(start.y + (ey - start.y) * 0.15) };
         const c2: Point = { x: Math.round(start.x + (ex - start.x) * 0.85), y: Math.round(start.y + (ey - start.y) * 0.6) };
-        newEdges.push({ from: start, to, c1, c2, key: label + '_precise', stroke: '#d4af37', width: 4, marker: 'arrow-gold' });
+        newEdges.push({ from: start, to, c1, c2, key: label + '_precise', stroke: '#fde047', width: 2.5, marker: undefined });
       };
       addPrecise('Volume Anomaly');
       addPrecise('Risk Analysis');
@@ -280,8 +280,8 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
                 key={e.key}
                 d={`M ${e.from.x},${e.from.y} C ${e.c1.x},${e.c1.y} ${e.c2.x},${e.c2.y} ${e.to.x},${e.to.y}`}
                 fill="none"
-                stroke="#d4af37"
-                strokeWidth={e.width || 2.5}
+                stroke={e.stroke || '#fde047'}
+                strokeWidth={2.5}
                 opacity="0.9"
               />
             ))}
