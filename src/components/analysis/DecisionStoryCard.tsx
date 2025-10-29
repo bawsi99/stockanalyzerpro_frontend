@@ -75,16 +75,9 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
           start = { x: Math.round(cx), y: dy > 0 ? Math.round(cy + CARD_H / 2) : Math.round(cy - CARD_H / 2) };
         }
 
-        // Compute "to" point on exec summary edge toward start
+        // End all lines at exact center of Executive Summary
         const ex = execCenter.x, ey = execCenter.y;
-        const edx = start.x - ex;
-        const edy = start.y - ey;
-        let to: Point;
-        if (Math.abs(edx) >= Math.abs(edy)) {
-          to = { x: edx > 0 ? Math.round(execRect.right - base.left) : Math.round(execRect.left - base.left), y: ey };
-        } else {
-          to = { x: ex, y: edy > 0 ? Math.round(execRect.bottom - base.top) : Math.round(execRect.top - base.top) };
-        }
+        const to: Point = { x: ex, y: ey };
 
         // Curved inward path using cubic Bezier
         const c1: Point = { x: Math.round(start.x + (ex - start.x) * 0.5), y: Math.round(start.y + (ey - start.y) * 0.15) };
@@ -126,14 +119,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
           start = { x: cx, y: dy > 0 ? Math.round(r.bottom - base.top) : Math.round(r.top - base.top) };
         }
         const ex = execCenter.x, ey = execCenter.y;
-        const edx = start.x - ex;
-        const edy = start.y - ey;
-        let to: Point;
-        if (Math.abs(edx) >= Math.abs(edy)) {
-          to = { x: edx > 0 ? Math.round(execRect.right - base.left) : Math.round(execRect.left - base.left), y: ey };
-        } else {
-          to = { x: ex, y: edy > 0 ? Math.round(execRect.bottom - base.top) : Math.round(execRect.top - base.top) };
-        }
+        const to: Point = { x: ex, y: ey };
         const c1: Point = { x: Math.round(start.x + (ex - start.x) * 0.5), y: Math.round(start.y + (ey - start.y) * 0.15) };
         const c2: Point = { x: Math.round(start.x + (ex - start.x) * 0.85), y: Math.round(start.y + (ey - start.y) * 0.6) };
         newEdges.push({ from: start, to, c1, c2, key: label + '_precise', stroke: '#d4af37', width: 4, marker: 'arrow-gold' });
