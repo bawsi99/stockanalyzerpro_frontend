@@ -142,7 +142,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       addPrecise('Risk Analysis');
 
       setAgentPositions(newPositions);
-      setEdges([]);
+      setEdges(newEdges);
     };
 
     update();
@@ -287,7 +287,28 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
 
         {/* Radial layout container */}
         <div ref={containerRef} className="relative h-[1400px] md:h-[1600px]">
-          {/* Connectors disabled */}
+          {/* Connectors */}
+          <svg className="absolute inset-0 pointer-events-none z-10" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed" />
+              </marker>
+              <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+              </marker>
+            </defs>
+            {edges.map(e => (
+              <path
+                key={e.key}
+                d={`M ${e.from.x},${e.from.y} C ${e.c1.x},${e.c1.y} ${e.c2.x},${e.c2.y} ${e.to.x},${e.to.y}`}
+                fill="none"
+                stroke={e.stroke || '#7c3aed'}
+                strokeWidth={e.width || 2.5}
+                markerEnd={`url(#${e.marker || 'arrow-purple'})`}
+                opacity="0.9"
+              />
+            ))}
+          </svg>
 
           {/* Executive Summary centered */}
           <div ref={execRef} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 z-30 shadow-sm w-[560px] md:w-[720px]">
