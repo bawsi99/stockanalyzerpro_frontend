@@ -968,11 +968,64 @@ const NewOutput: React.FC = () => {
   const overlays = enhancedData?.overlays || analysisData?.overlays;
   const trading_guidance = enhancedData?.trading_guidance || analysisData?.trading_guidance;
   const summary = enhancedData?.summary || analysisData?.summary;
-  
 
-  
+  // Optional per-agent radial distance and translate offsets for DecisionStoryCard
+  const DEFAULT_AGENT_RADIUS_OFFSETS: Record<string, number> = {};
+  const DEFAULT_AGENT_TRANSLATE_OFFSETS: Record<string, { dx?: number; dy?: number }> = {};
 
+  const agentRadiusOffsets = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem('agentRadiusOffsets');
+      const parsed = raw ? JSON.parse(raw) : {};
+      return {
+        ...DEFAULT_AGENT_RADIUS_OFFSETS,
+        ...(parsed && typeof parsed === 'object' ? parsed as Record<string, number> : {}),
+      } as Record<string, number>;
+    } catch {
+      return { ...DEFAULT_AGENT_RADIUS_OFFSETS } as Record<string, number>;
+    }
+  }, []);
+
+  const agentTranslateOffsets = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem('agentTranslateOffsets');
+      const parsed = raw ? JSON.parse(raw) : {};
+      return {
+        ...DEFAULT_AGENT_TRANSLATE_OFFSETS,
+        ...(parsed && typeof parsed === 'object' ? parsed as Record<string, { dx?: number; dy?: number }> : {}),
+      } as Record<string, { dx?: number; dy?: number }>;
+    } catch {
+      return { ...DEFAULT_AGENT_TRANSLATE_OFFSETS } as Record<string, { dx?: number; dy?: number }>;
+    }
+  }, []);
+
+  const invertAgentOffsets = false;
+
+  // Global radius controls (adjust overall radial distance)
+  const globalRadiusDelta = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem('agentGlobalRadiusDelta');
+      if (!raw) return -160; // default: pull cards even closer
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : -160;
+    } catch {
+      return -160;
+    }
+  }, []);
+  const minRadiusOverride = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem('agentMinRadius');
+      if (!raw) return 140; // default: smaller minimum radius
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : 140;
+    } catch {
+      return 140;
+    }
+  }, []);
   
+  
+  
+  // Create metadata object with proper field mapping for enhanced structure
   // Create metadata object with proper field mapping for enhanced structure
   const metadata = enhancedData ? {
     exchange: enhancedData.exchange,
@@ -1284,6 +1337,11 @@ const NewOutput: React.FC = () => {
                   analysisPeriod={enhancedData?.analysis_period}
                   fallbackFairValueRange={(enhancedData as any)?.ai_analysis?.trading_strategy?.long_term?.fair_value_range ||
                                          (ai_analysis as any)?.trading_strategy?.long_term?.fair_value_range || null}
+                  agentRadiusOffsets={agentRadiusOffsets}
+                  agentTranslateOffsets={agentTranslateOffsets}
+                  invertOffsets={invertAgentOffsets}
+                  globalRadiusDelta={globalRadiusDelta}
+                  minRadiusOverride={minRadiusOverride}
                 />
               )}
             </div>
@@ -1436,11 +1494,13 @@ const NewOutput: React.FC = () => {
                 
                 <div className="space-y-6">
                   {(indicators as ExtendedIndicators)?.advanced_risk && !(indicators as ExtendedIndicators).advanced_risk.error && (
-<AdvancedRiskAssessmentCard 
-                      riskMetrics={(indicators as ExtendedIndicators).advanced_risk}
-                      symbol={stockSymbol}
-                      advancedRiskAssessment={(enhancedData as any)?.advanced_risk_assessment || (enhancedData as any)?.results?.advanced_risk_assessment || null}
-                    />
+                    <div className="-mt-2">
+                      <AdvancedRiskAssessmentCard 
+                        riskMetrics={(indicators as ExtendedIndicators).advanced_risk}
+                        symbol={stockSymbol}
+                        advancedRiskAssessment={(enhancedData as any)?.advanced_risk_assessment || (enhancedData as any)?.results?.advanced_risk_assessment || null}
+                      />
+                    </div>
                   )}
 
                   {((indicators as ExtendedIndicators)?.stress_testing || (indicators as ExtendedIndicators)?.scenario_analysis) && (

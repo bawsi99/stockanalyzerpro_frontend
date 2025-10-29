@@ -13,10 +13,34 @@ interface DecisionStoryCardProps {
   agentRadiusOffsets?: Record<string, number>; // per-agent radius delta in px (positive = farther)
   agentTranslateOffsets?: Record<string, { dx?: number; dy?: number }>; // per-agent x/y pixel offsets
   invertOffsets?: boolean; // invert signs for all offsets
+  globalRadiusDelta?: number; // adjusts overall radial distance (negative = closer)
+  minRadiusOverride?: number; // overrides the minimum clamped radius
 }
 
-const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallbackFairValueRange, agentRadiusOffsets, agentTranslateOffsets, invertOffsets }: DecisionStoryCardProps) => {
+const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallbackFairValueRange, agentRadiusOffsets, agentTranslateOffsets, invertOffsets, globalRadiusDelta, minRadiusOverride }: DecisionStoryCardProps) => {
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
+
+  // Resolve per-agent offsets with forgiving matching (exact, case-insensitive, substring)
+  const resolveRadius = (name: string): number => {
+    if (!agentRadiusOffsets) return 0;
+    if (Object.prototype.hasOwnProperty.call(agentRadiusOffsets, name)) return agentRadiusOffsets[name] ?? 0;
+    const lower = name.toLowerCase();
+    const keys = Object.keys(agentRadiusOffsets);
+    let key = keys.find(k => k.toLowerCase() === lower) ||
+              keys.find(k => lower.includes(k.toLowerCase())) ||
+              keys.find(k => k.toLowerCase().includes(lower));
+    return key ? (agentRadiusOffsets[key] ?? 0) : 0;
+  };
+  const resolveTranslate = (name: string): { dx?: number; dy?: number } | undefined => {
+    if (!agentTranslateOffsets) return undefined;
+    if (Object.prototype.hasOwnProperty.call(agentTranslateOffsets, name)) return agentTranslateOffsets[name];
+    const lower = name.toLowerCase();
+    const keys = Object.keys(agentTranslateOffsets);
+    let key = keys.find(k => k.toLowerCase() === lower) ||
+              keys.find(k => lower.includes(k.toLowerCase())) ||
+              keys.find(k => k.toLowerCase().includes(lower));
+    return key ? agentTranslateOffsets[key] : undefined;
+  };
 
   // Connector types and refs (must be declared before any early return)
   type Point = { x: number; y: number };
@@ -30,6 +54,10 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
   const measurerRef = useRef<HTMLDivElement | null>(null);
   const [truncatedMap, setTruncatedMap] = useState<Record<string, string>>({});
   const agentSummariesRef = useRef<Record<string, string>>({});
+
+  // Unified agent card dimensions (Executive Summary not affected)
+  const AGENT_CARD_W = 240; // px
+  const AGENT_CARD_H = 130; // px
 
   // Compute connectors from each agent card to Executive Summary
   useLayoutEffect(() => {
@@ -47,22 +75,23 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       // Compute radial positions based on data (not refs) so first paint works
       const names = agent_summaries ? Object.keys(agent_summaries) : [];
       const N = names.length || 1;
-      const EXTRA_RADIUS = 140; // push cards farther from center
+      const EXTRA_RADIUS = 140 + (globalRadiusDelta ?? 0); // push cards farther/closer from center
+      const MIN_R = typeof minRadiusOverride === 'number' ? minRadiusOverride : 260;
       const radius = Math.max(
-        260,
+        MIN_R,
         Math.min(base.width, base.height) / 2 - Math.max(execRect.width, execRect.height) / 2 - 10 + EXTRA_RADIUS
       );
-      const CARD_W = 240;
-      const CARD_H = 120;
+      const CARD_W = AGENT_CARD_W;
+      const CARD_H = AGENT_CARD_H;
       const newPositions: Record<string, { left: number; top: number }> = {};
       const newEdges: Array<{ from: Point; to: Point; c1: Point; c2: Point; key: string; stroke?: string; width?: number; marker?: string }> = [];
 
       names.forEach((name, i) => {
         const angle = (i / N) * Math.PI * 2 - Math.PI / 2; // start at top
-        const r = radius + ((invertOffsets ? -1 : 1) * (agentRadiusOffsets?.[name] ?? 0));
+        const r = radius + ((invertOffsets ? -1 : 1) * resolveRadius(name));
         let cx = execCenter.x + r * Math.cos(angle);
         let cy = execCenter.y + r * Math.sin(angle);
-        const t = agentTranslateOffsets?.[name];
+        const t = resolveTranslate(name);
         if (t) {
           const m = invertOffsets ? -1 : 1;
           cx += (t.dx ?? 0) * m;
@@ -336,12 +365,12 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
           </svg>
 
           {/* Executive Summary centered */}
-          <div ref={execRef} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 z-30 shadow-sm w-[560px] md:w-[720px]">
+          <div ref={execRef} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 z-30 shadow-sm w-[800px] md:w-[1000px] h-[220px] md:h-[260px] overflow-hidden">
             <h3 className="font-semibold text-slate-800 mb-1 flex items-center">
               <BookOpen className="h-4 w-4 mr-2 text-purple-600" />
               Executive Summary
             </h3>
-            <p className="text-sm text-slate-700 leading-relaxed text-center">
+            <p className="text-sm text-slate-700 leading-relaxed text-center max-h-[170px] md:max-h-[210px] overflow-auto">
               {narrative}
             </p>
           </div>
@@ -366,7 +395,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
                     key={agentName}
                     ref={(el) => (agentRefs.current[agentName] = el)}
                     style={pos ? { position: 'absolute', left: pos.left, top: pos.top, transform: 'translate(-50%, -50%)' } as React.CSSProperties : undefined}
-className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 w-[240px] ${isExpanded ? 'p-3 h-auto max-w-[360px]' : 'pt-2 pr-2 pb-1 pl-2 h-auto min-h-[110px]'} overflow-hidden relative`}
+className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 w-[240px] h-[130px] p-2 overflow-hidden relative`}
                   >
                     <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
@@ -377,7 +406,7 @@ className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg 
                     <div className="mt-1 pr-0">
                       <p
                         ref={(el) => (textRefs.current[agentName] = el)}
-                        className={`text-xs ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? '' : 'max-h-20 overflow-hidden'}`}
+                        className={`text-xs ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? 'max-h-[84px] overflow-auto' : 'max-h-20 overflow-hidden'}`}
                       >
                         {isExpanded ? (
                           summary
