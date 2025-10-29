@@ -222,7 +222,8 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     minRadiusOverride,
     JSON.stringify(agentOrder || []),
     JSON.stringify(agentOrderPriority || {}),
-    debugMode
+    debugMode,
+    expandedAgents
   ]);
 
   // Measure overflow per card; avoid scroll-induced flicker by reacting only to resize/layout or expansion changes
@@ -334,6 +335,11 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     if (name.includes('technical') || name.includes('indicator')) return { bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-800', icon: 'text-teal-600' };
     if (name.includes('final') || name.includes('decision')) return { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-800', icon: 'text-indigo-600' };
     return { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-800', icon: 'text-gray-600' };
+  };
+
+  const isRiskAgent = (agentName: string) => {
+    const lower = agentName.toLowerCase();
+    return agentName === 'Risk Analysis' || lower.includes('risk analysis') || (lower.includes('risk') && lower.includes('analysis'));
   };
 
   // Expose helpers to console for exporting offsets
@@ -530,7 +536,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
                     key={agentName}
                     ref={(el) => (agentRefs.current[agentName] = el)}
                     style={pos ? { position: 'absolute', left: pos.left, top: pos.top, transform: 'translate(-50%, -50%)' } as React.CSSProperties : undefined}
-className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 w-[240px] ${isExpanded ? 'h-auto' : (debugMode ? 'h-[170px]' : 'h-auto')} px-2 py-1.5 overflow-hidden relative`}
+className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 ${isExpanded && isRiskAgent(agentName) ? 'w-[360px] md:w-[420px] lg:w-[480px]' : 'w-[240px]'} ${isExpanded ? 'h-auto' : (debugMode ? 'h-[170px]' : 'h-auto')} px-2 py-1.5 overflow-hidden relative`}
                   >
                     <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
@@ -563,7 +569,15 @@ className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg 
                         className={`text-xs text-justify ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? 'max-h-none overflow-visible' : 'max-h-20 overflow-hidden'}`}
                       >
                         {isExpanded ? (
-                          summary
+                          <>
+                            {summary}{' '}
+                            <button
+                              className="inline text-blue-600 hover:text-blue-700 text-xs underline"
+                              onClick={(e) => { e.stopPropagation(); toggleAgentExpansion(agentName); }}
+                            >
+                              See less
+                            </button>
+                          </>
                         ) : (
                           <>
                             {(overflowedAgents[agentName] && truncatedMap[agentName])
@@ -584,16 +598,6 @@ className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg 
                           </>
                         )}
                       </p>
-                      {isExpanded && (
-                        <div className="mt-1 text-right">
-                          <button
-                            className="text-blue-600 hover:text-blue-700 text-xs underline"
-                            onClick={(e) => { e.stopPropagation(); toggleAgentExpansion(agentName); }}
-                          >
-                            See less
-                          </button>
-                        </div>
-                      )}
 
                       {(debugMode && (adjustOpen.has(agentName) || true)) && (
                         <div className="mt-1 space-y-1">
