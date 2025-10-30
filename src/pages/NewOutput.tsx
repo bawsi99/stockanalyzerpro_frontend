@@ -64,6 +64,7 @@ import EnhancedAIAnalysisCard from "@/components/analysis/EnhancedAIAnalysisCard
 import EnhancedMultiTimeframeCard from "@/components/analysis/EnhancedMultiTimeframeCard";
 import EnhancedSectorContextCard from "@/components/analysis/EnhancedSectorContextCard";
 import CorrelationMatrixCard from "@/components/analysis/CorrelationMatrixCard";
+import TimeframeRiskOverviewCard from "@/components/analysis/TimeframeRiskOverviewCard";
 
 // Services and Utils
 import { apiService } from "@/services/api";
@@ -1271,6 +1272,20 @@ const NewOutput: React.FC = () => {
                   />
                 )}
               </div>
+            </div>
+
+            {/* Timeframe Analysis & Risk Assessment (Market Outlook, Key Drivers, Critical Levels) */}
+            <div className="mt-4">
+              {analysisLoading ? (
+                <AnalysisCardSkeleton 
+                  title="Timeframe Analysis & Risk Assessment" 
+                  description="Loading sections..." 
+                />
+              ) : (
+                enhancedAI && (
+                  <TimeframeRiskOverviewCard aiAnalysis={enhancedAI} />
+                )
+              )}
             </div>
 
             {/* Decision Story Card (Full Width) */}
