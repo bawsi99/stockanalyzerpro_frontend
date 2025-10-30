@@ -712,44 +712,10 @@ className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg 
           style={{ visibility: 'hidden', pointerEvents: 'none' }}
         />
 
-        {/* Overall Assessment */}
-        {decision_chain.overall_assessment && (
-          <div>
-            <h3 className="font-semibold text-slate-800 mb-3 flex items-center">
-              {getTrendIcon(decision_chain.overall_assessment.trend)}
-              <span className="ml-2">Overall Assessment</span>
-            </h3>
-            <div className="bg-slate-50 rounded-lg p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="text-lg font-bold text-slate-800 capitalize">
-                    {decision_chain.overall_assessment.trend}
-                  </div>
-                  <div className="text-xs text-slate-600">Trend</div>
-                </div>
-                <div className="text-center">
-                  <div className="flex justify-center">
-                    {getConfidenceBadge(
-                      decision_chain.overall_assessment.confidence,
-                      decision_chain.overall_assessment.confidence_level
-                    )}
-                  </div>
-                  <div className="text-xs text-slate-600 mt-1">Confidence</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-slate-800 capitalize">
-                    {decision_chain.overall_assessment.confidence_level}
-                  </div>
-                  <div className="text-xs text-slate-600">Risk Level</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Timeframe Analysis */}
         {decision_chain.timeframe_analysis && (
-          <div>
+          <div className="pt-6">
             <h3 className="font-semibold text-slate-800 mb-3 flex items-center">
               <Clock className="h-4 w-4 mr-2 text-blue-600" />
               Timeframe Analysis
