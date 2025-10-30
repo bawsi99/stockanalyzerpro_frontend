@@ -954,8 +954,8 @@ const NewOutput: React.FC = () => {
   const invertAgentOffsets = false;
 
   // Global radius controls (adjust overall radial distance) - session-only (no localStorage)
-  const [globalRadiusDelta, setGlobalRadiusDelta] = React.useState<number>(60);
-  const [minRadiusOverride, setMinRadiusOverride] = React.useState<number>(140);
+  const [globalRadiusDelta, setGlobalRadiusDelta] = React.useState<number>(340);
+  const [minRadiusOverride, setMinRadiusOverride] = React.useState<number>(340);
   
   
   

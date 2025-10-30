@@ -125,7 +125,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       });
       const N = names.length || 1;
       const EXTRA_RADIUS = 140 + (globalRadiusDelta ?? 0); // push cards farther/closer from center
-      const MIN_R = typeof minRadiusOverride === 'number' ? minRadiusOverride : 260;
+      const MIN_R = typeof minRadiusOverride === 'number' ? minRadiusOverride : 340;
       const radius = Math.max(
         MIN_R,
         Math.min(base.width, base.height) / 2 - Math.max(execRect.width, execRect.height) / 2 - 10 + EXTRA_RADIUS
@@ -489,11 +489,11 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
           </button>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto space-y-6">
+      <CardContent className="flex-1 overflow-y-auto space-y-0">
         {/* Analysis Date and Period */}
 
         {/* Radial layout container */}
-        <div ref={containerRef} className="relative h-[1400px] md:h-[1600px] bg-black rounded-xl">
+        <div ref={containerRef} className="relative h-[800px] md:h-[900px] bg-black rounded-xl">
           {/* Connectors */}
           <svg className="absolute inset-0 pointer-events-none z-10" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             {edges.map(e => (
