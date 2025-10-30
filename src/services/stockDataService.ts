@@ -68,7 +68,18 @@ const createSearchIndex = () => {
 
 // Cache for search results
 const searchCache = new Map<string, typeof stockList>();
-const searchIndex = createSearchIndex();
+let searchIndex: ReturnType<typeof createSearchIndex> = createSearchIndex();
+
+// Rebuild search index when stock list is loaded
+const rebuildSearchIndex = () => {
+  searchIndex = createSearchIndex();
+};
+
+// Update the init promise to rebuild index after fetch
+initPromise.then(() => {
+  rebuildSearchIndex();
+  console.log(`✅ Search index rebuilt with ${stockList.length} stocks`);
+});
 
 // Get popular stocks
 export const getPopularStocks = () => {
@@ -81,14 +92,17 @@ export const getPopularStocks = () => {
 
 // Pre-sorted stock list for performance
 let sortedStockList: typeof stockList | null = null;
+let lastStockListLength = 0;
 
 // Get all stocks (memoized) - ensures backend data is loaded
 export const getAllStocks = () => {
-  if (!sortedStockList || sortedStockList.length === 0) {
-    // Sort once and cache the result
+  // Rebuild cache if stockList has changed (new data loaded)
+  if (stockList.length !== lastStockListLength) {
+    lastStockListLength = stockList.length;
+    
+    // Sort the stock list
     const startsWithLetter = (s: string) => /^[A-Za-z]/.test(s);
-    const listToSort = stockList.length > 0 ? stockList : [];
-    sortedStockList = [...listToSort].sort((a, b) => {
+    sortedStockList = [...stockList].sort((a, b) => {
       const aIsLetter = startsWithLetter(a.symbol);
       const bIsLetter = startsWithLetter(b.symbol);
       if (aIsLetter !== bIsLetter) {
@@ -97,15 +111,16 @@ export const getAllStocks = () => {
       return a.symbol.localeCompare(b.symbol);
     });
   }
-  return sortedStockList;
+  return sortedStockList || [];
 };
 
 // Search stocks with caching and indexing
 export const searchStocks = (query: string): typeof stockList => {
   const normalizedQuery = query.toLowerCase().trim();
   
+  // If no query, return all stocks (for showing in dropdown when focused)
   if (!normalizedQuery) {
-    return [];
+    return getAllStocks();
   }
   
   // Check cache first
@@ -174,9 +189,13 @@ export const searchStocks = (query: string): typeof stockList => {
   return results;
 };
 
-// Get stock by symbol
+// Get stock by symbol - waits briefly for data if not yet loaded
 export const getStockBySymbol = (symbol: string) => {
-  return stockList.find(stock => stock.symbol === symbol);
+  if (!symbol) return undefined;
+  const stock = stockList.find(stock => stock.symbol === symbol);
+  // If stock not found and list not yet fetched, it will return undefined
+  // Component will show just the symbol until list loads
+  return stock;
 };
 
 // Preload popular stocks for instant access
@@ -198,4 +217,16 @@ export const getStockStats = () => {
     exchanges: [...new Set(stockList.map(s => s.exchange))],
     cacheSize: searchCache.size
   };
-}; 
+};
+
+// Wait for stock list to be loaded from backend
+export const waitForStockList = async (timeout = 5000) => {
+  const startTime = Date.now();
+  while (!stockListFetched && Date.now() - startTime < timeout) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  if (!stockListFetched) {
+    console.warn('⚠️ Stock list failed to load within timeout');
+  }
+  return stockList;
+};

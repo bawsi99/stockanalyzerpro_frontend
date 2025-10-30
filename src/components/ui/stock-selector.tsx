@@ -12,7 +12,8 @@ import {
 import { 
   getAllStocks, 
   searchStocks, 
-  getStockBySymbol
+  getStockBySymbol,
+  waitForStockList
 } from '@/services/stockDataService';
 
 import { usePerformanceMonitor } from '@/utils/performanceMonitor';
@@ -88,6 +89,7 @@ export const StockSelector = forwardRef<StockSelectorHandle, StockSelectorProps>
 }, ref) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const inputRef = useRef<HTMLInputElement | null>(null);
   
   // Performance monitoring
@@ -98,16 +100,28 @@ export const StockSelector = forwardRef<StockSelectorHandle, StockSelectorProps>
 
   // Memoize filtered stocks with better caching
   const filteredStocks = useMemo(() => {
+    // Don't show stocks while loading
+    if (isLoading) {
+      return [];
+    }
     if (!debouncedSearch.trim()) {
       return getAllStocks();
     }
     return searchStocks(debouncedSearch);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, isLoading]);
 
-  // Pre-load all stocks on component mount for instant access
+  // Pre-load all stocks on component mount and wait for backend data
   useEffect(() => {
-    // Warm up the cache by calling getAllStocks once
-    getAllStocks();
+    const initializeStocks = async () => {
+      try {
+        await waitForStockList(5000);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error loading stocks:', error);
+        setIsLoading(false);
+      }
+    };
+    initializeStocks();
   }, []);
 
   // Get search results count (only when actually searching)
@@ -118,10 +132,13 @@ export const StockSelector = forwardRef<StockSelectorHandle, StockSelectorProps>
     return 0;
   }, [debouncedSearch]);
 
-  const selectedStock = useMemo(() => 
-    getStockBySymbol(value), 
-    [value]
-  );
+  const [selectedStock, setSelectedStock] = useState<{symbol: string; name: string; exchange: string} | undefined>(undefined);
+  
+  // Update selected stock when value changes or after stocks load
+  useEffect(() => {
+    const stock = getStockBySymbol(value);
+    setSelectedStock(stock);
+  }, [value, isLoading]);
 
   const handleSelect = useCallback((symbol: string) => {
     onValueChange(symbol);
@@ -160,8 +177,9 @@ export const StockSelector = forwardRef<StockSelectorHandle, StockSelectorProps>
       <button
         type="button"
         className="w-full flex items-center justify-between rounded-md border bg-white text-black px-3 py-2 text-left ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 border-slate-300 focus:border-emerald-400"
-        onClick={() => setDialogOpen(true)}
-        disabled={disabled}
+        onClick={() => !isLoading && setDialogOpen(true)}
+        disabled={disabled || isLoading}
+        title={isLoading ? "Loading stocks..." : ""}
       >
         {value ? (
           selectedStock
@@ -170,10 +188,11 @@ export const StockSelector = forwardRef<StockSelectorHandle, StockSelectorProps>
         ) : (
           placeholder
         )}
+        {isLoading && <span className="text-slate-400 text-xs ml-1">●</span>}
         <span className="text-slate-400">▼</span>
       </button>
       
-      <CommandDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <CommandDialog open={dialogOpen && !isLoading} onOpenChange={setDialogOpen}>
         <CommandInput
           placeholder="Search stock by symbol or name..."
           value={search}
@@ -183,14 +202,16 @@ export const StockSelector = forwardRef<StockSelectorHandle, StockSelectorProps>
         />
         <CommandList className="max-h-[400px] overflow-y-auto">
           <CommandEmpty>
-            No stocks found.
+            {isLoading ? 'Loading stocks...' : 'No stocks found.'}
           </CommandEmpty>
           <CommandGroup>
-            <StockList
-              stocks={filteredStocks}
-              search={debouncedSearch}
-              onSelect={handleSelect}
-            />
+            {!isLoading && (
+              <StockList
+                stocks={filteredStocks}
+                search={debouncedSearch}
+                onSelect={handleSelect}
+              />
+            )}
           </CommandGroup>
         </CommandList>
       </CommandDialog>
