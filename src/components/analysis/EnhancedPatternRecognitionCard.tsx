@@ -284,31 +284,6 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
           </div>
         </CardHeader>
         <CardContent className="p-6">
-          {/* Basic Patterns (curated) */}
-          {nonEmptyBasicPatterns.length > 0 && (
-            <div className="mb-6">
-              <h4 className="font-semibold text-slate-700 mb-3">Key Patterns</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {nonEmptyBasicPatterns.map((pattern) => (
-                  <div key={pattern.type} className="p-3 border border-slate-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-700">{pattern.name}</span>
-                      <Badge variant={"default"}>
-                        {pattern.count}
-                      </Badge>
-                    </div>
-                    <div className="mt-2">
-                      <div className="flex items-center space-x-1">
-                        <CheckCircle className="h-3 w-3 text-green-500" />
-                        <span className="text-xs text-green-600">Detected</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Pattern Chart - Only show if patterns are detected */}
           {(allPatterns.length > 0 || basicPatterns.reduce((sum, p) => sum + p.count, 0) > 0) && (
             <div className="mb-6">

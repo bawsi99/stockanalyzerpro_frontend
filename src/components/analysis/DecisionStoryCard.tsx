@@ -127,7 +127,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         }
         if (agentOrderPriority) {
           const keys = Object.keys(agentOrderPriority);
-          for (let k of keys) {
+          for (const k of keys) {
             const lk = norm(k);
             if (lk === lname || lname.includes(lk) || lk.includes(lname)) return agentOrderPriority[k] as number;
           }
@@ -528,6 +528,24 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
             @keyframes ds-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
             .ds-path { stroke-dasharray: 1; stroke-dashoffset: 1; }
             .ds-draw .ds-path { animation: ds-draw 700ms ease-out forwards; }
+
+            /* Inward traveling pulse along arrows */
+            @keyframes ds-pulse-move {
+              0%   { stroke-dashoffset: 1; opacity: 0; }
+              10%  { opacity: 1; }
+              90%  { opacity: 1; }
+              100% { stroke-dashoffset: 0; opacity: 0; }
+            }
+            .ds-pulse {
+              stroke-dasharray: 0.12 0.88; /* short highlight segment expressed as fraction of total length */
+              stroke-dashoffset: 1;
+              opacity: 0;
+            }
+            /* Run a few pulses when arrows first appear */
+            .ds-draw .ds-pulse {
+              animation: ds-pulse-move 2000ms cubic-bezier(.22,.61,.36,1) 0ms 3 both;
+            }
+
             /* Fly-in cards */
             .ds-scope { --ds-active: 1; }
             .ds-scope.ds-fly-in { --ds-active: 0; }
@@ -546,17 +564,39 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
             }
           `}</style>
           <svg className={`absolute inset-0 pointer-events-none z-10 transition-opacity duration-300 ease-in-out ${showArrows ? 'opacity-100 ds-draw' : 'opacity-0'}`} width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            {edges.map(e => (
-              <path
-                key={`${e.key}-${drawKey}`}
-                className="ds-path"
-                pathLength={1}
-                d={`M ${e.from.x},${e.from.y} C ${e.c1.x},${e.c1.y} ${e.c2.x},${e.c2.y} ${e.to.x},${e.to.y}`}
-                fill="none"
-                stroke={e.stroke || '#fde047'}
-                strokeWidth={2.5}
-                opacity="0.9"
-              />
+            <defs>
+              <filter id="ds-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
+                <feMerge>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            {edges.map((e, i) => (
+              <g key={`${e.key}-${drawKey}`}>
+                <path
+                  className="ds-path"
+                  pathLength={1}
+                  d={`M ${e.from.x},${e.from.y} C ${e.c1.x},${e.c1.y} ${e.c2.x},${e.c2.y} ${e.to.x},${e.to.y}`}
+                  fill="none"
+                  stroke={e.stroke || '#fde047'}
+                  strokeWidth={2.5}
+                  opacity="0.9"
+                />
+                {/* inward pulse overlay */}
+                <path
+                  className="ds-pulse"
+                  pathLength={1}
+                  d={`M ${e.from.x},${e.from.y} C ${e.c1.x},${e.c1.y} ${e.c2.x},${e.c2.y} ${e.to.x},${e.to.y}`}
+                  fill="none"
+                  stroke="#fef08a"
+                  strokeWidth={4}
+                  strokeLinecap="round"
+                  style={{ animationDelay: `${i * 120}ms` }}
+                  filter="url(#ds-glow)"
+                />
+              </g>
             ))}
           </svg>
 

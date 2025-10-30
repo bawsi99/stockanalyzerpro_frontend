@@ -397,45 +397,6 @@ const PatternChart: React.FC<PatternChartProps> = ({
           style={{ height }}
           className="w-full border border-slate-200 rounded"
         />
-        
-        {/* Pattern Legend */}
-        {patterns && Object.keys(patterns).length > 0 && (
-          <div className="mt-4">
-            <h4 className="text-sm font-medium text-slate-700 mb-2">Detected Patterns</h4>
-            <div className="flex flex-wrap gap-3">
-              {Object.entries(patterns).map(([patternType, patternList]) => {
-                if (!patternList || patternList.length === 0) return null;
-                
-                const color = PATTERN_COLORS[patternType as keyof typeof PATTERN_COLORS] || '#6b7280';
-                const displayName = patternType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                
-                // Calculate average quality for this pattern type
-                const avgQuality = patternList.reduce((sum, p) => {
-                  const quality = (p as any)?.quality_score || (p as any)?.confidence || 0;
-                  return sum + quality;
-                }, 0) / patternList.length;
-                
-                return (
-                  <div key={patternType} className="flex items-center space-x-2 text-xs bg-slate-50 px-2 py-1 rounded">
-                    <div 
-                      className="w-3 h-3 rounded" 
-                      style={{ backgroundColor: color }}
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-slate-700 font-medium">
-                        {displayName}
-                      </span>
-                      <span className="text-slate-500">
-                        {patternList.length} pattern{patternList.length !== 1 ? 's' : ''}
-                        {avgQuality > 0 && ` • ${avgQuality.toFixed(0)}% avg quality`}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
