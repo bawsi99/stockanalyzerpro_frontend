@@ -63,7 +63,6 @@ import VolumeAnalysisCard from "@/components/analysis/VolumeAnalysisCard";
 import EnhancedMultiTimeframeCard from "@/components/analysis/EnhancedMultiTimeframeCard";
 import EnhancedSectorContextCard from "@/components/analysis/EnhancedSectorContextCard";
 import CorrelationMatrixCard from "@/components/analysis/CorrelationMatrixCard";
-import TimeframeRiskOverviewCard from "@/components/analysis/TimeframeRiskOverviewCard";
 
 // Services and Utils
 import { apiService } from "@/services/api";
@@ -1265,19 +1264,6 @@ const NewOutput: React.FC = () => {
               </div>
             </div>
 
-            {/* Timeframe Analysis & Risk Assessment (Market Outlook, Key Drivers, Critical Levels) */}
-            <div className="mt-4">
-              {analysisLoading ? (
-                <AnalysisCardSkeleton 
-                  title="Timeframe Analysis & Risk Assessment" 
-                  description="Loading sections..." 
-                />
-              ) : (
-                enhancedAI && (
-                  <TimeframeRiskOverviewCard aiAnalysis={enhancedAI} />
-                )
-              )}
-            </div>
 
             {/* Decision Story Card (Full Width) */}
             <div className="mt-4">
@@ -1310,6 +1296,7 @@ const NewOutput: React.FC = () => {
                         decisionChain={(enhancedData?.decision_story || ai_analysis?.decision_story)?.decision_chain}
                         fallbackFairValueRange={(enhancedData as any)?.ai_analysis?.trading_strategy?.long_term?.fair_value_range ||
                                                 (ai_analysis as any)?.trading_strategy?.long_term?.fair_value_range || null}
+                        aiAnalysis={enhancedAI}
                       />
                     </div>
                   )}
