@@ -26,6 +26,13 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
   const [adjustOpen, setAdjustOpen] = useState<Set<string>>(new Set());
   const [debugMode, setDebugMode] = useState<boolean>(false);
+  const [showArrows, setShowArrows] = useState<boolean>(true);
+  const [drawKey, setDrawKey] = useState<number>(0);
+
+  useEffect(() => {
+    // When arrows become visible, restart the draw animation
+    if (showArrows) setDrawKey((k) => k + 1);
+  }, [showArrows]);
 
   // Hardcoded agent order
   const HARDCODED_ORDER = [
@@ -72,6 +79,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
   const agentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [edges, setEdges] = useState<Array<{ from: Point; to: Point; c1: Point; c2: Point; key: string; stroke?: string; width?: number; marker?: string }>>([]);
   const [agentPositions, setAgentPositions] = useState<Record<string, { left: number; top: number }>>({});
+  const [agentOffsets, setAgentOffsets] = useState<Record<string, { ox: number; oy: number }>>({});
   const textRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
   const [overflowedAgents, setOverflowedAgents] = useState<Record<string, boolean>>({});
   const measurerRef = useRef<HTMLDivElement | null>(null);
@@ -91,6 +99,13 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       if (!container || !exec) return;
       const base = container.getBoundingClientRect();
       const execRect = exec.getBoundingClientRect();
+      // Toggle arrow visibility based on Executive center within viewport central band
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      const centerY = execRect.top + execRect.height / 2;
+      const centralTop = vh * 0.3;
+      const centralBottom = vh * 0.7;
+      const inCentral = centerY >= centralTop && centerY <= centralBottom;
+      setShowArrows(prev => (prev !== inCentral ? inCentral : prev));
       // Use container's center as the center of the radial pattern
       const execCenter: Point = {
         x: Math.round(base.width / 2),
@@ -134,6 +149,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       const CARD_W = AGENT_CARD_W;
       const CARD_H = debugMode ? AGENT_CARD_H_DEBUG : AGENT_CARD_H_DEFAULT;
       const newPositions: Record<string, { left: number; top: number }> = {};
+      const newOffsets: Record<string, { ox: number; oy: number }> = {};
       const newEdges: Array<{ from: Point; to: Point; c1: Point; c2: Point; key: string; stroke?: string; width?: number; marker?: string }> = [];
 
       names.forEach((name, i) => {
@@ -148,6 +164,15 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
           cy += (t.dy ?? 0) * m;
         }
         newPositions[name] = { left: cx, top: cy };
+
+        // Precompute outward fly-in offset along radial direction
+        const vx = cx - execCenter.x;
+        const vy = cy - execCenter.y;
+        const len = Math.hypot(vx, vy) || 1;
+        const ux = vx / len;
+        const uy = vy / len;
+        const dist = 120; // px to start from outside
+        newOffsets[name] = { ox: Math.round(ux * dist), oy: Math.round(uy * dist) };
 
         // Start edge toward center using assumed card size
         const dx = execCenter.x - cx;
@@ -212,6 +237,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       addPrecise('Risk Analysis');
 
       setAgentPositions(newPositions);
+      setAgentOffsets(newOffsets);
       setEdges(newEdges);
     };
 
@@ -494,12 +520,35 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         {/* Analysis Date and Period */}
 
         {/* Radial layout container */}
-        <div ref={containerRef} className="relative h-[800px] md:h-[900px] bg-black rounded-xl">
+        <div ref={containerRef} className={`relative h-[800px] md:h-[900px] bg-black rounded-xl ds-scope ${showArrows ? 'ds-fly-in' : ''}`}>
           {/* Connectors */}
-          <svg className="absolute inset-0 pointer-events-none z-10" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <style>{`
+            @keyframes ds-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+            .ds-path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+            .ds-draw .ds-path { animation: ds-draw 700ms ease-out forwards; }
+            /* Fly-in cards */
+            .ds-scope { --ds-active: 1; }
+            .ds-scope.ds-fly-in { --ds-active: 0; }
+            .ds-card {
+              will-change: transform, opacity;
+              transform: translate(-50%, -50%) translate(calc(var(--ds-x0, 0px) * var(--ds-active, 1)), calc(var(--ds-y0, 0px) * var(--ds-active, 1)));
+              transition: transform 500ms cubic-bezier(.2,.8,.2,1), opacity 300ms ease-out;
+              opacity: calc(1 - var(--ds-active, 1));
+            }
+            /* Executive pop-in */
+            .ds-exec {
+              will-change: transform, opacity;
+              transform: scale(calc(0.85 + 0.15 * (1 - var(--ds-active, 1))));
+              opacity: calc(1 - var(--ds-active, 1));
+              transition: transform 450ms cubic-bezier(.2,.8,.2,1), opacity 300ms ease-out;
+            }
+          `}</style>
+          <svg className={`absolute inset-0 pointer-events-none z-10 transition-opacity duration-300 ease-in-out ${showArrows ? 'opacity-100 ds-draw' : 'opacity-0'}`} width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             {edges.map(e => (
               <path
-                key={e.key}
+                key={`${e.key}-${drawKey}`}
+                className="ds-path"
+                pathLength={1}
                 d={`M ${e.from.x},${e.from.y} C ${e.c1.x},${e.c1.y} ${e.c2.x},${e.c2.y} ${e.to.x},${e.to.y}`}
                 fill="none"
                 stroke={e.stroke || '#fde047'}
@@ -510,56 +559,58 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
           </svg>
 
           {/* Executive Summary centered */}
-          <div ref={execRef} className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 z-30 shadow-sm ${debugMode ? 'w-[800px] md:w-[1000px]' : 'w-[700px] md:w-[900px]'} h-auto overflow-hidden`}>
-            <h3 className="font-semibold text-slate-800 mb-1 flex items-center">
-              <BookOpen className="h-4 w-4 mr-2 text-purple-600" />
-              Executive Summary
-            </h3>
-            <p className={`text-sm text-slate-700 leading-relaxed text-justify`}>
-              {narrative}
-            </p>
-            {(debugMode && typeof globalRadiusDelta === 'number' && typeof minRadiusOverride === 'number') && (
-              <div className="mt-2 border-t border-purple-100 pt-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-700">
-                  <div className="flex items-center gap-2">
-                    <span className="whitespace-nowrap">Ring radius</span>
-                    <input
-                      type="range"
-                      min={-400}
-                      max={400}
-                      step={10}
-                      value={globalRadiusDelta}
-                      onChange={(e) => onGlobalRadiusDeltaChange?.(Number(e.target.value))}
-                      className="flex-1"
-                    />
-                    <input
-                      type="number"
-                      value={globalRadiusDelta}
-                      onChange={(e) => onGlobalRadiusDeltaChange?.(Number(e.target.value))}
-                      className="w-16 border rounded px-1 py-0.5 bg-white"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="whitespace-nowrap">Min radius</span>
-                    <input
-                      type="range"
-                      min={80}
-                      max={500}
-                      step={10}
-                      value={minRadiusOverride}
-                      onChange={(e) => onMinRadiusOverrideChange?.(Number(e.target.value))}
-                      className="flex-1"
-                    />
-                    <input
-                      type="number"
-                      value={minRadiusOverride}
-                      onChange={(e) => onMinRadiusOverrideChange?.(Number(e.target.value))}
-                      className="w-16 border rounded px-1 py-0.5 bg-white"
-                    />
+          <div ref={execRef} className={"absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30"}>
+            <div className={`ds-exec bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 shadow-sm ${debugMode ? 'w-[800px] md:w-[1000px]' : 'w-[700px] md:w-[900px]'} h-auto overflow-hidden`}>
+              <h3 className="font-semibold text-slate-800 mb-1 flex items-center">
+                <BookOpen className="h-4 w-4 mr-2 text-purple-600" />
+                Executive Summary
+              </h3>
+              <p className={`text-sm text-slate-700 leading-relaxed text-justify`}>
+                {narrative}
+              </p>
+              {(debugMode && typeof globalRadiusDelta === 'number' && typeof minRadiusOverride === 'number') && (
+                <div className="mt-2 border-t border-purple-100 pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-700">
+                    <div className="flex items-center gap-2">
+                      <span className="whitespace-nowrap">Ring radius</span>
+                      <input
+                        type="range"
+                        min={-400}
+                        max={400}
+                        step={10}
+                        value={globalRadiusDelta}
+                        onChange={(e) => onGlobalRadiusDeltaChange?.(Number(e.target.value))}
+                        className="flex-1"
+                      />
+                      <input
+                        type="number"
+                        value={globalRadiusDelta}
+                        onChange={(e) => onGlobalRadiusDeltaChange?.(Number(e.target.value))}
+                        className="w-16 border rounded px-1 py-0.5 bg-white"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="whitespace-nowrap">Min radius</span>
+                      <input
+                        type="range"
+                        min={80}
+                        max={500}
+                        step={10}
+                        value={minRadiusOverride}
+                        onChange={(e) => onMinRadiusOverrideChange?.(Number(e.target.value))}
+                        className="flex-1"
+                      />
+                      <input
+                        type="number"
+                        value={minRadiusOverride}
+                        onChange={(e) => onMinRadiusOverrideChange?.(Number(e.target.value))}
+                        className="w-16 border rounded px-1 py-0.5 bg-white"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Radial agent ring */}
@@ -581,8 +632,8 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
                   <div
                     key={agentName}
                     ref={(el) => (agentRefs.current[agentName] = el)}
-                    style={pos ? { position: 'absolute', left: pos.left, top: pos.top, transform: 'translate(-50%, -50%)' } as React.CSSProperties : undefined}
-className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 ${isExpanded ? 'w-[360px] md:w-[420px] lg:w-[480px]' : 'w-[240px]'} h-auto px-2 py-1.5 overflow-hidden relative`}
+                    style={pos ? ({ position: 'absolute', left: pos.left, top: pos.top, ['--ds-x0' as any]: `${agentOffsets[agentName]?.ox ?? 0}px`, ['--ds-y0' as any]: `${agentOffsets[agentName]?.oy ?? 0}px` } as React.CSSProperties) : undefined}
+className={`pointer-events-auto ds-card ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 ${isExpanded ? 'w-[360px] md:w-[420px] lg:w-[480px]' : 'w-[240px]'} h-auto px-2 py-1.5 overflow-hidden relative`}
                   >
                     <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
