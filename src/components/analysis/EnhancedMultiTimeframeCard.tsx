@@ -514,11 +514,15 @@ const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol }: Enhanced
               Key Conflicts ({(validation.key_conflicts || []).length}) - {validation.conflict_severity || 'None'} Severity
             </h3>
             <div className="space-y-1">
-              {(validation.key_conflicts || []).map((conflict, index) => (
-                <div key={index} className="text-sm text-red-700">
-                  • {conflict}
-                </div>
-              ))}
+              {(validation.key_conflicts || []).map((conflict, index) => {
+                // Remove weight from conflict string (e.g., "1min (...): bearish [weight: 0.008]" -> "1min (...): bearish")
+                const conflictWithoutWeight = conflict.replace(/\s*\[weight:[^\]]*\]\s*$/, '');
+                return (
+                  <div key={index} className="text-sm text-red-700">
+                    • {conflictWithoutWeight}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
