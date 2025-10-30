@@ -89,6 +89,7 @@ export const ENDPOINTS = {
     SECTOR_PERFORMANCE: `${ANALYSIS_SERVICE_URL}/sector`,
     SECTOR_COMPARE: `${ANALYSIS_SERVICE_URL}/sector/compare`,
     STOCK_SECTOR: `${ANALYSIS_SERVICE_URL}/stock`,
+    STOCKS_LIST: `${ANALYSIS_SERVICE_URL}/stocks/list`,
     // ML endpoints
     ML_TRAIN: `${ANALYSIS_SERVICE_URL}/ml/train`,
     ML_MODEL: `${ANALYSIS_SERVICE_URL}/ml/model`,

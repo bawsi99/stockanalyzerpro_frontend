@@ -1,15 +1,49 @@
-import stockList from '@/utils/stockList.json';
+import { ENDPOINTS } from '@/config';
+
+// Will be populated from backend API
+let stockList: Array<{symbol: string; name: string; exchange: string}> = [];
+let stockListFetched = false;
 
 // Popular stocks that should be shown first
 const POPULAR_STOCKS = [
   'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'HINDUNILVR', 'ITC', 'SBIN',
   'BHARTIARTL', 'KOTAKBANK', 'AXISBANK', 'ASIANPAINT', 'MARUTI', 'HCLTECH', 'SUNPHARMA',
-  'TATAMOTORS', 'WIPRO', 'ULTRACEMCO', 'TITAN', 'BAJFINANCE', 'NESTLEIND', 'POWERGRID',
+  'TMPV', 'WIPRO', 'ULTRACEMCO', 'TITAN', 'BAJFINANCE', 'NESTLEIND', 'POWERGRID',
   'ADANIENT', 'ADANIPORTS', 'JSWSTEEL', 'TECHM', 'HINDALCO', 'ONGC', 'COALINDIA',
   'NTPC', 'TATASTEEL', 'GRASIM', 'CIPLA', 'SHREECEM', 'DIVISLAB', 'BRITANNIA',
   'EICHERMOT', 'HEROMOTOCO', 'DRREDDY', 'BAJAJFINSV', 'INDUSINDBK', 'TATACONSUM',
   'APOLLOHOSP', 'BAJAJ-AUTO', 'VEDL', 'SBILIFE', 'HDFCLIFE', 'UPL', 'BPCL'
 ];
+
+// Fetch stock list from backend API (only once at startup)
+const fetchStockListFromBackend = async () => {
+  if (stockListFetched) {
+    return stockList;
+  }
+  
+  try {
+    const response = await fetch(ENDPOINTS.ANALYSIS.STOCKS_LIST);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    
+    if (data.success && data.stocks && Array.isArray(data.stocks)) {
+      stockList = data.stocks;
+      stockListFetched = true;
+      console.log(`✅ Loaded ${stockList.length} stocks from backend (cached for session)`);
+      return stockList;
+    }
+  } catch (error) {
+    console.error('❌ Failed to fetch stock list from backend:', error);
+  }
+  
+  return stockList;
+};
+
+// Initialize stock list on module load (fires once when module is imported)
+const initPromise = fetchStockListFromBackend();
+initPromise.catch(err => console.error('Failed to initialize stock list:', err));
 
 // Create search index for faster filtering
 const createSearchIndex = () => {
@@ -48,12 +82,13 @@ export const getPopularStocks = () => {
 // Pre-sorted stock list for performance
 let sortedStockList: typeof stockList | null = null;
 
-// Get all stocks (memoized)
+// Get all stocks (memoized) - ensures backend data is loaded
 export const getAllStocks = () => {
-  if (!sortedStockList) {
+  if (!sortedStockList || sortedStockList.length === 0) {
     // Sort once and cache the result
     const startsWithLetter = (s: string) => /^[A-Za-z]/.test(s);
-    sortedStockList = [...stockList].sort((a, b) => {
+    const listToSort = stockList.length > 0 ? stockList : [];
+    sortedStockList = [...listToSort].sort((a, b) => {
       const aIsLetter = startsWithLetter(a.symbol);
       const bIsLetter = startsWithLetter(b.symbol);
       if (aIsLetter !== bIsLetter) {
