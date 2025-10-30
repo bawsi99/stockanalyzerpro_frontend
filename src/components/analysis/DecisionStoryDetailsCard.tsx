@@ -148,52 +148,6 @@ const DecisionStoryDetailsCard = ({ decisionChain, fallbackFairValueRange, aiAna
           </div>
         )}
 
-        {/* Risk Assessment */}
-        {decisionChain.risk_assessment && (
-          <div>
-            <h3 className="font-semibold text-slate-800 mb-3 flex items-center">
-              <AlertTriangle className="h-4 w-4 mr-2 text-orange-600" />
-              Risk Assessment
-            </h3>
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Primary Risks */}
-                <div>
-                  <h4 className="font-semibold text-orange-800 mb-2">Primary Risks</h4>
-                  <div className="space-y-1">
-                    {decisionChain.risk_assessment.primary_risks?.length > 0 ? (
-                      decisionChain.risk_assessment.primary_risks.slice(0, 3).map((risk, idx) => (
-                        <div key={idx} className="text-sm text-orange-700 flex items-start">
-                          <span className="inline-block w-1 h-1 bg-orange-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                          {risk}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-sm text-orange-600">No specific risks identified</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Critical Levels */}
-                <div>
-                  <h4 className="font-semibold text-orange-800 mb-2">Critical Levels</h4>
-                  <div className="space-y-1">
-                    {decisionChain.risk_assessment.critical_levels?.length > 0 ? (
-                      decisionChain.risk_assessment.critical_levels.slice(0, 3).map((level, idx) => (
-                        <div key={idx} className="text-sm text-orange-700 flex items-center">
-                          <Target className="h-3 w-3 mr-2 text-orange-600" />
-                          ₹{typeof level === 'string' ? level : level.toFixed(2)}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-sm text-orange-600">No critical levels specified</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Appended from AI TimeframeRiskOverviewCard: Market Outlook and Critical Levels */}
         {aiAnalysis && (
@@ -278,25 +232,6 @@ const DecisionStoryDetailsCard = ({ decisionChain, fallbackFairValueRange, aiAna
                 </div>
               )}
 
-              {/* Key Drivers */}
-              {aiAnalysis.market_outlook?.key_drivers && aiAnalysis.market_outlook.key_drivers.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-slate-700">Key Drivers</h4>
-                  <div className="space-y-2">
-                    {aiAnalysis.market_outlook.key_drivers.map((driver, index) => (
-                      <div key={index} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg">
-                        <div className="flex-1">
-                          <div className="font-medium text-slate-800 text-sm">{driver.factor}</div>
-                          <div className="text-xs text-slate-600">{driver.timeframe}</div>
-                        </div>
-                        <Badge className={driver.impact === 'positive' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
-                          {driver.impact}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Critical Levels */}
