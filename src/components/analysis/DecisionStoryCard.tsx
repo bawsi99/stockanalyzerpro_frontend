@@ -256,26 +256,32 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         const meas = measurerRef.current;
         if (!meas) return;
         // Use collapsed card width (240px) for truncation, not current DOM width
-        // This ensures truncation is consistent regardless of expanded/collapsed state
         const COLLAPSED_CARD_WIDTH = 240;
         const width = COLLAPSED_CARD_WIDTH - 16; // subtract padding (px-2 = 16px)
         meas.style.width = width + 'px';
-        meas.style.maxHeight = clampPx + 'px';
+        // Target 5 lines of text with postfix
+        meas.style.maxHeight = '105px';
         const postfix = ' … See more';
         
         // Split into words for word-level truncation
         const words = full.split(' ');
         let best = 0;
-        let currentText = '';
         
         for (let i = 0; i < words.length; i++) {
           const testText = words.slice(0, i + 1).join(' ');
           meas.textContent = testText + postfix;
-          if (meas.scrollHeight <= clampPx) {
+          // Check if it fits in 5 lines (105px)
+          if (meas.scrollHeight <= 105) {
             best = i + 1;
           } else {
             break;
           }
+        }
+        
+        // Special case: Support Resistance needs 1 fewer word to fit 5 lines consistently
+        const isSupportResistance = name.toLowerCase().includes('support') && name.toLowerCase().includes('resistance');
+        if (isSupportResistance && best > 0) {
+          best = Math.max(0, best - 1);
         }
         
         const trimmed = words.slice(0, best).join(' ').trim();
@@ -575,7 +581,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
                     key={agentName}
                     ref={(el) => (agentRefs.current[agentName] = el)}
                     style={pos ? { position: 'absolute', left: pos.left, top: pos.top, transform: 'translate(-50%, -50%)' } as React.CSSProperties : undefined}
-className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 ${isExpanded ? 'w-[360px] md:w-[420px] lg:w-[480px]' : 'w-[240px]'} ${isExpanded ? 'h-auto' : (debugMode ? 'h-[170px]' : 'h-auto')} px-2 py-1.5 overflow-hidden relative`}
+className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 ${isExpanded ? 'w-[360px] md:w-[420px] lg:w-[480px]' : 'w-[240px]'} h-auto px-2 py-1.5 overflow-hidden relative`}
                   >
                     <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
@@ -605,7 +611,7 @@ className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg 
                     <div className="mt-0.5 pr-0">
                       <p
                         ref={(el) => (textRefs.current[agentName] = el)}
-                        className={`text-xs text-left ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? 'max-h-none overflow-visible' : 'max-h-24 overflow-hidden'}`}
+                        className={`text-xs text-left ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? 'max-h-none overflow-visible' : ''}`}
                       >
                         {isExpanded ? (
                           <>

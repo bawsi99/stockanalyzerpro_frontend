@@ -931,18 +931,18 @@ const NewOutput: React.FC = () => {
 
   // Optional per-agent radial distance and translate offsets for DecisionStoryCard
   const agentRadiusOffsets: Record<string, number> = {};
-  const [agentTranslateOffsets, setAgentTranslateOffsets] = React.useState<Record<string, { dx?: number; dy?: number }>>({
+  const [agentTranslateOffsets, setAgentTranslateOffsets] = React.useState({
     "Volume Anomaly": { dx: 215, dy: 0 },
     "Institutional Activity (volume based)": { dx: 100, dy: 100 },
     "Volume Confirmation": { dx: 130, dy: -35 },
     "Support Resistance (volume based)": { dx: 199, dy: 0 },
-    "Volume Momentum": { dx: 40, dy: -100 },
+    "Volume Momentum": { dx: 40, dy: -110 },
     "Risk Analysis": { dx: -215, dy: 0 },
-    "Sector Analysis": { dx: 40, dy: -100 },
+    "Sector Analysis": { dx: 40, dy: -110 },
     "Cross-Validation Analysis": { dx: -199, dy: 0 },
     "Market Structure Analysis": { dx: -100, dy: 100 },
     "Multi-Timeframe Analysis": { dx: -40, dy: -35 },
-    "Technical Indicators": { dx: 0, dy: 160 }
+    "Technical Indicators": { dx: 0, dy: 165 }
   });
   const onAgentTranslateChange = React.useCallback((name: string, delta: { dx?: number; dy?: number }) => {
     setAgentTranslateOffsets(prev => ({
