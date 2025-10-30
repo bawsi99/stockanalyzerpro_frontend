@@ -934,14 +934,14 @@ const NewOutput: React.FC = () => {
   const [agentTranslateOffsets, setAgentTranslateOffsets] = React.useState({
     "Volume Anomaly": { dx: 215, dy: 0 },
     "Institutional Activity (volume based)": { dx: 100, dy: 100 },
-    "Volume Confirmation": { dx: 130, dy: -35 },
+    "Volume Confirmation": { dx: 240, dy: -35 },
     "Support Resistance (volume based)": { dx: 199, dy: 0 },
-    "Volume Momentum": { dx: 40, dy: -110 },
+    "Volume Momentum": { dx: -285, dy: -140 },
     "Risk Analysis": { dx: -215, dy: 0 },
-    "Sector Analysis": { dx: 40, dy: -110 },
+    "Sector Analysis": { dx: 285, dy: -140 },
     "Cross-Validation Analysis": { dx: -199, dy: 0 },
     "Market Structure Analysis": { dx: -100, dy: 100 },
-    "Multi-Timeframe Analysis": { dx: -40, dy: -35 },
+    "Multi-Timeframe Analysis": { dx: -240, dy: -35 },
     "Technical Indicators": { dx: 0, dy: 165 }
   });
   const onAgentTranslateChange = React.useCallback((name: string, delta: { dx?: number; dy?: number }) => {

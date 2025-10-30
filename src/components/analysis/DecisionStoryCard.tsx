@@ -91,9 +91,10 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       if (!container || !exec) return;
       const base = container.getBoundingClientRect();
       const execRect = exec.getBoundingClientRect();
+      // Use container's center as the center of the radial pattern
       const execCenter: Point = {
-        x: Math.round(execRect.left - base.left + execRect.width / 2),
-        y: Math.round(execRect.top - base.top + execRect.height / 2),
+        x: Math.round(base.width / 2),
+        y: Math.round(base.height / 2),
       };
 
       // Compute radial positions based on data (not refs) so first paint works
@@ -586,7 +587,7 @@ className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg 
                     <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
                         <span className={colors.icon}>{getAgentIcon(agentName)}</span>
-                        <span className="ml-2">{agentName}</span>
+                        <span className="ml-2" style={{ display: 'inline-block', maxWidth: '180px' }}>{agentName}</span>
                       </h4>
                       {debugMode && (
                         <button
