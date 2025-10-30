@@ -28,6 +28,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
   const [debugMode, setDebugMode] = useState<boolean>(false);
   const [showArrows, setShowArrows] = useState<boolean>(true);
   const [drawKey, setDrawKey] = useState<number>(0);
+  const [lastExpandedAgent, setLastExpandedAgent] = useState<string | null>(null);
 
   useEffect(() => {
     // When arrows become visible, restart the draw animation
@@ -380,6 +381,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         newSet.delete(agentName);
       } else {
         newSet.add(agentName);
+        setLastExpandedAgent(agentName);
       }
       return newSet;
     });
@@ -516,11 +518,11 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
           </button>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto space-y-0">
+      <CardContent className="flex-1 overflow-visible space-y-0">
         {/* Analysis Date and Period */}
 
         {/* Radial layout container */}
-        <div ref={containerRef} className={`relative h-[800px] md:h-[900px] bg-black rounded-xl ds-scope ${showArrows ? 'ds-fly-in' : ''}`}>
+        <div ref={containerRef} className={`relative overflow-visible h-[800px] md:h-[900px] bg-black rounded-xl ds-scope ${showArrows ? 'ds-fly-in' : ''}`}>
           {/* Connectors */}
           <style>{`
             @keyframes ds-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
@@ -632,8 +634,9 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
                   <div
                     key={agentName}
                     ref={(el) => (agentRefs.current[agentName] = el)}
-                    style={pos ? ({ position: 'absolute', left: pos.left, top: pos.top, ['--ds-x0' as any]: `${agentOffsets[agentName]?.ox ?? 0}px`, ['--ds-y0' as any]: `${agentOffsets[agentName]?.oy ?? 0}px` } as React.CSSProperties) : undefined}
-className={`pointer-events-auto ds-card ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 ${isExpanded ? 'w-[360px] md:w-[420px] lg:w-[480px]' : 'w-[240px]'} h-auto px-2 py-1.5 overflow-hidden relative`}
+                    onClick={(e) => { e.stopPropagation(); toggleAgentExpansion(agentName); }}
+                    style={pos ? ({ position: 'absolute', left: pos.left, top: pos.top, ['--ds-x0' as any]: `${agentOffsets[agentName]?.ox ?? 0}px`, ['--ds-y0' as any]: `${agentOffsets[agentName]?.oy ?? 0}px`, zIndex: (isExpanded && agentName === lastExpandedAgent) ? 50 : (isExpanded ? 40 : 20) } as React.CSSProperties) : undefined}
+className={`pointer-events-auto cursor-pointer ds-card ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 ${isExpanded ? 'w-[360px] md:w-[420px] lg:w-[480px]' : 'w-[240px]'} h-auto px-2 py-1.5 ${isExpanded ? 'overflow-visible' : 'overflow-hidden'} relative`}
                   >
                     <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
@@ -766,13 +769,6 @@ className={`pointer-events-auto ds-card ${colors.bg} ${colors.border} border rou
 
 
 
-        {/* Footer */}
-        <div className="text-xs text-slate-500 pt-2 border-t border-slate-200">
-          <div className="flex items-center justify-between">
-            <span>AI-Generated Analysis</span>
-            <span>Updated: {analysisDate ? new Date(analysisDate).toLocaleDateString() : 'N/A'}</span>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
