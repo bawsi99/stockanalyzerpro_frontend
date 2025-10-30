@@ -44,6 +44,7 @@ import ConsensusSummaryCard from "@/components/analysis/ConsensusSummaryCard";
 import SignalsSummaryCard from "@/components/analysis/SignalsSummaryCard";
 import AITradingAnalysisOverviewCard from "@/components/analysis/AITradingAnalysisOverviewCard";
 import DecisionStoryCard from "@/components/analysis/DecisionStoryCard";
+import DecisionStoryDetailsCard from "@/components/analysis/DecisionStoryDetailsCard";
 
 import MultiTimeframeAnalysisCard from "@/components/analysis/MultiTimeframeAnalysisCard";
 import AdvancedRiskAssessmentCard from "@/components/analysis/AdvancedRiskAssessmentCard";
@@ -1281,22 +1282,33 @@ const NewOutput: React.FC = () => {
                   description="Loading decision analysis..." 
                 />
               ) : (
-                <DecisionStoryCard 
-                  decisionStory={enhancedData?.decision_story || ai_analysis?.decision_story}
-                  analysisDate={enhancedData?.analysis_timestamp}
-                  analysisPeriod={enhancedData?.analysis_period}
-                  fallbackFairValueRange={(enhancedData as any)?.ai_analysis?.trading_strategy?.long_term?.fair_value_range ||
-                                         (ai_analysis as any)?.trading_strategy?.long_term?.fair_value_range || null}
-                  agentRadiusOffsets={agentRadiusOffsets}
-                  agentTranslateOffsets={agentTranslateOffsets}
-                  invertOffsets={invertAgentOffsets}
-                  globalRadiusDelta={globalRadiusDelta}
-                  minRadiusOverride={minRadiusOverride}
-                  onGlobalRadiusDeltaChange={setGlobalRadiusDelta}
-                  onMinRadiusOverrideChange={setMinRadiusOverride}
-                  onAgentTranslateChange={onAgentTranslateChange}
-                  agentOrder={AGENT_ORDER}
-                />
+                <>
+                  <DecisionStoryCard 
+                    decisionStory={enhancedData?.decision_story || ai_analysis?.decision_story}
+                    analysisDate={enhancedData?.analysis_timestamp}
+                    analysisPeriod={enhancedData?.analysis_period}
+                    fallbackFairValueRange={(enhancedData as any)?.ai_analysis?.trading_strategy?.long_term?.fair_value_range ||
+                                           (ai_analysis as any)?.trading_strategy?.long_term?.fair_value_range || null}
+                    agentRadiusOffsets={agentRadiusOffsets}
+                    agentTranslateOffsets={agentTranslateOffsets}
+                    invertOffsets={invertAgentOffsets}
+                    globalRadiusDelta={globalRadiusDelta}
+                    minRadiusOverride={minRadiusOverride}
+                    onGlobalRadiusDeltaChange={setGlobalRadiusDelta}
+                    onMinRadiusOverrideChange={setMinRadiusOverride}
+                    onAgentTranslateChange={onAgentTranslateChange}
+                    agentOrder={AGENT_ORDER}
+                  />
+                  {(enhancedData?.decision_story || ai_analysis?.decision_story)?.decision_chain && (
+                    <div className="mt-4">
+                      <DecisionStoryDetailsCard
+                        decisionChain={(enhancedData?.decision_story || ai_analysis?.decision_story)?.decision_chain}
+                        fallbackFairValueRange={(enhancedData as any)?.ai_analysis?.trading_strategy?.long_term?.fair_value_range ||
+                                                (ai_analysis as any)?.trading_strategy?.long_term?.fair_value_range || null}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </TabsContent>
