@@ -1338,6 +1338,7 @@ const NewOutput: React.FC = () => {
                 priceData={enhancedData?.technical_indicators?.raw_data || analysisData?.data}
                 symbol={stockSymbol}
                 className=""
+                volumeAgentsData={enhancedData?.results?.volume_agents_result || (enhancedData as any)?.volume_agents_result}
               />
             )}
 

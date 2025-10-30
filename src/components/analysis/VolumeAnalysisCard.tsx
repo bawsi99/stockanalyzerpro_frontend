@@ -10,10 +10,20 @@ interface VolumeAnalysisCardProps {
   priceData?: any[];
   symbol: string;
   className?: string;
+  volumeAgentsData?: any;  // Add volume agents data from responses
 }
 
-const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, priceData, symbol, className }) => {
+const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, priceData, symbol, className, volumeAgentsData }) => {
 
+  // Debug logging for volume agents data
+  React.useEffect(() => {
+    if (volumeAgentsData) {
+      console.log('🔍 [VolumeAnalysisCard] Volume Agents Data:', volumeAgentsData);
+      const agents = volumeAgentsData?.individual_agents || {};
+      console.log('📊 [VolumeAnalysisCard] Volume Anomaly Agent:', agents.volume_anomaly?.key_data);
+      console.log('✅ [VolumeAnalysisCard] Volume Confirmation Agent:', agents.volume_confirmation?.key_data);
+    }
+  }, [volumeAgentsData]);
   
   // Extract volume information from the data
   const volumeRatio = volumeData?.volume_ratios?.primary_ratio || volumeData?.volume_ratio || 1;
@@ -27,6 +37,25 @@ const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, pri
   const volumeConfirmation = volumeData?.volume_confirmation || {};
   const volumeVolatility = volumeData?.volume_volatility || {};
   const volumeStrengthScore = volumeData?.volume_strength_score || 0;
+  
+  // Extract volume agents data (from volume agents orchestrator)
+  const volumeAgents = volumeAgentsData?.individual_agents || {};
+  const volumeAnomalyAgent = volumeAgents.volume_anomaly?.key_data || {};
+  const volumeConfirmationAgent = volumeAgents.volume_confirmation?.key_data || {};
+  const institutionalActivityAgent = volumeAgents.institutional_activity?.key_data || {};
+  const supportResistanceAgent = volumeAgents.support_resistance?.key_data || {};
+  const volumeMomentumAgent = volumeAgents.volume_momentum?.key_data || {};
+  
+  // Safe number formatting helper
+  const safeNumber = (value: any, decimals: number = 2): string => {
+    const num = parseFloat(value);
+    return isNaN(num) ? 'N/A' : num.toFixed(decimals);
+  };
+  
+  const safeLocaleNumber = (value: any): string => {
+    const num = parseFloat(value);
+    return isNaN(num) ? 'N/A' : Math.round(num).toLocaleString();
+  };
   
   // Calculate basic volume metrics from price data if available
   const calculateVolumeMetrics = () => {
@@ -170,6 +199,178 @@ const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, pri
                   <div className="font-semibold">{volumeMetrics.recentAverageVolume.toLocaleString()}</div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Volume Statistics from Anomaly Agent */}
+          {volumeAnomalyAgent && Object.keys(volumeAnomalyAgent).length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-semibold text-slate-800">📊 Volume Statistics</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {volumeAnomalyAgent.volume_statistics?.volume_mean && (
+                  <div className="bg-slate-50 p-3 rounded-lg">
+                    <div className="text-slate-600 text-xs">Mean Volume</div>
+                    <div className="font-semibold">{safeLocaleNumber(volumeAnomalyAgent.volume_statistics.volume_mean)}</div>
+                  </div>
+                )}
+                {volumeAnomalyAgent.volume_statistics?.current_z_score !== undefined && (
+                  <div className="bg-slate-50 p-3 rounded-lg">
+                    <div className="text-slate-600 text-xs">Z-Score</div>
+                    <div className={`font-semibold ${volumeAnomalyAgent.volume_statistics.current_z_score > 2 ? 'text-orange-600' : 'text-gray-600'}`}>
+                      {safeNumber(volumeAnomalyAgent.volume_statistics.current_z_score, 2)}
+                    </div>
+                  </div>
+                )}
+                {volumeAnomalyAgent.volume_statistics?.percentiles?.percentile_50 && (
+                  <div className="bg-slate-50 p-3 rounded-lg">
+                    <div className="text-slate-600 text-xs">Median Volume</div>
+                    <div className="font-semibold">{safeLocaleNumber(volumeAnomalyAgent.volume_statistics.percentiles.percentile_50)}</div>
+                  </div>
+                )}
+                {volumeAnomalyAgent.volume_statistics?.volume_cv !== undefined && (
+                  <div className="bg-slate-50 p-3 rounded-lg">
+                    <div className="text-slate-600 text-xs">Volume CV</div>
+                    <div className="font-semibold">{safeNumber(volumeAnomalyAgent.volume_statistics.volume_cv, 2)}</div>
+                  </div>
+                )}
+              </div>
+              {/* Current Volume Status */}
+              {volumeAnomalyAgent.current_volume_status && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="text-xs font-semibold text-blue-900 mb-1">Current Status</div>
+                  <div className="text-sm text-blue-800">
+                    <div className="capitalize font-semibold">{volumeAnomalyAgent.current_volume_status.current_status?.replace(/_/g, ' ')}</div>
+                    <div className="text-xs text-blue-700 mt-1">📍 Percentile: {volumeAnomalyAgent.current_volume_status.volume_percentile}th</div>
+                    {volumeAnomalyAgent.current_volume_status.recent_trend && (
+                      <div className="text-xs text-blue-700">📈 Trend: <span className="capitalize font-semibold">{volumeAnomalyAgent.current_volume_status.recent_trend}</span></div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Volume Confirmation from Confirmation Agent */}
+          {volumeConfirmationAgent && Object.keys(volumeConfirmationAgent).length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-semibold text-slate-800">✅ Volume Confirmation Analysis</h4>
+              {volumeConfirmationAgent.price_volume_correlation && (
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {volumeConfirmationAgent.price_volume_correlation.correlation_coefficient !== undefined && (
+                    <div className="bg-slate-50 p-3 rounded-lg">
+                      <div className="text-slate-600 text-xs">Price-Volume Correlation</div>
+                      <div className="font-semibold text-blue-600">{safeNumber(volumeConfirmationAgent.price_volume_correlation.correlation_coefficient, 2)}</div>
+                      <div className="text-xs text-slate-500 mt-1 capitalize">
+                        {volumeConfirmationAgent.price_volume_correlation.correlation_strength || 'unknown'} strength
+                      </div>
+                    </div>
+                  )}
+                  {volumeConfirmationAgent.overall_assessment?.confirmation_strength && (
+                    <div className={`p-3 rounded-lg ${
+                      volumeConfirmationAgent.overall_assessment.confirmation_strength === 'strong' ? 'bg-green-50' :
+                      volumeConfirmationAgent.overall_assessment.confirmation_strength === 'medium' ? 'bg-yellow-50' :
+                      'bg-red-50'
+                    }`}>
+                      <div className="text-slate-600 text-xs">Confirmation</div>
+                      <div className={`font-semibold capitalize ${
+                        volumeConfirmationAgent.overall_assessment.confirmation_strength === 'strong' ? 'text-green-700' :
+                        volumeConfirmationAgent.overall_assessment.confirmation_strength === 'medium' ? 'text-yellow-700' :
+                        'text-red-700'
+                      }`}>
+                        {volumeConfirmationAgent.overall_assessment.confirmation_strength}
+                      </div>
+                      <div className="text-xs text-slate-600 mt-1 capitalize">
+                        {volumeConfirmationAgent.overall_assessment.confirmation_status?.replace(/_/g, ' ')}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Volume Averages */}
+              {volumeConfirmationAgent.volume_averages && (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold text-slate-700">📊 Volume Averages</div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    {volumeConfirmationAgent.volume_averages.volume_10d_avg && (
+                      <div className="bg-slate-50 p-2 rounded">
+                        <div className="text-slate-600 font-semibold">10d Avg</div>
+                        <div className="font-semibold text-slate-800">{safeLocaleNumber(volumeConfirmationAgent.volume_averages.volume_10d_avg)}</div>
+                        {volumeConfirmationAgent.volume_averages.volume_vs_10d && (
+                          <div className="text-slate-600 mt-1">×{safeNumber(volumeConfirmationAgent.volume_averages.volume_vs_10d, 2)}</div>
+                        )}
+                      </div>
+                    )}
+                    {volumeConfirmationAgent.volume_averages.volume_20d_avg && (
+                      <div className="bg-slate-50 p-2 rounded">
+                        <div className="text-slate-600 font-semibold">20d Avg</div>
+                        <div className="font-semibold text-slate-800">{safeLocaleNumber(volumeConfirmationAgent.volume_averages.volume_20d_avg)}</div>
+                        {volumeConfirmationAgent.volume_averages.volume_vs_20d && (
+                          <div className="text-slate-600 mt-1">×{safeNumber(volumeConfirmationAgent.volume_averages.volume_vs_20d, 2)}</div>
+                        )}
+                      </div>
+                    )}
+                    {volumeConfirmationAgent.volume_averages.volume_50d_avg && (
+                      <div className="bg-slate-50 p-2 rounded">
+                        <div className="text-slate-600 font-semibold">50d Avg</div>
+                        <div className="font-semibold text-slate-800">{safeLocaleNumber(volumeConfirmationAgent.volume_averages.volume_50d_avg)}</div>
+                        {volumeConfirmationAgent.volume_averages.volume_vs_50d && (
+                          <div className="text-slate-600 mt-1">×{safeNumber(volumeConfirmationAgent.volume_averages.volume_vs_50d, 2)}</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Recent Anomalies from Anomaly Agent */}
+          {volumeAnomalyAgent.significant_anomalies && volumeAnomalyAgent.significant_anomalies.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-semibold text-slate-800">🚨 Recent Volume Anomalies</h4>
+              <div className="space-y-2 max-h-72 overflow-y-auto border border-slate-200 rounded-lg p-3 bg-gradient-to-br from-slate-50 to-white">
+                {volumeAnomalyAgent.significant_anomalies.slice(0, 5).map((anomaly: any, idx: number) => (
+                  <div key={idx} className={`border-l-4 rounded p-3 ${
+                    anomaly.significance === 'high' ? 'border-red-500 bg-red-50' :
+                    anomaly.significance === 'medium' ? 'border-yellow-500 bg-yellow-50' :
+                    'border-blue-500 bg-blue-50'
+                  }`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{anomaly.date}</div>
+                        <div className="text-xs text-slate-600 mt-0.5">📊 Volume: {safeLocaleNumber(anomaly.volume_level)}</div>
+                      </div>
+                      <div className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                        anomaly.significance === 'high' ? 'bg-red-200 text-red-900' :
+                        anomaly.significance === 'medium' ? 'bg-yellow-200 text-yellow-900' :
+                        'bg-blue-200 text-blue-900'
+                      }`}>
+                        {anomaly.significance?.toUpperCase()}
+                      </div>
+                    </div>
+                    {anomaly.price_context && (
+                      <div className="text-xs text-slate-700 mb-1">
+                        <span className="font-semibold">📈 Context:</span> {anomaly.price_context.replace(/_/g, ' ').toUpperCase()}
+                      </div>
+                    )}
+                    {anomaly.likely_cause && (
+                      <div className="text-xs text-slate-700">
+                        <span className="font-semibold">🔍 Cause:</span> {anomaly.likely_cause.replace(/_/g, ' ')}
+                      </div>
+                    )}
+                    {anomaly.z_score !== undefined && (
+                      <div className="text-xs text-slate-600 mt-1">
+                        <span className="font-semibold">Z-Score:</span> {safeNumber(anomaly.z_score, 2)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {volumeAnomalyAgent.significant_anomalies && (
+                <div className="text-xs text-slate-500 text-center">
+                  Showing {Math.min(5, volumeAnomalyAgent.significant_anomalies.length)} of {volumeAnomalyAgent.significant_anomalies.length} anomalies
+                </div>
+              )}
             </div>
           )}
 
