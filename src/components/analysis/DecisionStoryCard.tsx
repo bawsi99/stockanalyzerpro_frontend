@@ -123,8 +123,6 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         if (ia !== ib) return ia - ib;
         return a.localeCompare(b);
       });
-      // eslint-disable-next-line no-console
-      console.log('Current agent order:', names);
       const N = names.length || 1;
       const EXTRA_RADIUS = 140 + (globalRadiusDelta ?? 0); // push cards farther/closer from center
       const MIN_R = typeof minRadiusOverride === 'number' ? minRadiusOverride : 260;
@@ -257,37 +255,56 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       const ensureTruncated = (name: string, full: string, p: HTMLParagraphElement) => {
         const meas = measurerRef.current;
         if (!meas) return;
-        const width = p.clientWidth || 200;
+        // Use collapsed card width (240px) for truncation, not current DOM width
+        // This ensures truncation is consistent regardless of expanded/collapsed state
+        const COLLAPSED_CARD_WIDTH = 240;
+        const width = COLLAPSED_CARD_WIDTH - 16; // subtract padding (px-2 = 16px)
         meas.style.width = width + 'px';
         meas.style.maxHeight = clampPx + 'px';
         const postfix = ' … See more';
-        let lo = 0, hi = full.length, best = 0;
-        while (lo <= hi) {
-          const mid = Math.floor((lo + hi) / 2);
-          meas.textContent = full.slice(0, mid) + postfix;
+        
+        // Split into words for word-level truncation
+        const words = full.split(' ');
+        let best = 0;
+        let currentText = '';
+        
+        for (let i = 0; i < words.length; i++) {
+          const testText = words.slice(0, i + 1).join(' ');
+          meas.textContent = testText + postfix;
           if (meas.scrollHeight <= clampPx) {
-            best = mid;
-            lo = mid + 1;
+            best = i + 1;
           } else {
-            hi = mid - 1;
+            break;
           }
         }
-        const trimmed = full.slice(0, Math.max(0, best)).replace(/\s+$/, '');
+        
+        const trimmed = words.slice(0, best).join(' ').trim();
         nextTruncated[name] = trimmed;
       };
 
       names.forEach((name) => {
         const p = textRefs.current[name];
         if (!p) return;
+        // Always use the original summary from ref, not the rendered text content (which changes when expanded)
+        const full = agentSummariesRef.current[name];
+        if (!full) return;
+        const needsLong = full.length > FALLBACK_LIMIT;
+        
         if (expandedAgents.has(name)) {
           nextOverflow[name] = false;
+          // Clear truncation for expanded cards so old cached values don't persist
+          nextTruncated[name] = '';
           return;
         }
-        const isOverflow = p.scrollHeight > p.clientHeight + 1;
-        const full = agentSummariesRef.current[name] || (p.textContent || '');
-        const needsLong = full.length > FALLBACK_LIMIT;
-        nextOverflow[name] = isOverflow || needsLong;
-        if ((isOverflow || needsLong) && full) ensureTruncated(name, full, p);
+        
+        // Always recalculate truncation when collapsed to ensure fresh measurement at collapsed width
+        if (needsLong && full) {
+          ensureTruncated(name, full, p);
+          nextOverflow[name] = true;
+        } else {
+          const isOverflow = p.scrollHeight > p.clientHeight + 1;
+          nextOverflow[name] = isOverflow;
+        }
       });
 
       // Commit only if changed to avoid rerenders/flicker
@@ -301,7 +318,10 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       });
     };
 
-    measureAll();
+    // Use requestAnimationFrame to ensure DOM has updated before measuring
+    const rafId = requestAnimationFrame(() => {
+      measureAll();
+    });
 
     // Observe layout/size changes, not scroll
     const RO: typeof ResizeObserver | undefined = typeof window !== 'undefined' ? (window as any).ResizeObserver : undefined;
@@ -314,6 +334,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     const onResize = () => measureAll();
     window.addEventListener('resize', onResize);
     return () => {
+      cancelAnimationFrame(rafId);
       ro?.disconnect();
       window.removeEventListener('resize', onResize);
     };
@@ -554,7 +575,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
                     key={agentName}
                     ref={(el) => (agentRefs.current[agentName] = el)}
                     style={pos ? { position: 'absolute', left: pos.left, top: pos.top, transform: 'translate(-50%, -50%)' } as React.CSSProperties : undefined}
-className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 ${isExpanded && isRiskAgent(agentName) ? 'w-[360px] md:w-[420px] lg:w-[480px]' : 'w-[240px]'} ${isExpanded ? 'h-auto' : (debugMode ? 'h-[170px]' : 'h-auto')} px-2 py-1.5 overflow-hidden relative`}
+className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 ${isExpanded ? 'w-[360px] md:w-[420px] lg:w-[480px]' : 'w-[240px]'} ${isExpanded ? 'h-auto' : (debugMode ? 'h-[170px]' : 'h-auto')} px-2 py-1.5 overflow-hidden relative`}
                   >
                     <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
@@ -584,7 +605,7 @@ className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg 
                     <div className="mt-0.5 pr-0">
                       <p
                         ref={(el) => (textRefs.current[agentName] = el)}
-                        className={`text-xs text-justify ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? 'max-h-none overflow-visible' : 'max-h-20 overflow-hidden'}`}
+                        className={`text-xs text-left ${colors.text.replace('-800', '-700')} leading-relaxed whitespace-normal break-words ${isExpanded ? 'max-h-none overflow-visible' : 'max-h-24 overflow-hidden'}`}
                       >
                         {isExpanded ? (
                           <>
@@ -598,9 +619,12 @@ className={`pointer-events-auto ${colors.bg} ${colors.border} border rounded-lg 
                           </>
                         ) : (
                           <>
-                            {(overflowedAgents[agentName] && truncatedMap[agentName])
-                              ? truncatedMap[agentName]
-                              : (needsFallback ? summary.slice(0, fallbackLimit).replace(/\s+$/,'') : summary)}
+                            {(() => {
+                              // Priority: truncated map > fallback > full
+                              if (truncatedMap[agentName]) return truncatedMap[agentName];
+                              if (needsFallback) return summary.slice(0, fallbackLimit).replace(/\s+$/,'');
+                              return summary;
+                            })()}
                             {showToggle && (
                               <>
                                 {' '}
