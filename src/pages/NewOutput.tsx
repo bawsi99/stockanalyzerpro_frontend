@@ -60,7 +60,6 @@ import TradingLevelsCard from "@/components/analysis/TradingLevelsCard";
 import VolumeAnalysisCard from "@/components/analysis/VolumeAnalysisCard";
 
 // New Enhanced Components
-import EnhancedAIAnalysisCard from "@/components/analysis/EnhancedAIAnalysisCard";
 import EnhancedMultiTimeframeCard from "@/components/analysis/EnhancedMultiTimeframeCard";
 import EnhancedSectorContextCard from "@/components/analysis/EnhancedSectorContextCard";
 import CorrelationMatrixCard from "@/components/analysis/CorrelationMatrixCard";
@@ -1169,14 +1168,6 @@ const NewOutput: React.FC = () => {
                 <span className="data-[state=active]:text-2xl text-sm whitespace-nowrap">Technical</span>
               </TabsTrigger>
               <TabsTrigger 
-                ref={(el) => (tabRefs.current.ai = el)}
-                value="ai" 
-                className="flex items-center justify-center space-x-2 h-full px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
-              >
-                <Brain className="h-4 w-4 data-[state=active]:h-5 data-[state=active]:w-5" />
-                <span className="data-[state=active]:text-2xl text-sm whitespace-nowrap">AI Analysis</span>
-              </TabsTrigger>
-              <TabsTrigger 
                 ref={(el) => (tabRefs.current.sector = el)}
                 value="sector" 
                 className="flex items-center justify-center space-x-2 h-full px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
@@ -1398,24 +1389,6 @@ const NewOutput: React.FC = () => {
             </div>
           </TabsContent>
 
-          {/* AI Analysis Tab */}
-          <TabsContent value="ai" className="space-y-6">
-            {/* Enhanced AI Analysis */}
-            {analysisLoading ? (
-              <AnalysisCardSkeleton 
-                title="Enhanced AI Analysis" 
-                description="Loading AI analysis..." 
-              />
-            ) : (
-              enhancedAI && (
-                <EnhancedAIAnalysisCard 
-                  aiAnalysis={enhancedAI}
-                />
-              )
-            )}
-
-
-          </TabsContent>
 
           {/* Sector Tab */}
           <TabsContent value="sector" className="space-y-6">
