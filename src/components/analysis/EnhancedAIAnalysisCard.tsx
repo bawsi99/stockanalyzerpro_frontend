@@ -274,64 +274,6 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
           </div>
         )}
 
-        {/* Risk Management */}
-        {aiAnalysis.risk_management && (
-          <div className="space-y-4">
-            <h3 className="font-semibold text-slate-800 flex items-center">
-              <Shield className="h-4 w-4 mr-2 text-red-500" />
-              Risk Management
-            </h3>
-            
-            {/* Key Risks */}
-            {aiAnalysis.risk_management.key_risks && aiAnalysis.risk_management.key_risks.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium text-slate-700">Key Risks</h4>
-                <div className="space-y-2">
-                  {aiAnalysis.risk_management.key_risks.map((risk, index) => (
-                    <div key={index} className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="font-medium text-red-800">{risk.risk}</div>
-                          <div className="text-sm text-red-600 mt-1">
-                            <span className="font-medium">Impact:</span> {risk.impact} | 
-                            <span className="font-medium ml-2">Probability:</span> {risk.probability}
-                          </div>
-                          <div className="text-sm text-red-700 mt-1">
-                            <span className="font-medium">Mitigation:</span> {risk.mitigation}
-                          </div>
-                        </div>
-                        <AlertTriangle className="h-5 w-5 text-red-500 mt-1 flex-shrink-0" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Stop Loss Levels */}
-            {aiAnalysis.risk_management.stop_loss_levels && aiAnalysis.risk_management.stop_loss_levels.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium text-slate-700">Stop Loss Levels</h4>
-                <div className="w-full space-y-2">
-                  {aiAnalysis.risk_management.stop_loss_levels.map((level, index) => (
-                    <div key={index} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-yellow-800">{formatCurrency(level.level)}</div>
-                          <div className="text-sm text-yellow-600">{level.type}</div>
-                        </div>
-                        <div className="text-xs text-yellow-700 text-right">
-                          {level.significance}
-                        </div>
-                      </div>
-                      <div className="text-xs text-yellow-700 mt-1">{level.rationale}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Critical Levels */}
         {aiAnalysis.critical_levels && (
@@ -366,23 +308,6 @@ const EnhancedAIAnalysisCard = ({ aiAnalysis }: EnhancedAIAnalysisCardProps) => 
           </div>
         )}
 
-        {/* Key Takeaways */}
-        {aiAnalysis.key_takeaways && aiAnalysis.key_takeaways.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="font-semibold text-slate-800 flex items-center">
-              <CheckCircle className="h-4 w-4 mr-2 text-emerald-500" />
-              Key Takeaways
-            </h3>
-            <div className="space-y-2">
-              {aiAnalysis.key_takeaways.map((takeaway, index) => (
-                <div key={index} className="flex items-start p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                  <CheckCircle className="h-4 w-4 mr-3 text-emerald-500 mt-0.5 flex-shrink-0" />
-                  <div className="text-emerald-800">{takeaway}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

@@ -1272,10 +1272,9 @@ const NewOutput: React.FC = () => {
                 )}
               </div>
             </div>
-            
+
             {/* Decision Story Card (Full Width) */}
             <div className="mt-4">
-
               {analysisLoading ? (
                 <AnalysisCardSkeleton 
                   title="Decision Story" 
