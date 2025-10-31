@@ -141,6 +141,11 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         return a.localeCompare(b);
       });
       const N = names.length || 1;
+      // Distribute cards evenly by present count, not by the full expected set
+      const EXPECTED_FULL_COUNT = 11;
+      // Scale designer offsets down when fewer than full set are present
+      const offsetScale = N >= EXPECTED_FULL_COUNT ? 1 : Math.max(0, N / EXPECTED_FULL_COUNT);
+
       const EXTRA_RADIUS = 140 + (globalRadiusDelta ?? 0); // push cards farther/closer from center
       const MIN_R = typeof minRadiusOverride === 'number' ? minRadiusOverride : 340;
       const radius = Math.max(
@@ -153,17 +158,39 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       const newOffsets: Record<string, { ox: number; oy: number }> = {};
       const newEdges: Array<{ from: Point; to: Point; c1: Point; c2: Point; key: string; stroke?: string; width?: number; marker?: string }> = [];
 
+      // Precompute per-index radial and XY offsets
+      const sign = invertOffsets ? -1 : 1;
+      const radials: number[] = names.map((n) => resolveRadius(n) * offsetScale * sign);
+      const translates: Array<{ dx: number; dy: number }> = names.map((n) => {
+        const t = resolveTranslate(n);
+        return {
+          dx: ((t?.dx ?? 0) * sign) * offsetScale,
+          dy: ((t?.dy ?? 0) * sign) * offsetScale,
+        };
+      });
+      // For even N, enforce symmetry between opposite cards (i and i + N/2)
+      if (N % 2 === 0) {
+        const half = N / 2;
+        for (let i = 0; i < half; i++) {
+          const j = i + half;
+          // Make radial deltas equal (average) for symmetry
+          const avgR = (radials[i] + radials[j]) / 2;
+          radials[i] = avgR;
+          radials[j] = avgR;
+          // Mirror XY translates for opposite card
+          translates[j] = { dx: -translates[i].dx, dy: -translates[i].dy };
+        }
+      }
+
       names.forEach((name, i) => {
-        const angle = (i / N) * Math.PI * 2 - Math.PI / 2; // start at top
-        const r = radius + ((invertOffsets ? -1 : 1) * resolveRadius(name));
+        // Equal angular spacing around the circle, start from top (-90deg)
+        const angle = (i * (Math.PI * 2) / N) - Math.PI / 2;
+        const r = radius + radials[i];
         let cx = execCenter.x + r * Math.cos(angle);
         let cy = execCenter.y + r * Math.sin(angle);
-        const t = resolveTranslate(name);
-        if (t) {
-          const m = invertOffsets ? -1 : 1;
-          cx += (t.dx ?? 0) * m;
-          cy += (t.dy ?? 0) * m;
-        }
+        const t = translates[i];
+        cx += t.dx;
+        cy += t.dy;
         newPositions[name] = { left: cx, top: cy };
 
         // Precompute outward fly-in offset along radial direction
