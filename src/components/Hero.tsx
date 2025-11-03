@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, TrendingUp, Shield, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
-import heroBg from "@/assets/hero-bg.jpg";
 import { useElementAnimation } from "@/hooks/use-element-animation";
+import HeroVideoOverlay from "@/components/graphics/HeroVideoOverlay";
 
 const Hero = () => {
   const titleAnimation = useElementAnimation({
@@ -35,15 +35,18 @@ const Hero = () => {
   
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-background/70 to-background">
-        <img 
-          src={heroBg} 
-          alt="Financial data visualization" 
-          className="w-full h-full object-cover opacity-40 mix-blend-screen filter contrast-125 brightness-110 saturate-125"
-          style={{ WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 75%, transparent 100%)', maskImage: 'linear-gradient(to bottom, black 0%, black 75%, transparent 100%)' }}
+      {/* Background video */}
+      <div className="absolute inset-0 overflow-hidden">
+        <HeroVideoOverlay
+          className="absolute inset-0"
+          src={"/Generated%20File%20November%2003,%202025%20-%207_30PM.mp4"}
+          fadeWindowSec={0.9}
+          blend="normal"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+        {/* Dark overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/65" />
+        {/* Bottom fade to page background for smooth section transition */}
+        <div className="pointer-events-none absolute bottom-0 inset-x-0 h-28 md:h-40 bg-gradient-to-b from-transparent via-background/70 to-background" />
       </div>
 
 
@@ -51,29 +54,28 @@ const Hero = () => {
       <div className="relative z-10 w-full max-w-none pt-24 pb-8 text-center px-8 md:px-16">
         <div className="w-full max-w-none space-y-8">
           <div ref={titleAnimation.ref} style={titleAnimation.style}>
-            <h2 className="text-6xl md:text-8xl font-bold tracking-wider mb-8 -mt-20" style={{
+            <h2 className="text-left text-6xl md:text-8xl font-bold tracking-wider mb-20 -mt-20 ml-6 md:ml-16" style={{
               textShadow: 'inset 0 4px 8px rgba(0,0,0,0.6), inset 0 -2px 4px rgba(0,0,0,0.3), 0 2px 0 rgba(255,255,255,0.15)',
-              filter: 'brightness(1.0) contrast(1.2)',
-              color: 'white'
+              filter: 'brightness(1.0) contrast(1.2)'
             }}>
-              STOCKANALYZER <span style={{ color: '#FFD700' }}>PRO</span>
-            </h2>
-
-            <h1 className="text-5xl md:text-7xl font-bold leading-tight">
-              <span className="bg-gradient-to-r from-primary via-accent to-primary bg-[length:300%_300%] bg-clip-text text-transparent animate-gradient">
-                Advanced Stock Analysis
+              <span className="bg-gradient-to-r from-primary via-accent to-primary bg-[length:300%_300%] bg-clip-text text-transparent animate-gradient inline-block">
+                STOCKANALYZER
               </span>
               <br />
-              Made Simple
-            </h1>
+              <span className="bg-gradient-to-r from-primary via-accent to-primary bg-[length:300%_300%] bg-clip-text text-transparent animate-gradient inline-block">
+                PRO
+              </span>
+            </h2>
+
           </div>
 
           <div ref={subtitleAnimation.ref} style={subtitleAnimation.style}>
-            <p className="text-xl md:text-2xl text-white">
+            <p className="text-xl md:text-2xl text-slate-300">
               Leverage cutting-edge AI and autonomous multi-agent systems to make informed investment decisions. 
               Analyze entire stock exchanges in real-time.
             </p>
           </div>
+
 
           <div className="flex flex-col items-center gap-6 pt-8" ref={buttonsAnimation.ref} style={buttonsAnimation.style}>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-secondary/50 backdrop-blur-sm border border-primary/20 rounded-full text-sm font-medium">
@@ -88,7 +90,11 @@ const Hero = () => {
                   <ArrowRight className="group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Button variant="outline" size="lg">
+              <Button 
+                variant="outline" 
+                size="lg"
+                onClick={() => window.open(import.meta.env.VITE_HOMEPAGE_DEMO, '_blank')}
+              >
                 Watch Demo
               </Button>
             </div>
