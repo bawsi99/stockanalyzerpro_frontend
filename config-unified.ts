@@ -89,7 +89,6 @@ export const ENDPOINTS = {
   ANALYSIS: {
     HEALTH: `${ANALYSIS_SERVICE_URL}/health`,
     ANALYZE: `${ANALYSIS_SERVICE_URL}/analyze`,
-    ANALYZE_ASYNC: `${ANALYSIS_SERVICE_URL}/analyze/async`,
     ENHANCED_ANALYZE: `${ANALYSIS_SERVICE_URL}/analyze/enhanced`,
     ENHANCED_MTF_ANALYZE: `${ANALYSIS_SERVICE_URL}/analyze/enhanced-mtf`,
     STOCK_INDICATORS: `${ANALYSIS_SERVICE_URL}/stock`,
@@ -97,33 +96,10 @@ export const ENDPOINTS = {
     CHARTS: `${ANALYSIS_SERVICE_URL}/charts`,
     SECTOR_LIST: `${ANALYSIS_SERVICE_URL}/sector/list`,
     SECTOR_BENCHMARK: `${ANALYSIS_SERVICE_URL}/sector/benchmark`,
-    SECTOR_BENCHMARK_ASYNC: `${ANALYSIS_SERVICE_URL}/sector/benchmark/async`,
     SECTOR_STOCKS: `${ANALYSIS_SERVICE_URL}/sector`,
     SECTOR_PERFORMANCE: `${ANALYSIS_SERVICE_URL}/sector`,
     SECTOR_COMPARE: `${ANALYSIS_SERVICE_URL}/sector/compare`,
     STOCK_SECTOR: `${ANALYSIS_SERVICE_URL}/stock`,
-    // ML endpoints
-    ML_TRAIN: `${ANALYSIS_SERVICE_URL}/ml/train`,
-    ML_MODEL: `${ANALYSIS_SERVICE_URL}/ml/model`,
-    ML_PREDICT: `${ANALYSIS_SERVICE_URL}/ml/predict`,
-    // Chart and storage management
-    CHARTS_STORAGE_STATS: `${ANALYSIS_SERVICE_URL}/charts/storage/stats`,
-    CHARTS_CLEANUP: `${ANALYSIS_SERVICE_URL}/charts/cleanup`,
-    CHARTS_CLEANUP_SPECIFIC: `${ANALYSIS_SERVICE_URL}/charts`,
-    CHARTS_CLEANUP_ALL: `${ANALYSIS_SERVICE_URL}/charts/all`,
-    // Redis management
-    REDIS_IMAGES_STATS: `${ANALYSIS_SERVICE_URL}/redis/images/stats`,
-    REDIS_IMAGES_CLEANUP: `${ANALYSIS_SERVICE_URL}/redis/images/cleanup`,
-    REDIS_IMAGES_BY_SYMBOL: `${ANALYSIS_SERVICE_URL}/redis/images`,
-    REDIS_IMAGES_CLEAR_ALL: `${ANALYSIS_SERVICE_URL}/redis/images`,
-    // Cache management
-    REDIS_CACHE_STATS: `${ANALYSIS_SERVICE_URL}/redis/cache/stats`,
-    REDIS_CACHE_CLEAR: `${ANALYSIS_SERVICE_URL}/redis/cache/clear`,
-    REDIS_STOCK_CACHE_CLEAR: `${ANALYSIS_SERVICE_URL}/redis/cache/stock`,
-    REDIS_STOCK_CACHE_GET: `${ANALYSIS_SERVICE_URL}/redis/cache/stock`,
-    // Storage info
-    STORAGE_INFO: `${ANALYSIS_SERVICE_URL}/storage/info`,
-    STORAGE_RECOMMENDATIONS: `${ANALYSIS_SERVICE_URL}/storage/recommendations`,
   },
 };
 
