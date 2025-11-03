@@ -3,6 +3,7 @@ export interface AnalysisRequest {
   exchange?: string;
   period?: number;
   interval?: string;
+  end_date?: string; // Optional end date (YYYY-MM-DD) for backtesting
   output?: string | null;
   sector?: string | null; // Optional sector override
   email?: string; // User email for backend user ID mapping

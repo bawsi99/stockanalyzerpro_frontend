@@ -61,6 +61,7 @@ const NewStockAnalysis = () => {
     exchange: "NSE",
     period: "365",
     interval: "day",
+    end_date: "", // YYYY-MM-DD
     sector: null
   });
 
@@ -268,7 +269,7 @@ const NewStockAnalysis = () => {
     setIsAnalysisRunning(true);
 
     try {
-      const payload = {
+      const payload: any = {
         stock: formData.stock.toUpperCase(),
         exchange: formData.exchange,
         period: parseInt(formData.period),
@@ -276,6 +277,9 @@ const NewStockAnalysis = () => {
         sector: formData.sector,
         email: user?.email // Include user email for backend user ID mapping
       };
+      if (formData.end_date && formData.end_date.trim().length > 0) {
+        payload.end_date = formData.end_date.trim(); // YYYY-MM-DD
+      }
 
       // Create a running item and start async request
       const runId = `${payload.stock}-${Date.now()}`;
@@ -510,6 +514,22 @@ const NewStockAnalysis = () => {
                               <SelectItem value="month">1 Month</SelectItem>
                             </SelectContent>
                           </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="end_date" className="text-slate-700 font-medium">
+                            End Date (optional)
+                          </Label>
+                          <Input
+                            id="end_date"
+                            type="date"
+                            value={formData.end_date}
+                            onChange={(e) => handleInputChange("end_date", e.target.value)}
+                            className="border-slate-300 focus:border-emerald-400"
+                          />
+                          <p className="text-xs text-slate-500">
+                            Analysis window: [end_date - period, end_date]
+                          </p>
                         </div>
                       </div>
                     </div>
