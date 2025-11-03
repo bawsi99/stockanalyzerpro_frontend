@@ -71,7 +71,7 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
             {timeframe} Analysis
           </div>
         </CardHeader>
-        <CardContent className="px-6 pt-4 pb-6 h-full">
+        <CardContent className="px-6 pt-4 pb-6 flex-1">
           <div className="text-center text-gray-500 h-full flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
             <p>Loading price statistics...</p>
@@ -89,7 +89,7 @@ const PriceStatisticsCardCharts: React.FC<PriceStatisticsProps> = ({
           <CardTitle className="text-xl">Price Statistics</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="px-6 pt-4 pb-6 h-full">
+      <CardContent className="px-6 pt-4 pb-6 flex-1">
         <div className="space-y-4 mb-4">
           <div className="grid grid-cols-1 gap-4">
             <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">

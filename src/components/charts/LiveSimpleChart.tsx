@@ -1140,10 +1140,12 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
       {/* Chart Container - Responsive sizing with max-width constraint */}
       <div 
-        className="chart-container-responsive bg-white rounded-b-[var(--radius)] overflow-hidden" 
+        className="chart-container-responsive relative bg-white rounded-b-[var(--radius)] overflow-hidden" 
         style={{ 
-          height: `${height}px`,
-          maxWidth: `${width}px`
+          height: '100%',
+          minHeight: `clamp(280px, 60vh, ${height}px)`,
+          maxWidth: '100%',
+          width: '100%'
         }}
       >
 

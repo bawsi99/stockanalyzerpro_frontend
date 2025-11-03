@@ -85,7 +85,7 @@ const Hero = () => {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link to="/analysis">
-                <Button variant="hero" size="lg" className="group">
+                <Button variant="hero" size="lg" className="group text-lg">
                   Start Analysis
                   <ArrowRight className="group-hover:translate-x-1 transition-transform" />
                 </Button>

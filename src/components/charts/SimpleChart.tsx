@@ -578,8 +578,10 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
       <div 
         className="chart-container-responsive bg-white border border-gray-200 relative" 
         style={{ 
-          minHeight: `${height}px`,
-          maxWidth: `${width}px`
+          height: '100%',
+          minHeight: `clamp(260px, 55vh, ${height}px)`,
+          maxWidth: '100%',
+          width: '100%'
         }}
       >
         {/* Debug info */}

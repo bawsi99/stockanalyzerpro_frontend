@@ -30,6 +30,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { DataStatusIndicator } from '@/components/DataStatusIndicator';
 import Header from '@/components/Header';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 
 interface ChartData {
   date: string;
@@ -584,7 +585,7 @@ const Charts = React.memo(function Charts() {
 
   // Loading skeleton for analysis cards
   const AnalysisCardSkeleton = ({ title, description }: { title: string; description: string }) => (
-    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full">
       <CardHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-4">
           <CardTitle className="flex items-center text-slate-800">
@@ -732,7 +733,7 @@ const Charts = React.memo(function Charts() {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className={`flex items-center gap-3 px-3 py-2 border rounded-lg shadow-sm cursor-help transition-all duration-300 ${
+            <div className={`flex items-center gap-2 sm:gap-3 px-2 py-1.5 sm:px-3 sm:py-2 border rounded-lg shadow-sm cursor-help transition-all duration-300 text-xs sm:text-sm ${
               isUpdating ? 'shadow-md' : ''
             } ${
               isPositive ? 'bg-green-50 border-green-200' :
@@ -760,7 +761,7 @@ const Charts = React.memo(function Charts() {
               </div>
               
               {/* Separator */}
-              <div className="w-px h-4 bg-gray-300"></div>
+              <div className="w-px h-3 sm:h-4 bg-gray-300"></div>
               
               {/* Status and Time */}
               <div className="flex items-center gap-2">
@@ -819,15 +820,15 @@ const Charts = React.memo(function Charts() {
           {/* Chart Controls */}
           <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <BarChart3 className="h-5 w-5" />
                   Chart Controls
                 </CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
                 {/* Stock Symbol */}
                 <div>
                   <StockSelector
@@ -857,9 +858,9 @@ const Charts = React.memo(function Charts() {
                 {/* Connection Status */}
                 <div>
                   <label className="block text-sm font-medium mb-2">Connection</label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2">
                     <div className={`w-2 h-2 rounded-full ${isLiveConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    <span className="text-sm">{isLiveConnected ? 'Connected' : 'Disconnected'}</span>
+                    <span className="hidden sm:inline text-sm">{isLiveConnected ? 'Connected' : 'Disconnected'}</span>
                   </div>
                 </div>
               </div>
@@ -867,12 +868,12 @@ const Charts = React.memo(function Charts() {
           </Card>
 
           {/* Chart and Price Statistics Side by Side */}
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch">
             {/* Enhanced Live Chart Section - Takes 3/4 of the width */}
-            <div className="xl:col-span-3">
-              <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-99">
+            <div className="xl:col-span-3 h-full">
+              <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full flex flex-col" style={{ minHeight: 'clamp(280px, 60vh, 800px)' }}>
                 <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
+                  <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <span>{stockSymbol} - {TIMEFRAMES.find(tf => tf.value === selectedTimeframe)?.label}</span>
                     <div className="flex items-center gap-2">
                       <DataStatusIndicator
@@ -896,15 +897,47 @@ const Charts = React.memo(function Charts() {
                         }}
                         variant="outline"
                         size="sm"
-                        className="bg-white/90 backdrop-blur-sm"
+                        className="bg-white/90 backdrop-blur-sm h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+                        title="Reset Scale"
                       >
-                        <ZoomIn className="h-4 w-4 mr-1" />
-                        Reset Scale
+                        <ZoomIn className="h-4 w-4" />
+                        <span className="hidden sm:inline ml-1">Reset Scale</span>
                       </Button>
                     </div>
+                    {/* Mobile-only Price Stats Drawer Trigger */}
+                    <Drawer>
+                      <DrawerTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="xl:hidden h-8 px-3"
+                        >
+                          Price Stats
+                        </Button>
+                      </DrawerTrigger>
+                      <DrawerContent>
+                        <DrawerHeader>
+                          <DrawerTitle>Price Statistics</DrawerTitle>
+                        </DrawerHeader>
+                        <div className="p-4">
+                          {liveData && liveData.length > 0 ? (
+                            <PriceStatisticsCardCharts 
+                              summaryStats={transformChartStatsForPriceCard(memoizedLiveChartStats, liveData)}
+                              latestPrice={liveData[liveData.length - 1].close || liveData[liveData.length - 1].price}
+                              timeframe={selectedTimeframe === 'all' ? 'All Time' : selectedTimeframe}
+                            />
+                          ) : (
+                            <AnalysisCardSkeleton 
+                              title="Price Statistics" 
+                              description="Waiting for live data..." 
+                            />
+                          )}
+                        </div>
+                      </DrawerContent>
+                    </Drawer>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="p-0 flex-1">
                   {canShowCharts ? (
                     <LiveSimpleChart
                       symbol={stockSymbol}
@@ -957,13 +990,15 @@ const Charts = React.memo(function Charts() {
               </Card>
             </div>
 
-            {/* Price Statistics Card - Takes 1/4 of the width */}
-            <div className="xl:col-span-1 h-99">
+            {/* Price Statistics Card - hidden on small screens (available via Drawer) */}
+            <div className="hidden xl:block xl:col-span-1 h-full" style={{ minHeight: 'clamp(280px, 60vh, 800px)' }}>
               {!liveData || liveData.length === 0 ? (
-                <AnalysisCardSkeleton 
-                  title="Price Statistics" 
-                  description="Waiting for live data..." 
-                />
+                <div className="h-full">
+                  <AnalysisCardSkeleton 
+                    title="Price Statistics" 
+                    description="Waiting for live data..." 
+                  />
+                </div>
               ) : (
                 <div className={`h-full transition-all duration-300 ${isPriceStatsUpdating ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}>
                   <PriceStatisticsCardCharts 
