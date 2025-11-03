@@ -26,6 +26,8 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
   const [adjustOpen, setAdjustOpen] = useState<Set<string>>(new Set());
   const [debugMode, setDebugMode] = useState<boolean>(false);
+  const DEBUG_ALLOWED = String(import.meta.env.VITE_SHOW_DEBUG).toLowerCase() === 'true';
+  const debugActive = DEBUG_ALLOWED && debugMode;
   const [showArrows, setShowArrows] = useState<boolean>(true);
   const [drawKey, setDrawKey] = useState<number>(0);
   const [lastExpandedAgent, setLastExpandedAgent] = useState<string | null>(null);
@@ -153,7 +155,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         Math.min(base.width, base.height) / 2 - Math.max(execRect.width, execRect.height) / 2 - 10 + EXTRA_RADIUS
       );
       const CARD_W = AGENT_CARD_W;
-      const CARD_H = debugMode ? AGENT_CARD_H_DEBUG : AGENT_CARD_H_DEFAULT;
+      const CARD_H = debugActive ? AGENT_CARD_H_DEBUG : AGENT_CARD_H_DEFAULT;
       const newPositions: Record<string, { left: number; top: number }> = {};
       const newOffsets: Record<string, { ox: number; oy: number }> = {};
       const newEdges: Array<{ from: Point; to: Point; c1: Point; c2: Point; key: string; stroke?: string; width?: number; marker?: string }> = [];
@@ -293,7 +295,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     minRadiusOverride,
     JSON.stringify(effectiveAgentOrder),
     JSON.stringify(agentOrderPriority || {}),
-    debugMode,
+    debugActive,
     expandedAgents
   ]);
 
@@ -537,12 +539,14 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
             <BookOpen className="h-4 w-4 mr-2 text-purple-500" />
             Decision Story
           </CardTitle>
-          <button
-            className="ml-3 text-xs px-2 py-1 rounded border border-slate-300 text-slate-600 hover:bg-slate-100"
-            onClick={onDebug}
-          >
-            Debug
-          </button>
+          {DEBUG_ALLOWED && (
+            <button
+              className="ml-3 text-xs px-2 py-1 rounded border border-slate-300 text-slate-600 hover:bg-slate-100"
+              onClick={onDebug}
+            >
+              Debug
+            </button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-visible space-y-0">
@@ -629,7 +633,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
 
           {/* Executive Summary centered */}
           <div ref={execRef} className={"absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30"}>
-            <div className={`ds-exec bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 shadow-sm ${debugMode ? 'w-[800px] md:w-[1000px]' : 'w-[700px] md:w-[900px]'} h-auto overflow-hidden`}>
+            <div className={`ds-exec bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 shadow-sm ${debugActive ? 'w-[800px] md:w-[1000px]' : 'w-[700px] md:w-[900px]'} h-auto overflow-hidden`}>
               <h3 className="font-semibold text-slate-800 mb-1 flex items-center">
                 <BookOpen className="h-4 w-4 mr-2 text-purple-600" />
                 Executive Summary
@@ -637,7 +641,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
               <p className={`text-sm text-slate-700 leading-relaxed text-justify`}>
                 {narrative}
               </p>
-              {(debugMode && typeof globalRadiusDelta === 'number' && typeof minRadiusOverride === 'number') && (
+              {(debugActive && typeof globalRadiusDelta === 'number' && typeof minRadiusOverride === 'number') && (
                 <div className="mt-2 border-t border-purple-100 pt-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-700">
                     <div className="flex items-center gap-2">
@@ -710,7 +714,7 @@ className={`pointer-events-auto cursor-pointer ds-card ${colors.bg} ${colors.bor
                         <span className={colors.icon}>{getAgentIcon(agentName)}</span>
                         <span className="ml-2" style={{ display: 'inline-block', maxWidth: '180px' }}>{agentName}</span>
                       </h4>
-                      {debugMode && (
+                      {debugActive && (
                         <button
                           className="text-[10px] text-slate-600 hover:text-slate-800 underline"
                           onClick={(e) => {
@@ -769,7 +773,7 @@ className={`pointer-events-auto cursor-pointer ds-card ${colors.bg} ${colors.bor
                         )}
                       </p>
 
-                      {(debugMode && (adjustOpen.has(agentName) || true)) && (
+                      {(debugActive && (adjustOpen.has(agentName) || true)) && (
                         <div className="mt-1 space-y-1">
                           {(() => {
                             const current = resolveTranslate(agentName) || {};
