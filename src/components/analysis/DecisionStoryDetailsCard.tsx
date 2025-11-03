@@ -24,17 +24,13 @@ const DecisionStoryDetailsCard = ({ decisionChain, fallbackFairValueRange, aiAna
     <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
       <CardHeader>
         <CardTitle className="flex items-center text-slate-800 text-lg">
-          Timeframe Analysis & Risk Assessment
+          Timeframe Analysis
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Timeframe Analysis */}
         {decisionChain.timeframe_analysis && (
           <div className="pt-2">
-            <h3 className="font-semibold text-slate-800 mb-3 flex items-center">
-              <Clock className="h-4 w-4 mr-2 text-blue-600" />
-              Timeframe Analysis
-            </h3>
             <div className="space-y-4">
               {/* Short Term */}
               {decisionChain.timeframe_analysis.short_term && (
