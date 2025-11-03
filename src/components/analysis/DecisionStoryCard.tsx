@@ -148,26 +148,37 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       // Scale designer offsets down when fewer than full set are present
       const offsetScale = N >= EXPECTED_FULL_COUNT ? 1 : Math.max(0, N / EXPECTED_FULL_COUNT);
 
-      const EXTRA_RADIUS = 140 + (globalRadiusDelta ?? 0); // push cards farther/closer from center
-      const MIN_R = typeof minRadiusOverride === 'number' ? minRadiusOverride : 340;
+      // Baseline is tuned for ~22" layout; only scale when viewport is smaller
+      const BASE_W = 1400;
+      const BASE_H = 900;
+      const smallViewport = base.width < BASE_W || base.height < BASE_H;
+      const viewportScaleRaw = Math.min(base.width / BASE_W, base.height / BASE_H);
+      const viewportScale = Math.max(0.6, Math.min(1, viewportScaleRaw));
+      const scale = smallViewport ? viewportScale : 1;
+
+      const EXTRA_RADIUS = (140 + (globalRadiusDelta ?? 0)) * scale; // push cards farther/closer from center
+      // Cap min radius only for small viewports
+      const MIN_R_BASE = typeof minRadiusOverride === 'number' ? minRadiusOverride : 340;
+      const MIN_R = smallViewport ? Math.min(MIN_R_BASE, Math.max(120, Math.min(base.width, base.height) / 2 - 60)) : MIN_R_BASE;
       const radius = Math.max(
         MIN_R,
         Math.min(base.width, base.height) / 2 - Math.max(execRect.width, execRect.height) / 2 - 10 + EXTRA_RADIUS
       );
-      const CARD_W = AGENT_CARD_W;
-      const CARD_H = debugActive ? AGENT_CARD_H_DEBUG : AGENT_CARD_H_DEFAULT;
+      // Responsive card size for geometry calculations only on small viewports
+      const CARD_W = smallViewport ? (base.width < 900 ? 200 : AGENT_CARD_W) : AGENT_CARD_W;
+      const CARD_H = debugActive ? AGENT_CARD_H_DEBUG : (smallViewport ? (base.height < 800 ? 120 : AGENT_CARD_H_DEFAULT) : AGENT_CARD_H_DEFAULT);
       const newPositions: Record<string, { left: number; top: number }> = {};
       const newOffsets: Record<string, { ox: number; oy: number }> = {};
       const newEdges: Array<{ from: Point; to: Point; c1: Point; c2: Point; key: string; stroke?: string; width?: number; marker?: string }> = [];
 
       // Precompute per-index radial and XY offsets
       const sign = invertOffsets ? -1 : 1;
-      const radials: number[] = names.map((n) => resolveRadius(n) * offsetScale * sign);
+      const radials: number[] = names.map((n) => resolveRadius(n) * offsetScale * scale * sign);
       const translates: Array<{ dx: number; dy: number }> = names.map((n) => {
         const t = resolveTranslate(n);
         return {
-          dx: ((t?.dx ?? 0) * sign) * offsetScale,
-          dy: ((t?.dy ?? 0) * sign) * offsetScale,
+          dx: ((t?.dx ?? 0) * sign) * offsetScale * scale,
+          dy: ((t?.dy ?? 0) * sign) * offsetScale * scale,
         };
       });
       // For even N, enforce symmetry between opposite cards (i and i + N/2)
@@ -193,6 +204,14 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         const t = translates[i];
         cx += t.dx;
         cy += t.dy;
+        // Clamp to container to avoid overflow (only on small viewports to preserve large-screen layout)
+        if (smallViewport) {
+          const M = 8;
+          const halfW = CARD_W / 2;
+          const halfH = CARD_H / 2;
+          cx = Math.max(halfW + M, Math.min(base.width - halfW - M, cx));
+          cy = Math.max(halfH + M, Math.min(base.height - halfH - M, cy));
+        }
         newPositions[name] = { left: cx, top: cy };
 
         // Precompute outward fly-in offset along radial direction
@@ -552,8 +571,41 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       <CardContent className="flex-1 overflow-visible space-y-0">
         {/* Analysis Date and Period */}
 
-        {/* Radial layout container */}
-        <div ref={containerRef} className={`relative overflow-visible h-[800px] md:h-[900px] bg-black rounded-xl ds-scope ${showArrows ? 'ds-fly-in' : ''}`}>
+        {/* Mobile-friendly linear layout (shown on small and tablet screens) */}
+        <div className="lg:hidden space-y-3">
+          {/* Executive Summary */}
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 shadow-sm">
+            <h3 className="font-semibold text-slate-800 mb-1 flex items-center">
+              <BookOpen className="h-4 w-4 mr-2 text-purple-600" />
+              Executive Summary
+            </h3>
+            <p className="text-sm text-slate-700 leading-relaxed text-justify">
+              {narrative}
+            </p>
+          </div>
+          {/* Agent summaries stacked */}
+          {agent_summaries && (
+            <div className="grid grid-cols-1 gap-3">
+              {Object.entries(agent_summaries).map(([agentName, summary]) => {
+                const colors = getAgentColor(agentName);
+                return (
+                  <div key={agentName} className={`${colors.bg} ${colors.border} border rounded-lg p-3 shadow-sm`}>
+                    <div className="flex items-center justify-between">
+                      <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
+                        <span className={colors.icon}>{getAgentIcon(agentName)}</span>
+                        <span className="ml-2">{agentName}</span>
+                      </h4>
+                    </div>
+                    <p className={`mt-1 text-xs ${colors.text.replace('-800','-700')}`}>{summary}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Radial layout container (desktop and up) */}
+        <div ref={containerRef} className={`hidden lg:block relative overflow-visible h-[600px] sm:h-[800px] md:h-[900px] bg-black rounded-xl ds-scope ${showArrows ? 'ds-fly-in' : ''}`}>
           {/* Connectors */}
           <style>{`
             @keyframes ds-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
@@ -633,7 +685,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
 
           {/* Executive Summary centered */}
           <div ref={execRef} className={"absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30"}>
-            <div className={`ds-exec bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 shadow-sm ${debugActive ? 'w-[800px] md:w-[1000px]' : 'w-[700px] md:w-[900px]'} h-auto overflow-hidden`}>
+            <div className={`ds-exec bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 border border-purple-100 shadow-sm ${debugActive ? 'w-[90vw] sm:w-[800px] lg:w-[900px] xl:w-[1000px]' : 'w-[90vw] sm:w-[700px] xl:w-[900px]'} h-auto overflow-hidden`}>
               <h3 className="font-semibold text-slate-800 mb-1 flex items-center">
                 <BookOpen className="h-4 w-4 mr-2 text-purple-600" />
                 Executive Summary
@@ -707,7 +759,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
                     ref={(el) => (agentRefs.current[agentName] = el)}
                     onClick={(e) => { e.stopPropagation(); toggleAgentExpansion(agentName); }}
                     style={pos ? ({ position: 'absolute', left: pos.left, top: pos.top, ['--ds-x0' as any]: `${agentOffsets[agentName]?.ox ?? 0}px`, ['--ds-y0' as any]: `${agentOffsets[agentName]?.oy ?? 0}px`, zIndex: (isExpanded && agentName === lastExpandedAgent) ? 50 : (isExpanded ? 40 : 20) } as React.CSSProperties) : undefined}
-className={`pointer-events-auto cursor-pointer ds-card ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 ${isExpanded ? 'w-[360px] md:w-[420px] lg:w-[480px]' : 'w-[240px]'} h-auto px-2 py-1.5 ${isExpanded ? 'overflow-visible' : 'overflow-hidden'} relative`}
+className={`pointer-events-auto cursor-pointer ds-card ${colors.bg} ${colors.border} border rounded-lg transition-all duration-200 hover:shadow-sm z-20 ${isExpanded ? 'w-[320px] md:w-[420px] lg:w-[480px]' : 'w-[200px] md:w-[240px]'} h-auto px-2 py-1.5 ${isExpanded ? 'overflow-visible' : 'overflow-hidden'} relative`}
                   >
                     <div className="flex items-center justify-between">
                       <h4 className={`font-medium ${colors.text} flex items-center text-sm`}>
