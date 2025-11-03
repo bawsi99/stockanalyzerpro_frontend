@@ -39,7 +39,7 @@ const Hero = () => {
       <div className="absolute inset-0 overflow-hidden">
         <HeroVideoOverlay
           className="absolute inset-0"
-          src={"/Generated%20File%20November%2003,%202025%20-%207_30PM.mp4"}
+          src={"/hero_background.mp4"}
           fadeWindowSec={0.9}
           blend="normal"
         />
