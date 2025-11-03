@@ -259,8 +259,8 @@ const NewStockAnalysis = () => {
   };
 
   const handleSelectAnalysis = (analysis: StoredAnalysis) => {
-    localStorage.setItem('analysisResult', JSON.stringify(analysis.analysis_data));
-    navigate('/output');
+    // Navigate to shareable URL for this saved analysis
+    navigate(`/analysis/${analysis.id}`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -321,7 +321,8 @@ const NewStockAnalysis = () => {
           });
           // Only navigate if still on analysis page
           if (window.location.pathname.includes('/analysis')) {
-            navigate('/output');
+            const shareId = (data as any)?.analysis_id;
+            navigate(shareId ? `/analysis/${shareId}` : '/output');
           }
         })
         .catch((err: unknown) => {

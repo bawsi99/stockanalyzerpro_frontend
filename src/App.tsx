@@ -18,6 +18,7 @@ import NewOutput from "./pages/NewOutput";
 import Dashboard from "./pages/Dashboard";
 import Charts from "./pages/Charts";
 import NotFound from "./pages/NotFound";
+import SharedAnalysis from "./pages/SharedAnalysis";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,8 @@ const App = () => {
                   </ProtectedRoute>
                 } 
               />
+              {/* Public, shareable analysis route */}
+              <Route path="/analysis/:id" element={<SharedAnalysis />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
