@@ -31,11 +31,22 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
   const [showArrows, setShowArrows] = useState<boolean>(true);
   const [drawKey, setDrawKey] = useState<number>(0);
   const [lastExpandedAgent, setLastExpandedAgent] = useState<string | null>(null);
+  // Suppress initial fly-in transitions on first mount (page load or tab mount)
+  const [suppressInitialTransitions, setSuppressInitialTransitions] = useState<boolean>(true);
+  // Enable fly-in only after the section has left the central band at least once
+  const [allowFlyIn, setAllowFlyIn] = useState<boolean>(false);
+  const hasLeftCentralBandRef = useRef<boolean>(false);
 
   useEffect(() => {
     // When arrows become visible, restart the draw animation
     if (showArrows) setDrawKey((k) => k + 1);
   }, [showArrows]);
+
+  // Disable transitions for the very first paint, then re-enable
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setSuppressInitialTransitions(false));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   // Hardcoded agent order
   const HARDCODED_ORDER = [
@@ -105,10 +116,16 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       // Toggle arrow visibility based on Executive center within viewport central band
       const vh = window.innerHeight || document.documentElement.clientHeight;
       const centerY = execRect.top + execRect.height / 2;
-      const centralTop = vh * 0.3;
-      const centralBottom = vh * 0.7;
+      // Further expanded central band to reduce unintended fly-outs on load/scroll
+      const centralTop = vh * 0.05;
+      const centralBottom = vh * 0.95;
       const inCentral = centerY >= centralTop && centerY <= centralBottom;
       setShowArrows(prev => (prev !== inCentral ? inCentral : prev));
+      // Allow fly-in only after we have been outside the central band at least once
+      if (!inCentral && !hasLeftCentralBandRef.current) {
+        hasLeftCentralBandRef.current = true;
+        setAllowFlyIn(true);
+      }
       // Use container's center as the center of the radial pattern
       const execCenter: Point = {
         x: Math.round(base.width / 2),
@@ -605,7 +622,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
         </div>
 
         {/* Radial layout container (desktop and up) */}
-        <div ref={containerRef} className={`hidden lg:block relative overflow-visible h-[600px] sm:h-[800px] md:h-[900px] bg-black rounded-xl ds-scope ${showArrows ? 'ds-fly-in' : ''}`}>
+        <div ref={containerRef} className={`hidden lg:block relative overflow-visible h-[600px] sm:h-[800px] md:h-[900px] bg-black rounded-xl ds-scope ${(allowFlyIn ? showArrows : true) ? 'ds-fly-in' : ''} ${suppressInitialTransitions ? 'ds-no-animate' : ''}`}>
           {/* Connectors */}
           <style>{`
             @keyframes ds-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
@@ -645,6 +662,8 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
               opacity: calc(1 - var(--ds-active, 1));
               transition: transform 450ms cubic-bezier(.2,.8,.2,1), opacity 300ms ease-out;
             }
+            /* Suppress transitions on initial mount */
+            .ds-no-animate .ds-card, .ds-no-animate .ds-exec { transition: none !important; }
           `}</style>
           <svg className={`absolute inset-0 pointer-events-none z-10 transition-opacity duration-300 ease-in-out ${showArrows ? 'opacity-100 ds-draw' : 'opacity-0'}`} width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             <defs>
