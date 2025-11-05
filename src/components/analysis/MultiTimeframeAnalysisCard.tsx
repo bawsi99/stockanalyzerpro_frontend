@@ -39,9 +39,10 @@ interface MultiTimeframeAnalysis {
 interface MultiTimeframeAnalysisCardProps {
   analysis: MultiTimeframeAnalysis;
   symbol: string;
+  agentSummary?: string;
 }
 
-const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({ analysis, symbol }) => {
+const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({ analysis, symbol, agentSummary }) => {
   const getDirectionIcon = (direction: string) => {
     switch (direction?.toLowerCase()) {
       case 'bullish':
@@ -245,6 +246,15 @@ const MultiTimeframeAnalysisCard: React.FC<MultiTimeframeAnalysisCardProps> = ({
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Agent Summary */}
+        {agentSummary && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+              {agentSummary}
+            </p>
           </div>
         )}
 

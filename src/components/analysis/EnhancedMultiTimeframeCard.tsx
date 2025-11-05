@@ -16,9 +16,10 @@ import { MultiTimeframeAnalysis, TimeframeAnalysisData } from "@/types/analysis"
 interface EnhancedMultiTimeframeCardProps {
   multiTimeframeAnalysis: MultiTimeframeAnalysis | null | undefined;
   symbol: string;
+  agentSummary?: string;
 }
 
-const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol }: EnhancedMultiTimeframeCardProps) => {
+const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol, agentSummary }: EnhancedMultiTimeframeCardProps) => {
   
   // Handle both simple and complex multi-timeframe analysis structures
   const hasComplexStructure = multiTimeframeAnalysis && 'success' in multiTimeframeAnalysis;
@@ -202,7 +203,7 @@ const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol }: Enhanced
       </CardHeader>
       <CardContent className="space-y-6">
         
-        {/* Overall Summary */}
+        {/* Overall Summary and Agent Summary Combined */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-blue-800">Overall Consensus</h3>
@@ -239,6 +240,17 @@ const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol }: Enhanced
               </div>
             </div>
           </div>
+          
+          {/* Agent Summary */}
+          {agentSummary && (
+            <>
+              <div className="mt-4 pt-4 border-t border-blue-200">
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  {agentSummary}
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Cross-Timeframe Validation */}

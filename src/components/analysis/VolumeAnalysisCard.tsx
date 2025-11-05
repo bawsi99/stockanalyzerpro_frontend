@@ -120,7 +120,6 @@ const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, pri
           {/* Volume Agent Summaries */}
           {volumeAgentSummaries && Object.keys(volumeAgentSummaries).length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-semibold text-slate-800">Volume Agent Analysis</h4>
               <Accordion type="multiple" defaultValue={Object.keys(volumeAgentSummaries)} className="w-full">
                 {Object.entries(volumeAgentSummaries).map(([agentName, summary]) => (
                   <AccordionItem key={agentName} value={agentName} className="border border-slate-200 rounded-lg mb-2 px-3">

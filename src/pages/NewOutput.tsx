@@ -1402,21 +1402,32 @@ const NewOutput: React.FC = () => {
                 </>
               ) : (
                 <>
+                  {(() => {
+                    // Extract Multi-Timeframe Analysis agent summary from decision_story
+                    const decisionStory = enhancedData?.decision_story || ai_analysis?.decision_story;
+                    const allAgentSummaries = decisionStory?.agent_summaries || {};
+                    const multiTimeframeAgentSummary = allAgentSummaries["Multi-Timeframe Analysis"];
 
-
-                                    {enhancedMultiTimeframe ? (
-                    <EnhancedMultiTimeframeCard 
-                      multiTimeframeAnalysis={enhancedMultiTimeframe}
-                      symbol={stockSymbol}
-                    />
-                  ) : (
-                    (indicators as ExtendedIndicators)?.multi_timeframe && !(indicators as ExtendedIndicators).multi_timeframe.error && (
-                    <MultiTimeframeAnalysisCard 
-                      analysis={(indicators as ExtendedIndicators).multi_timeframe} 
-                      symbol={stockSymbol}
-                    />
-                    )
-                  )}
+                    return (
+                      <>
+                        {enhancedMultiTimeframe ? (
+                          <EnhancedMultiTimeframeCard 
+                            multiTimeframeAnalysis={enhancedMultiTimeframe}
+                            symbol={stockSymbol}
+                            agentSummary={multiTimeframeAgentSummary}
+                          />
+                        ) : (
+                          (indicators as ExtendedIndicators)?.multi_timeframe && !(indicators as ExtendedIndicators).multi_timeframe.error && (
+                            <MultiTimeframeAnalysisCard 
+                              analysis={(indicators as ExtendedIndicators).multi_timeframe} 
+                              symbol={stockSymbol}
+                              agentSummary={multiTimeframeAgentSummary}
+                            />
+                          )
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </div>
