@@ -175,3 +175,44 @@
   /* Fallback for browsers that don't support background-clip: text */
   color: white;
 }
+
+/* Animated border glow effect - running along border perimeter */
+@keyframes borderGlowDash {
+  0% {
+    stroke-dashoffset: var(--perimeter, 1000);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animated-border-glow {
+  position: relative;
+  overflow: visible;
+}
+
+.animated-border-glow svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.animated-border-glow svg rect {
+  fill: none;
+}
+
+.animated-border-glow svg rect.main-glow {
+  filter: blur(1px);
+  animation: borderGlowDash 40s linear infinite;
+}
+
+/* Additional halo layer for denser glow */
+.animated-border-glow svg rect.glow-halo {
+  filter: blur(1px);
+  opacity: 1;
+  animation: borderGlowDash 40s linear infinite;
+  /* Start exactly opposite to main by shifting half the cycle */
+  animation-delay: -20s;
+}

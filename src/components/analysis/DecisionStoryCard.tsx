@@ -503,8 +503,12 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
 
   if (!decisionStory) {
     return (
-      <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-100 shadow-sm">
-        <p className="text-base text-slate-700 leading-relaxed text-justify">No decision story data available</p>
+      <div className="animated-border-glow relative bg-gradient-to-r from-purple-50 via-blue-50 to-purple-50 rounded-2xl p-6 backdrop-blur-sm z-10">
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/20 via-transparent to-purple-100/10 pointer-events-none z-10" />
+        <div className="absolute inset-0 rounded-2xl bg-white pointer-events-none z-10" />
+        <div className="relative z-20">
+          <p className="text-base text-slate-700 leading-relaxed text-justify drop-shadow-sm">No decision story data available</p>
+        </div>
       </div>
     );
   }
@@ -557,11 +561,47 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
     } catch {}
   };
 
+  const borderRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0, perimeter: 0 });
+  const gradientId1 = useRef(`glowGradient-${Math.random().toString(36).substr(2, 9)}`).current;
+
+  useEffect(() => {
+    if (borderRef.current) {
+      const updateDimensions = () => {
+        const rect = borderRef.current?.getBoundingClientRect();
+        if (rect) {
+          const w = rect.width;
+          const h = rect.height;
+          const strokeWidth = 2;
+          const r = 16; // border radius
+          // Calculate perimeter for the rect accounting for inset positioning (2px = strokeWidth)
+          const rectW = w - 2;
+          const rectH = h - 2;
+          const perimeter = 2 * (rectW - 2 * r) + 2 * (rectH - 2 * r) + 2 * Math.PI * r;
+          setDimensions({ width: w, height: h, perimeter });
+        }
+      };
+      updateDimensions();
+      window.addEventListener('resize', updateDimensions);
+      return () => window.removeEventListener('resize', updateDimensions);
+    }
+  }, []);
+
   return (
-    <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-100 shadow-sm">
-      <p className="text-base text-slate-700 leading-relaxed text-justify">
-        {narrative}
-      </p>
+    <div ref={borderRef} className="animated-border-glow relative bg-gradient-to-r from-purple-50 via-blue-50 to-purple-50 rounded-2xl p-6 backdrop-blur-sm transform hover:scale-[1.01] transition-all duration-300 z-10 border-2 border-[#FFD700]">
+      
+      {/* Glassmorphism overlay effect */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/20 via-transparent to-purple-100/10 pointer-events-none z-10" />
+      
+      {/* Embossed border highlight */}
+      <div className="absolute inset-0 rounded-2xl bg-white pointer-events-none z-10" />
+      
+      {/* Content */}
+      <div className="relative z-20">
+        <p className="text-base text-slate-700 leading-relaxed text-justify drop-shadow-sm">
+          {narrative}
+        </p>
+      </div>
     </div>
   );
 };
