@@ -1313,14 +1313,36 @@ const NewOutput: React.FC = () => {
               />
             ) : (
               overlays && (
-                <EnhancedPatternRecognitionCard 
-                  overlays={overlays as EnhancedOverlays}
-                  symbol={stockSymbol}
-                  supportLevels={(enhancedData as any)?.support_levels || []}
-                  resistanceLevels={(enhancedData as any)?.resistance_levels || []}
-                  analysisPeriod={enhancedData?.analysis_period || '90 days'}
-                  interval={enhancedData?.interval || '1day'}
-                />
+                (() => {
+                  // Extract pattern agent summaries from decision_story
+                  const decisionStory = enhancedData?.decision_story || ai_analysis?.decision_story;
+                  const allAgentSummaries = decisionStory?.agent_summaries || {};
+                  
+                  // Filter for pattern-related agents
+                  const patternAgentKeys = [
+                    "Cross-Validation Analysis",
+                    "Market Structure Analysis"
+                  ];
+                  
+                  const patternAgentSummaries: { [agentName: string]: string } = {};
+                  patternAgentKeys.forEach(key => {
+                    if (allAgentSummaries[key]) {
+                      patternAgentSummaries[key] = allAgentSummaries[key];
+                    }
+                  });
+                  
+                  return (
+                    <EnhancedPatternRecognitionCard 
+                      overlays={overlays as EnhancedOverlays}
+                      symbol={stockSymbol}
+                      supportLevels={(enhancedData as any)?.support_levels || []}
+                      resistanceLevels={(enhancedData as any)?.resistance_levels || []}
+                      analysisPeriod={enhancedData?.analysis_period || '90 days'}
+                      interval={enhancedData?.interval || '1day'}
+                      patternAgentSummaries={Object.keys(patternAgentSummaries).length > 0 ? patternAgentSummaries : undefined}
+                    />
+                  );
+                })()
               )
             )}
 
@@ -1331,13 +1353,38 @@ const NewOutput: React.FC = () => {
                 description="Loading volume analysis..." 
               />
             ) : (
-              <VolumeAnalysisCard 
-                volumeData={enhancedData?.technical_indicators?.enhanced_volume?.comprehensive_analysis || enhancedData?.technical_indicators?.volume || indicators?.volume}
-                priceData={enhancedData?.technical_indicators?.raw_data || analysisData?.data}
-                symbol={stockSymbol}
-                className=""
-                volumeAgentsData={enhancedData?.results?.volume_agents_result || (enhancedData as any)?.volume_agents_result}
-              />
+              (() => {
+                // Extract volume agent summaries from decision_story
+                const decisionStory = enhancedData?.decision_story || ai_analysis?.decision_story;
+                const allAgentSummaries = decisionStory?.agent_summaries || {};
+                
+                // Filter for the 5 volume agents
+                const volumeAgentKeys = [
+                  "Institutional Activity (volume based)",
+                  "Support Resistance (volume based)",
+                  "Volume Anomaly",
+                  "Volume Confirmation",
+                  "Volume Momentum"
+                ];
+                
+                const volumeAgentSummaries: { [agentName: string]: string } = {};
+                volumeAgentKeys.forEach(key => {
+                  if (allAgentSummaries[key]) {
+                    volumeAgentSummaries[key] = allAgentSummaries[key];
+                  }
+                });
+                
+                return (
+                  <VolumeAnalysisCard 
+                    volumeData={enhancedData?.technical_indicators?.enhanced_volume?.comprehensive_analysis || enhancedData?.technical_indicators?.volume || indicators?.volume}
+                    priceData={enhancedData?.technical_indicators?.raw_data || analysisData?.data}
+                    symbol={stockSymbol}
+                    className=""
+                    volumeAgentsData={enhancedData?.results?.volume_agents_result || (enhancedData as any)?.volume_agents_result}
+                    volumeAgentSummaries={Object.keys(volumeAgentSummaries).length > 0 ? volumeAgentSummaries : undefined}
+                  />
+                );
+              })()
             )}
 
             {/* Advanced Patterns and Multi-timeframe Analysis */}

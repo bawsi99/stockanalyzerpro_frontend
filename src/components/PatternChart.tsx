@@ -302,7 +302,7 @@ const PatternChart: React.FC<PatternChartProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <BarChart3 className="h-5 w-5" />
-            <span>Pattern Chart - {symbol}</span>
+            <span>{symbol}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -324,7 +324,7 @@ const PatternChart: React.FC<PatternChartProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <BarChart3 className="h-5 w-5" />
-            <span>Pattern Chart - {symbol}</span>
+            <span>{symbol}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -346,7 +346,7 @@ const PatternChart: React.FC<PatternChartProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <BarChart3 className="h-5 w-5" />
-            <span>Pattern Chart - {symbol}</span>
+            <span>{symbol}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -364,7 +364,7 @@ const PatternChart: React.FC<PatternChartProps> = ({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center space-x-2">
             <BarChart3 className="h-5 w-5" />
-            <span>Pattern Chart - {symbol}</span>
+            <span>{symbol}</span>
           </CardTitle>
           
           {/* Chart Type Toggle */}

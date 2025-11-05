@@ -27,6 +27,8 @@ interface EnhancedPatternRecognitionCardProps {
   // Chart data parameters
   analysisPeriod?: string;
   interval?: string;
+  // Pattern agent summaries from decision_story
+  patternAgentSummaries?: { [agentName: string]: string };
 }
 
 const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardProps> = ({ 
@@ -35,7 +37,8 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
   supportLevels = [],
   resistanceLevels = [],
   analysisPeriod = '90 days',
-  interval = '1day'
+  interval = '1day',
+  patternAgentSummaries
 }) => {
   // Add null checks and default values
   if (!overlays) {
@@ -44,7 +47,7 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
         <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-t-lg">
           <div className="flex items-center space-x-2">
             <Activity className="h-6 w-6" />
-            <CardTitle className="text-xl">Enhanced Pattern Recognition</CardTitle>
+            <CardTitle className="text-xl">Pattern Analysis</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-6">
@@ -280,10 +283,26 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
         <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-t-lg">
           <div className="flex items-center space-x-2">
             <Activity className="h-6 w-6" />
-            <CardTitle className="text-xl">Enhanced Pattern Recognition</CardTitle>
+            <CardTitle className="text-xl">Pattern Analysis</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-6">
+          {/* Pattern Agent Summaries */}
+          {patternAgentSummaries && Object.keys(patternAgentSummaries).length > 0 && (
+            <div className="mb-6">
+              <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-6 space-y-4">
+                  {Object.entries(patternAgentSummaries).map(([agentName, summary], index) => (
+                    <div key={agentName}>
+                      <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{summary}</p>
+                      {index < Object.entries(patternAgentSummaries).length - 1 && <div className="mt-4 mb-4" />}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* Pattern Chart - Only show if patterns are detected */}
           {(allPatterns.length > 0 || basicPatterns.reduce((sum, p) => sum + p.count, 0) > 0) && (
             <div className="mb-6">
@@ -314,9 +333,6 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
               />
             </div>
           )}
-
-
-
 
           {/* Support and Resistance */}
           <div>

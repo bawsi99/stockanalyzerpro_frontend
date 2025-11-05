@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, BarChart3, Activity } from 'lucide-react';
 
 interface VolumeAnalysisCardProps {
@@ -11,9 +12,10 @@ interface VolumeAnalysisCardProps {
   symbol: string;
   className?: string;
   volumeAgentsData?: any;  // Add volume agents data from responses
+  volumeAgentSummaries?: { [agentName: string]: string };  // Agent summaries from decision_story
 }
 
-const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, priceData, symbol, className, volumeAgentsData }) => {
+const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, priceData, symbol, className, volumeAgentsData, volumeAgentSummaries }) => {
 
   // Debug logging for volume agents data
   React.useEffect(() => {
@@ -115,6 +117,25 @@ const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, pri
       </CardHeader>
       <CardContent className="pt-6 flex-1 flex flex-col overflow-y-auto">
         <div className="space-y-6 flex-1">
+          {/* Volume Agent Summaries */}
+          {volumeAgentSummaries && Object.keys(volumeAgentSummaries).length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-semibold text-slate-800">Volume Agent Analysis</h4>
+              <Accordion type="multiple" defaultValue={Object.keys(volumeAgentSummaries)} className="w-full">
+                {Object.entries(volumeAgentSummaries).map(([agentName, summary]) => (
+                  <AccordionItem key={agentName} value={agentName} className="border border-slate-200 rounded-lg mb-2 px-3">
+                    <AccordionTrigger className="text-sm font-medium text-slate-700 hover:no-underline py-3">
+                      {agentName}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-sm text-slate-600 leading-relaxed pb-4 pt-0">
+                      <p className="whitespace-pre-wrap">{summary}</p>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
+          )}
+
           {/* Volume Ratio */}
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
