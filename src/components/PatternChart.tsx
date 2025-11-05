@@ -13,12 +13,22 @@ interface HistoricalDataPoint {
   volume: number;
 }
 
+interface PeakLowPoint {
+  index?: number;
+  price: number;
+  date?: string;
+}
+
 interface PatternOverlay {
   start_date?: string;
   end_date?: string;
   type: string;
   target_level?: number;
   stop_level?: number;
+  // Triple top/bottom specific fields
+  peaks?: PeakLowPoint[];  // For triple tops: array of 3 peaks
+  lows?: PeakLowPoint[];   // For triple bottoms: array of 3 lows
+  valleys?: Array<{ price: number; ratio?: number }>;  // For triple tops
 }
 
 interface PatternData {
@@ -207,10 +217,99 @@ const PatternChart: React.FC<PatternChartProps> = ({
       )
     });
 
-    // Collect all pattern markers first
+    // Collect all pattern markers first (including triple pattern peaks/lows)
     const allMarkers: any[] = [];
 
-    // Add pattern markers
+    // Helper function to add markers for triple pattern peaks/lows and support/resistance levels
+    const addTriplePatternMarkers = (patternType: string, pattern: PatternOverlay, index: number, color: string) => {
+      const startTime = parseDateToTimestamp(pattern.start_date || '');
+      const endTime = parseDateToTimestamp(pattern.end_date || '');
+      
+      if (startTime === 0 || endTime === 0) return;
+
+      if (patternType === 'triple_tops' && pattern.peaks && pattern.peaks.length >= 3) {
+        pattern.peaks.forEach((peak: PeakLowPoint, peakIndex: number) => {
+          let peakTime: number = 0;
+          if (peak.date) {
+            peakTime = parseDateToTimestamp(peak.date);
+          } else if (peak.index !== undefined && peak.index >= 0 && peak.index < data.length) {
+            peakTime = data[peak.index].time;
+          } else if (peak.index !== undefined) {
+            if (startTime > 0 && endTime > 0) {
+              const progress = Math.max(0, Math.min(1, peak.index / Math.max(1, data.length - 1)));
+              peakTime = startTime + (endTime - startTime) * progress;
+            }
+          }
+          
+          if (peakTime > 0) {
+            allMarkers.push({
+              time: peakTime,
+              position: 'belowBar' as const,
+              color: color,
+              shape: 'circle' as const,
+              text: `Peak ${peakIndex + 1}: ${peak.price.toFixed(2)}`,
+              size: 1,
+              id: `${patternType}_${index}_peak_${peakIndex}`
+            });
+          }
+        });
+
+        // Add support level label marker
+        if (pattern.support_level !== undefined && pattern.support_level !== null) {
+          allMarkers.push({
+            time: endTime,
+            position: 'belowBar' as const,
+            color: color,
+            shape: 'square' as const,
+            text: `Support: ${pattern.support_level.toFixed(2)}`,
+            size: 1,
+            id: `${patternType}_${index}_support_label`
+          });
+        }
+      } else if (patternType === 'triple_bottoms' && pattern.lows && pattern.lows.length >= 3) {
+        pattern.lows.forEach((low: PeakLowPoint, lowIndex: number) => {
+          let lowTime: number = 0;
+          if (low.date) {
+            lowTime = parseDateToTimestamp(low.date);
+          } else if (low.index !== undefined && low.index >= 0 && low.index < data.length) {
+            lowTime = data[low.index].time;
+          } else if (low.index !== undefined) {
+            if (startTime > 0 && endTime > 0) {
+              const progress = Math.max(0, Math.min(1, low.index / Math.max(1, data.length - 1)));
+              lowTime = startTime + (endTime - startTime) * progress;
+            }
+          }
+          
+          if (lowTime > 0) {
+            allMarkers.push({
+              time: lowTime,
+              position: 'aboveBar' as const,
+              color: color,
+              shape: 'circle' as const,
+              text: `Low ${lowIndex + 1}: ${low.price.toFixed(2)}`,
+              size: 1,
+              id: `${patternType}_${index}_low_${lowIndex}`
+            });
+          }
+        });
+
+        // Add resistance level label marker
+        const resistanceLevel = (pattern as any).resistance_level;
+        if (resistanceLevel !== undefined && resistanceLevel !== null) {
+          allMarkers.push({
+            time: endTime,
+            position: 'aboveBar' as const,
+            color: color,
+            shape: 'square' as const,
+            text: `Resistance: ${resistanceLevel.toFixed(2)}`,
+            size: 1,
+            id: `${patternType}_${index}_resistance_label`
+          });
+        }
+      }
+    };
+
+    // Add pattern markers (including triple pattern peaks/lows)
     Object.entries(patterns).forEach(([patternType, patternList]) => {
       if (!patternList || patternList.length === 0) return;
 
@@ -224,28 +323,34 @@ const PatternChart: React.FC<PatternChartProps> = ({
 
         if (startTime === 0 || endTime === 0) return;
 
-        // Add markers for pattern start and end
-        const patternName = patternType.replace(/_/g, ' ');
-        const patternDisplayName = patternName.charAt(0).toUpperCase() + patternName.slice(1);
-        
-        allMarkers.push(
-          {
-            time: startTime,
-            position: 'belowBar' as const,
-            color,
-            shape: 'arrowUp' as const,
-            text: `${patternDisplayName} ${index + 1} Start`,
-            id: `${patternType}_${index}_start`
-          },
-          {
-            time: endTime,
-            position: 'aboveBar' as const,
-            color,
-            shape: 'arrowDown' as const,
-            text: `${patternDisplayName} ${index + 1} End`,
-            id: `${patternType}_${index}_end`
-          }
-        );
+        // For triple patterns, add individual peak/low markers instead of start/end
+        if ((patternType === 'triple_tops' && pattern.peaks && pattern.peaks.length >= 3) ||
+            (patternType === 'triple_bottoms' && pattern.lows && pattern.lows.length >= 3)) {
+          addTriplePatternMarkers(patternType, pattern, index, color);
+        } else {
+          // Add markers for pattern start and end (for non-triple patterns)
+          const patternName = patternType.replace(/_/g, ' ');
+          const patternDisplayName = patternName.charAt(0).toUpperCase() + patternName.slice(1);
+          
+          allMarkers.push(
+            {
+              time: startTime,
+              position: 'belowBar' as const,
+              color,
+              shape: 'arrowUp' as const,
+              text: `${patternDisplayName} ${index + 1} Start`,
+              id: `${patternType}_${index}_start`
+            },
+            {
+              time: endTime,
+              position: 'aboveBar' as const,
+              color,
+              shape: 'arrowDown' as const,
+              text: `${patternDisplayName} ${index + 1} End`,
+              id: `${patternType}_${index}_end`
+            }
+          );
+        }
       });
     });
 
@@ -270,26 +375,195 @@ const PatternChart: React.FC<PatternChartProps> = ({
 
         if (startTime === 0 || endTime === 0) return;
 
-        // Add horizontal line for pattern duration
-        const lineSeries = chartRef.current!.addLineSeries({
-          color: color,
-          lineWidth: 2,
-          lineStyle: 2, // Dashed line
-          lineType: 0, // Simple line
-        });
+        // Special handling for triple tops and triple bottoms
+        if (patternType === 'triple_tops' && pattern.peaks && pattern.peaks.length >= 3) {
+          // Draw lines connecting the 3 peaks for triple tops
+          const peakTimes: number[] = [];
+          const peakPrices: number[] = [];
+          
+          pattern.peaks.forEach((peak: PeakLowPoint) => {
+            let peakTime: number = 0;
+            if (peak.date) {
+              peakTime = parseDateToTimestamp(peak.date);
+            } else if (peak.index !== undefined && peak.index >= 0 && peak.index < data.length) {
+              // Use the peak's index directly to get the time from data
+              peakTime = data[peak.index].time;
+            } else if (peak.index !== undefined) {
+              // Fallback: interpolate between start and end times if index is out of bounds
+              const progress = Math.max(0, Math.min(1, peak.index / Math.max(1, data.length - 1)));
+              peakTime = startTime + (endTime - startTime) * progress;
+            } else {
+              return; // Skip if no date or index
+            }
+            
+            if (peakTime > 0) {
+              peakTimes.push(peakTime);
+              peakPrices.push(peak.price);
+            }
+          });
 
-        // Find price data for pattern timeframe to draw appropriate level
-        const patternData = data.filter(d => d.time >= startTime && d.time <= endTime);
-        if (patternData.length > 0) {
-          const avgPrice = patternData.reduce((sum, d) => sum + d.close, 0) / patternData.length;
+          if (peakTimes.length >= 3 && peakPrices.length >= 3) {
+            // Draw line connecting the 3 peaks
+            const lineSeries = chartRef.current!.addLineSeries({
+              color: color,
+              lineWidth: 2,
+              lineStyle: 0, // Solid line
+              lineType: 0,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+
+            const lineData: LineData[] = peakTimes.map((time, i) => ({
+              time,
+              value: peakPrices[i]
+            }));
+            
+            lineSeries.setData(lineData);
+
+            // Draw support level line (horizontal dashed line at support_level)
+            if (pattern.support_level !== undefined && pattern.support_level !== null) {
+              const supportLineSeries = chartRef.current!.addLineSeries({
+                color: color,
+                lineWidth: 1.5,
+                lineStyle: 2, // Dashed line
+                lineType: 0,
+                priceLineVisible: false,
+                lastValueVisible: false,
+              });
+
+              const supportLineData: LineData[] = [
+                { time: startTime, value: pattern.support_level },
+                { time: endTime, value: pattern.support_level }
+              ];
+              
+              supportLineSeries.setData(supportLineData);
+            }
+
+            // Optionally draw target level line (horizontal dotted line at target_level)
+            if (pattern.target_level !== undefined && pattern.target_level !== null) {
+              const targetLineSeries = chartRef.current!.addLineSeries({
+                color: color,
+                lineWidth: 1,
+                lineStyle: 3, // Dotted line
+                lineType: 0,
+                priceLineVisible: false,
+                lastValueVisible: false,
+              });
+
+              const targetLineData: LineData[] = [
+                { time: endTime, value: pattern.target_level },
+                { time: endTime + (endTime - startTime) * 0.5, value: pattern.target_level } // Extend target line forward
+              ];
+              
+              targetLineSeries.setData(targetLineData);
+            }
+          }
+        } else if (patternType === 'triple_bottoms' && pattern.lows && pattern.lows.length >= 3) {
+          // Draw lines connecting the 3 lows for triple bottoms
+          const lowTimes: number[] = [];
+          const lowPrices: number[] = [];
           
-          // Draw horizontal line at average price level
-          const lineData: LineData[] = [
-            { time: startTime, value: avgPrice },
-            { time: endTime, value: avgPrice }
-          ];
-          
-          lineSeries.setData(lineData);
+          pattern.lows.forEach((low: PeakLowPoint) => {
+            let lowTime: number = 0;
+            if (low.date) {
+              lowTime = parseDateToTimestamp(low.date);
+            } else if (low.index !== undefined && low.index >= 0 && low.index < data.length) {
+              // Use the low's index directly to get the time from data
+              lowTime = data[low.index].time;
+            } else if (low.index !== undefined) {
+              // Fallback: interpolate between start and end times if index is out of bounds
+              const progress = Math.max(0, Math.min(1, low.index / Math.max(1, data.length - 1)));
+              lowTime = startTime + (endTime - startTime) * progress;
+            } else {
+              return; // Skip if no date or index
+            }
+            
+            if (lowTime > 0) {
+              lowTimes.push(lowTime);
+              lowPrices.push(low.price);
+            }
+          });
+
+          if (lowTimes.length >= 3 && lowPrices.length >= 3) {
+            // Draw line connecting the 3 lows
+            const lineSeries = chartRef.current!.addLineSeries({
+              color: color,
+              lineWidth: 2,
+              lineStyle: 0, // Solid line
+              lineType: 0,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+
+            const lineData: LineData[] = lowTimes.map((time, i) => ({
+              time,
+              value: lowPrices[i]
+            }));
+            
+            lineSeries.setData(lineData);
+
+            // Draw resistance level line (horizontal dashed line at resistance_level)
+            // Note: triple_bottoms use resistance_level instead of support_level
+            const resistanceLevel = (pattern as any).resistance_level;
+            if (resistanceLevel !== undefined && resistanceLevel !== null) {
+              const resistanceLineSeries = chartRef.current!.addLineSeries({
+                color: color,
+                lineWidth: 1.5,
+                lineStyle: 2, // Dashed line
+                lineType: 0,
+                priceLineVisible: false,
+                lastValueVisible: false,
+              });
+
+              const resistanceLineData: LineData[] = [
+                { time: startTime, value: resistanceLevel },
+                { time: endTime, value: resistanceLevel }
+              ];
+              
+              resistanceLineSeries.setData(resistanceLineData);
+            }
+
+            // Optionally draw target level line (horizontal dotted line at target_level)
+            if (pattern.target_level !== undefined && pattern.target_level !== null) {
+              const targetLineSeries = chartRef.current!.addLineSeries({
+                color: color,
+                lineWidth: 1,
+                lineStyle: 3, // Dotted line
+                lineType: 0,
+                priceLineVisible: false,
+                lastValueVisible: false,
+              });
+
+              const targetLineData: LineData[] = [
+                { time: endTime, value: pattern.target_level },
+                { time: endTime + (endTime - startTime) * 0.5, value: pattern.target_level } // Extend target line forward
+              ];
+              
+              targetLineSeries.setData(targetLineData);
+            }
+          }
+        } else {
+          // Default behavior for other patterns: horizontal line at average price
+          const lineSeries = chartRef.current!.addLineSeries({
+            color: color,
+            lineWidth: 2,
+            lineStyle: 2, // Dashed line
+            lineType: 0, // Simple line
+          });
+
+          // Find price data for pattern timeframe to draw appropriate level
+          const patternData = data.filter(d => d.time >= startTime && d.time <= endTime);
+          if (patternData.length > 0) {
+            const avgPrice = patternData.reduce((sum, d) => sum + d.close, 0) / patternData.length;
+            
+            // Draw horizontal line at average price level
+            const lineData: LineData[] = [
+              { time: startTime, value: avgPrice },
+              { time: endTime, value: avgPrice }
+            ];
+            
+            lineSeries.setData(lineData);
+          }
         }
       });
     });
