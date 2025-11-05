@@ -134,7 +134,7 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
                       </div>
                       <div className="flex items-center text-xs text-slate-600">
                         <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
-                        <span className="truncate">{format(new Date(analysis.created_at), 'PPp')}</span>
+                        <span className="truncate">{format(new Date(analysis.analysis_timestamp || analysis.created_at), 'PPp')}</span>
                       </div>
                     </div>
                     {onAnalysisSelect && (

@@ -10,6 +10,7 @@ export interface StoredAnalysis {
   stock_symbol: string;
   analysis_data: ApiResponse;
   created_at: string;
+  analysis_timestamp?: string | null;
   // New normalized fields
   overall_signal: string | null;
   confidence_score: number | null;
@@ -88,6 +89,7 @@ export const useStockAnalyses = () => {
           stock_symbol: analysis.stock_symbol,
           analysis_data: analysis.analysis_data,
           created_at: analysis.created_at,
+          analysis_timestamp: analysis.analysis_data?.metadata?.analysis_timestamp || analysis.created_at || null,
           // Extract normalized fields from analysis_data
           overall_signal: analysis.analysis_data?.summary?.overall_signal || 
                          analysis.analysis_data?.ai_analysis?.trend || null,
@@ -143,6 +145,7 @@ export const useStockAnalyses = () => {
           stock_symbol: response.stock_symbol || '',
           analysis_data: response,
           created_at: response.timestamp || new Date().toISOString(),
+          analysis_timestamp: (response as any)?.metadata?.analysis_timestamp || response.timestamp || null,
           overall_signal: response.results?.summary?.overall_signal || 
                          response.results?.ai_analysis?.trend || null,
           confidence_score: response.results?.summary?.confidence || 
