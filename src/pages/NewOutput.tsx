@@ -166,6 +166,10 @@ const NewOutput: React.FC = () => {
   
   // Enhanced data state
   const [enhancedData, setEnhancedData] = useState<AnalysisResults | null>(null);
+  // Preserve top-level request params from saved analysis for fallback
+  const [requestInterval, setRequestInterval] = useState<string | undefined>(undefined);
+  const [requestPeriod, setRequestPeriod] = useState<string | undefined>(undefined);
+  const [analysisEndDate, setAnalysisEndDate] = useState<string>('');
   
   // Refs for sliding bubble positioning
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -206,6 +210,20 @@ const NewOutput: React.FC = () => {
       if (storedAnalysis) {
         const parsed = JSON.parse(storedAnalysis);
         // console.log('Parsed analysis data:', parsed);
+        // Derive end_date from possible locations for Pattern Chart
+        const derivedEndDate = (
+          (parsed && (parsed.end_date || parsed.analysis_end_date)) ||
+          (parsed && parsed.results && (parsed.results.end_date || parsed.results.analysis_end_date)) ||
+          (parsed && parsed.ai_analysis && parsed.ai_analysis.meta && parsed.ai_analysis.meta.analysis_date) ||
+          ''
+        );
+        setAnalysisEndDate(typeof derivedEndDate === 'string' ? derivedEndDate : '');
+        console.log('[NewOutput] Derived end_date from analysisResult', {
+          fromTopLevel: parsed?.end_date || null,
+          fromResults: parsed?.results?.end_date || null,
+          fromAiMeta: parsed?.ai_analysis?.meta?.analysis_date || null,
+          analysisEndDate: typeof derivedEndDate === 'string' ? derivedEndDate : null
+        });
         
         // Check if the response has a 'results' field (new backend structure)
         const analysisData = parsed.results || parsed;
@@ -225,6 +243,10 @@ const NewOutput: React.FC = () => {
           // Handle enhanced structure
           setEnhancedData(analysisData);
           setStockSymbol(stockSymbol);
+
+          // Capture top-level interval/period (if present) for fallback use in charts
+          if (parsed.interval) setRequestInterval(parsed.interval);
+          if (parsed.analysis_period) setRequestPeriod(parsed.analysis_period);
           
           // Transform for backward compatibility
           const transformedData = transformDatabaseRecord({
@@ -250,6 +272,8 @@ const NewOutput: React.FC = () => {
           
           // console.log('Transformed legacy data:', transformedData);
           setAnalysisData(transformedData);
+          if (parsed.interval) setRequestInterval(parsed.interval);
+          if (parsed.analysis_period) setRequestPeriod(parsed.analysis_period);
           setStockSymbol(stockSymbol);
         }
         
@@ -1331,14 +1355,26 @@ const NewOutput: React.FC = () => {
                     }
                   });
                   
+                  // Debug logs: Inspect end_date sources used for Pattern Chart
+                  const endDateForCharts = (enhancedData as any)?.end_date || analysisEndDate || '';
+                  console.log('[NewOutput][Technical] PatternChart inputs', {
+                    symbol: stockSymbol,
+                    analysisPeriod: enhancedData?.analysis_period || requestPeriod || '90 days',
+                    interval: enhancedData?.interval || requestInterval || 'day',
+                    endDateFromEnhanced: (enhancedData as any)?.end_date || null,
+                    endDateFromAnalysisState: analysisEndDate || null,
+                    endDateChosen: endDateForCharts
+                  });
+
                   return (
                     <EnhancedPatternRecognitionCard 
                       overlays={overlays as EnhancedOverlays}
                       symbol={stockSymbol}
                       supportLevels={(enhancedData as any)?.support_levels || []}
                       resistanceLevels={(enhancedData as any)?.resistance_levels || []}
-                      analysisPeriod={enhancedData?.analysis_period || '90 days'}
-                      interval={enhancedData?.interval || '1day'}
+                      analysisPeriod={enhancedData?.analysis_period || requestPeriod || '90 days'}
+                      interval={enhancedData?.interval || requestInterval || 'day'}
+                      endDate={endDateForCharts}
                       patternAgentSummaries={Object.keys(patternAgentSummaries).length > 0 ? patternAgentSummaries : undefined}
                     />
                   );

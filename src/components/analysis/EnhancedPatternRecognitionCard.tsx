@@ -27,6 +27,7 @@ interface EnhancedPatternRecognitionCardProps {
   // Chart data parameters
   analysisPeriod?: string;
   interval?: string;
+  endDate?: string;
   // Pattern agent summaries from decision_story
   patternAgentSummaries?: { [agentName: string]: string };
 }
@@ -37,7 +38,8 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
   supportLevels = [],
   resistanceLevels = [],
   analysisPeriod = '90 days',
-  interval = '1day',
+  interval = 'day',
+  endDate,
   patternAgentSummaries
 }) => {
   // Add null checks and default values
@@ -200,10 +202,13 @@ const EnhancedPatternRecognitionCard: React.FC<EnhancedPatternRecognitionCardPro
     || filteredInverseHeadAndShoulders.length > 0;
 
   // Fetch historical data for the chart
+  console.log('[PatternChart] params', { symbol, analysisPeriod, interval, endDate });
   const { data: historicalResponse, loading: chartLoading, error: chartError } = useHistoricalData(
     symbol,
     analysisPeriod,
-    interval
+    interval,
+    'NSE',
+    endDate
   );
 
   // Transform historical data to format expected by PatternChart

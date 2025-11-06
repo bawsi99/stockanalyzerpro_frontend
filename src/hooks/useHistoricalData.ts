@@ -32,13 +32,31 @@ interface UseHistoricalDataResult {
  * Parse analysis period string to number of days
  * Examples: "90 days" -> 90, "1 year" -> 365, "6 months" -> 180
  */
-const parseAnalysisPeriod = (analysisPeriod?: string): number => {
-  if (!analysisPeriod || typeof analysisPeriod !== 'string') {
+const parseAnalysisPeriod = (analysisPeriod?: string | number): number => {
+  if (analysisPeriod == null) {
     return 90; // Default to 90 days
   }
+  if (typeof analysisPeriod === 'number' && isFinite(analysisPeriod) && analysisPeriod > 0) {
+    return Math.floor(analysisPeriod); // Treat numeric as days
+  }
+  if (typeof analysisPeriod !== 'string') {
+    return 90;
+  }
 
-  const period = analysisPeriod.toLowerCase().trim();
-  
+  const raw = analysisPeriod.trim();
+  const period = raw.toLowerCase();
+
+  // Support compact notations like 1w, 2w, 6m, 1y
+  const compactMatch = period.match(/^(\d+)\s*([wmyd])$/i);
+  if (compactMatch) {
+    const n = parseInt(compactMatch[1], 10);
+    const unit = compactMatch[2];
+    if (unit === 'y') return n * 365;
+    if (unit === 'm') return n * 30;
+    if (unit === 'w') return n * 7;
+    return n; // 'd'
+  }
+
   // Extract number from string
   const numberMatch = period.match(/(\d+)/);
   const number = numberMatch ? parseInt(numberMatch[1], 10) : 90;
@@ -47,7 +65,7 @@ const parseAnalysisPeriod = (analysisPeriod?: string): number => {
     return number * 365;
   } else if (period.includes('month')) {
     return number * 30;
-  } else if (period.includes('week')) {
+  } else if (period.includes('week') || period.includes('wk')) {
     return number * 7;
   } else {
     // Default to days
@@ -61,25 +79,30 @@ const parseAnalysisPeriod = (analysisPeriod?: string): number => {
  */
 const mapInterval = (interval?: string): string => {
   if (!interval || typeof interval !== 'string') {
-    return '1day';
+    return 'day';
   }
 
-  const intervalMap: Record<string, string> = {
-    'day': '1day',
-    '1d': '1day',
-    'd': '1day',
-    'daily': '1day',
-    'hour': '1h',
-    '1h': '1h',
-    'h': '1h',
-    'hourly': '1h',
-    '30min': '30min',
-    '15min': '15min',
-    '5min': '5min',
-    '1min': '1min'
-  };
+  // Normalize and sanitize: lowercase, trim, strip trailing commas/spaces
+  const key = interval.toLowerCase().trim().replace(/[\s,]+$/g, '');
 
-  return intervalMap[interval.toLowerCase()] || '1day';
+  // Normalize variants to data_service accepted values
+  // Accepted: "minute","3minute","5minute","10minute","15minute","30minute","60minute","day","week","month"
+  if (key === '1minute' || key === '1min') return 'minute';
+  if (key === '3min') return '3minute';
+  if (key === '5min') return '5minute';
+  if (key === '10min') return '10minute';
+  if (key === '15min' || key === '15minute') return '15minute';
+  if (key === '30min' || key === '30minute') return '30minute';
+  if (key === '60min' || key === '1h' || key === 'hour' || key === 'hourly' || key === '60minute') return '60minute';
+  if (key === '1d' || key === 'd' || key === 'daily' || key === '1day') return 'day';
+  if (key === '1w' || key === 'w' || key === 'weekly' || key === '1week') return 'week';
+  if (key === '1m' || key === 'monthly' || key === '1month') return 'month';
+
+  // Already accepted or fallback
+  const accepted = new Set([
+    'minute','3minute','5minute','10minute','15minute','30minute','60minute','day','week','month'
+  ]);
+  return accepted.has(key) ? key : 'day';
 };
 
 /**
@@ -93,7 +116,8 @@ export const useHistoricalData = (
   symbol: string,
   analysisPeriod?: string,
   interval?: string,
-  exchange: string = 'NSE'
+  exchange: string = 'NSE',
+  endDate?: string
 ): UseHistoricalDataResult => {
   const [data, setData] = useState<HistoricalDataResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -122,14 +146,29 @@ export const useHistoricalData = (
                              mappedInterval === '15min' ? 96 :
                              mappedInterval === '30min' ? 48 : 1440;
         limit = Math.min(days * minutesPerDay, 10000); // Cap at 10k points for performance
-      } else if (mappedInterval === '1h') {
+      } else if (mappedInterval === '60minute') {
         limit = days * 24; // 24 hours per day
       }
 
       // Build API URL
-      const url = `${DATA_SERVICE_URL}/stock/${encodeURIComponent(symbol)}/history?interval=${mappedInterval}&exchange=${exchange}&limit=${limit}`;
+      // If explicit endDate (YYYY-MM-DD) is provided, hit end_date-based window; otherwise, use limit-based.
+      let url: string;
+      const trimmedEnd = (endDate || '').trim();
+      if (trimmedEnd) {
+        url = `${DATA_SERVICE_URL}/stock/${encodeURIComponent(symbol)}/history?interval=${mappedInterval}&exchange=${exchange}&period=${days}&end_date=${encodeURIComponent(trimmedEnd)}`;
+      } else {
+        url = `${DATA_SERVICE_URL}/stock/${encodeURIComponent(symbol)}/history?interval=${mappedInterval}&exchange=${exchange}&limit=${limit}`;
+      }
       
-      console.log(`📊 Fetching historical data: ${symbol} (${days} days, ${mappedInterval})`);
+      console.log('[useHistoricalData] request', {
+        symbol,
+        mappedInterval,
+        exchange,
+        days,
+        endDate: trimmedEnd || null,
+        url,
+        branch: trimmedEnd ? 'end_date+period' : 'limit'
+      });
       
       const response = await fetch(url);
       
@@ -158,7 +197,7 @@ export const useHistoricalData = (
     } finally {
       setLoading(false);
     }
-  }, [symbol, analysisPeriod, interval, exchange]);
+  }, [symbol, analysisPeriod, interval, exchange, endDate]);
 
   // Fetch data when dependencies change
   useEffect(() => {
