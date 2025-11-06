@@ -17,9 +17,10 @@ import { SectorContext } from "@/types/analysis";
 interface EnhancedSectorContextCardProps {
   sectorContext: SectorContext | null | undefined;
   symbol: string;
+  agentSummary?: string;
 }
 
-const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorContextCardProps) => {
+const EnhancedSectorContextCard = ({ sectorContext, symbol, agentSummary }: EnhancedSectorContextCardProps) => {
   if (!sectorContext || !sectorContext.benchmarking) {
     return (
       <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full">
@@ -112,6 +113,13 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol }: EnhancedSectorCont
                 </Badge>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Sector Agent Summary */}
+        {agentSummary && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-slate-700 whitespace-pre-wrap">{agentSummary}</p>
           </div>
         )}
 

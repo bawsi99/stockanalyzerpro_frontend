@@ -1481,19 +1481,30 @@ const NewOutput: React.FC = () => {
             ) : (
               enhancedSectorContext && (
                 <>
-                  <EnhancedSectorContextCard 
-                    sectorContext={enhancedSectorContext}
-                    symbol={stockSymbol}
-                  />
-                  
-                  {/* New Correlation Matrix Card */}
-                  {enhancedSectorContext.correlation_insights?.correlation_matrix && 
-                   Object.keys(enhancedSectorContext.correlation_insights.correlation_matrix).length > 0 && (
-                    <CorrelationMatrixCard
-                      correlationData={enhancedSectorContext.correlation_insights}
-                      currentSector={enhancedSectorContext.sector}
-                    />
-                  )}
+                  {(() => {
+                    // Extract Sector Analysis agent summary from decision_story
+                    const decisionStory = enhancedData?.decision_story || ai_analysis?.decision_story;
+                    const sectorAgentSummary = decisionStory?.agent_summaries?.["Sector Analysis"];
+                    
+                    return (
+                      <>
+                        <EnhancedSectorContextCard 
+                          sectorContext={enhancedSectorContext}
+                          symbol={stockSymbol}
+                          agentSummary={sectorAgentSummary}
+                        />
+                        
+                        {/* New Correlation Matrix Card */}
+                        {enhancedSectorContext.correlation_insights?.correlation_matrix && 
+                         Object.keys(enhancedSectorContext.correlation_insights.correlation_matrix).length > 0 && (
+                          <CorrelationMatrixCard
+                            correlationData={enhancedSectorContext.correlation_insights}
+                            currentSector={enhancedSectorContext.sector}
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               )
             )}
