@@ -397,7 +397,7 @@ const NewStockAnalysis = () => {
                   </div>
                 </CardHeader>
                 
-                <CardContent className="p-8 overflow-y-auto min-h-0">
+                <CardContent className="px-6 pt-4 pb-4 overflow-y-auto min-h-0">
                   <form onSubmit={handleSubmit} className="space-y-8">
                     
                     {/* Stock Selection Section */}
@@ -470,7 +470,7 @@ const NewStockAnalysis = () => {
                         <Clock className="h-5 w-5 mr-2 text-purple-500" />
                         Time Configuration
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                           <Label htmlFor="period" className="text-slate-700 font-medium">
                             Analysis Period (days)
@@ -519,7 +519,7 @@ const NewStockAnalysis = () => {
 
                         <div className="space-y-2">
                           <Label htmlFor="end_date" className="text-slate-700 font-medium">
-                            End Date (optional)
+                            End Date (optional) - <span className="text-xs text-slate-500">for backtesting</span>
                           </Label>
                           <Input
                             id="end_date"
