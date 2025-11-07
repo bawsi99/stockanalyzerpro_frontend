@@ -123,11 +123,59 @@
     display: none !important;
   }
 
-  /* Additional selectors for different chart containers */
+    /* Additional selectors for different chart containers */
   [class*="chart"]::after,
   [class*="chart"] > div:last-child,
   [class*="chart"] > svg:last-child {
     display: none !important;
+  }
+
+  /* Custom scrollbar styling to match card background */
+  .scrollbar-match-bg {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(203, 213, 225, 0.6) rgba(255, 255, 255, 0.9);
+  }
+
+  .scrollbar-match-bg::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .scrollbar-match-bg::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 4px;
+  }
+
+  .scrollbar-match-bg::-webkit-scrollbar-thumb {
+    background: rgba(203, 213, 225, 0.6);
+    border-radius: 4px;
+  }
+
+  .scrollbar-match-bg::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.8);
+  }
+
+  /* Custom scrollbar styling for lighter background (bg-white/20) */
+  .scrollbar-match-bg-light {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(203, 213, 225, 0.5) rgba(255, 255, 255, 0.2);
+  }
+
+  .scrollbar-match-bg-light::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .scrollbar-match-bg-light::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+
+  .scrollbar-match-bg-light::-webkit-scrollbar-thumb {
+    background: rgba(203, 213, 225, 0.5);
+    border-radius: 4px;
+  }
+
+  .scrollbar-match-bg-light::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.7);
   }
 }
 

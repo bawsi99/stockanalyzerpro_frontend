@@ -397,7 +397,7 @@ const NewStockAnalysis = () => {
                   </div>
                 </CardHeader>
                 
-                <CardContent className="px-6 pt-4 pb-4 overflow-y-auto min-h-0">
+                <CardContent className="px-6 pt-4 pb-4 overflow-y-auto min-h-0 scrollbar-match-bg">
                   <form onSubmit={handleSubmit} className="space-y-8">
                     
                     {/* Stock Selection Section */}

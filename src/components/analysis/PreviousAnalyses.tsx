@@ -49,7 +49,7 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
           View your past stock analysis reports
         </CardDescription>
       </CardHeader>
-      <CardContent className="overflow-y-auto p-4 min-h-0">
+      <CardContent className="overflow-y-auto p-4 min-h-0 scrollbar-match-bg-light">
         {loading ? (
           <div className="text-center py-8">
             <Loader2 className="h-8 w-8 text-blue-500 mx-auto mb-4 animate-spin" />
