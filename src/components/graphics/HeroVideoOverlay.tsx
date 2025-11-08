@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 // Seamless crossfading video overlay to mimic provided style while hiding loop seams
 // Renders two videos offset by half-duration and crossfades near edges.
@@ -18,36 +18,78 @@ export const HeroVideoOverlay: React.FC<{
   const bRef = useRef<HTMLVideoElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const durationRef = useRef<number>(0);
+  const [isReady, setIsReady] = useState(false);
+  const readyCountRef = useRef(0);
 
   useEffect(() => {
     const a = aRef.current!;
     const b = bRef.current!;
     let mounted = true;
 
+    // Initialize videos with opacity 0 to prevent flash
+    a.style.opacity = "0";
+    b.style.opacity = "0";
+
+    const checkReady = () => {
+      readyCountRef.current++;
+      // Wait for both videos to be ready
+      if (readyCountRef.current >= 2 && mounted) {
+        setIsReady(true);
+        // Set initial opacity - video A should be fully visible initially
+        a.style.opacity = "1";
+        b.style.opacity = "0";
+      }
+    };
+
+    const onCanPlayThrough = () => {
+      if (!mounted) return;
+      checkReady();
+    };
+
     const onMeta = () => {
       if (!mounted) return;
       const d = a.duration || b.duration || 0;
       if (!d || !isFinite(d)) return;
       durationRef.current = d;
-      try { b.currentTime = (d / 2) % d; } catch {}
-      a.play().catch(() => {});
-      b.play().catch(() => {});
+      try { 
+        b.currentTime = (d / 2) % d; 
+      } catch {}
     };
 
-    const onCanPlay = () => {
-      if (!mounted) return;
-      a.play().catch(() => {});
-      b.play().catch(() => {});
-    };
-
+    // Use canplaythrough instead of canplay for smoother playback
     a.addEventListener("loadedmetadata", onMeta);
     b.addEventListener("loadedmetadata", onMeta);
-    a.addEventListener("canplay", onCanPlay);
-    b.addEventListener("canplay", onCanPlay);
+    a.addEventListener("canplaythrough", onCanPlayThrough);
+    b.addEventListener("canplaythrough", onCanPlayThrough);
+
+    // Start loading and playing videos
+    const startPlayback = async () => {
+      try {
+        // Preload videos
+        a.load();
+        b.load();
+        
+        // Wait a bit for initial buffering
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Start playing both videos
+        await Promise.all([
+          a.play().catch(() => {}),
+          b.play().catch(() => {})
+        ]);
+      } catch (e) {
+        // Silently handle errors
+      }
+    };
+
+    startPlayback();
 
     const loop = () => {
+      if (!mounted) return;
+      
       const d = durationRef.current;
-      if (d > 0) {
+      // Only start crossfade animation when videos are ready
+      if (d > 0 && isReady) {
         const ta = a.currentTime % d;
         const tb = b.currentTime % d;
         const ea = Math.min(ta, d - ta);
@@ -61,6 +103,8 @@ export const HeroVideoOverlay: React.FC<{
       }
       rafRef.current = requestAnimationFrame(loop);
     };
+    
+    // Start the animation loop
     rafRef.current = requestAnimationFrame(loop);
 
     return () => {
@@ -68,10 +112,10 @@ export const HeroVideoOverlay: React.FC<{
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       a.removeEventListener("loadedmetadata", onMeta);
       b.removeEventListener("loadedmetadata", onMeta);
-      a.removeEventListener("canplay", onCanPlay);
-      b.removeEventListener("canplay", onCanPlay);
+      a.removeEventListener("canplaythrough", onCanPlayThrough);
+      b.removeEventListener("canplaythrough", onCanPlayThrough);
     };
-  }, [src, fadeWindowSec]);
+  }, [src, fadeWindowSec, isReady]);
 
   return (
     <div className={className} style={{ mixBlendMode: blend === "normal" ? undefined : blend }}>
