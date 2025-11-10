@@ -598,7 +598,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       
       {/* Content */}
       <div className="relative z-20">
-        <p className="text-base text-slate-700 leading-relaxed text-justify drop-shadow-sm">
+        <p className="text-base text-slate-700 leading-relaxed text-justify drop-shadow-sm whitespace-pre-wrap">
           {narrative}
         </p>
       </div>
