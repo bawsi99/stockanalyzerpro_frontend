@@ -70,6 +70,12 @@ const NewStockAnalysis = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [runningAnalyses, setRunningAnalyses] = useState<RunningAnalysisItem[]>([]);
   const [isAnalysisRunning, setIsAnalysisRunning] = useState(false);
+  const [hasCurrentHolding, setHasCurrentHolding] = useState<boolean>(false);
+  const [holdingData, setHoldingData] = useState({
+    quantity: "",
+    entry_price: "",
+    position_type: "long" as "long" | "short"
+  });
 
   // Sector state
   const [sectors, setSectors] = useState<SectorInfo[]>([]);
@@ -258,6 +264,28 @@ const NewStockAnalysis = () => {
     }
   };
 
+  const handleHoldingToggle = (hasHolding: boolean) => {
+    setHasCurrentHolding(hasHolding);
+    if (!hasHolding) {
+      setHoldingData({
+        quantity: "",
+        entry_price: "",
+        position_type: "long"
+      });
+    }
+  };
+
+  const handleHoldingChange = (field: "quantity" | "entry_price" | "position_type", value: string) => {
+    setHoldingData(prev => ({
+      ...prev,
+      [field]: field === "position_type" 
+        ? value 
+        : field === "quantity" 
+          ? value.replace(/[^0-9]/g, "") 
+          : value.replace(/[^0-9.]/g, "")
+    }));
+  };
+
   const handleSelectAnalysis = (analysis: StoredAnalysis) => {
     // Navigate to shareable URL for this saved analysis
     navigate(`/analysis/${analysis.id}`);
@@ -279,6 +307,19 @@ const NewStockAnalysis = () => {
       };
       if (formData.end_date && formData.end_date.trim().length > 0) {
         payload.end_date = formData.end_date.trim(); // YYYY-MM-DD
+      }
+
+      // Include current holding if provided
+      if (hasCurrentHolding && holdingData.quantity && holdingData.entry_price) {
+        payload.current_holding = {
+          quantity: parseFloat(holdingData.quantity),
+          entry_price: parseFloat(holdingData.entry_price),
+          position_type: holdingData.position_type
+        };
+        console.log("[FRONTEND] Including current holding in request:", payload.current_holding);
+      } else {
+        payload.current_holding = null;
+        console.log("[FRONTEND] No current holding included in request");
       }
 
       // Create a running item and start async request
@@ -533,6 +574,89 @@ const NewStockAnalysis = () => {
                           </p>
                         </div>
                       </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Current Holdings Section */}
+                    <div className="space-y-4 p-4 bg-white rounded-lg border border-gray-200">
+                      <div className="flex items-center space-x-3">
+                        <label className="text-sm font-medium text-gray-700">
+                          Currently holding this stock?
+                        </label>
+                        <div className="flex space-x-4">
+                          <button
+                            type="button"
+                            onClick={() => handleHoldingToggle(true)}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                              hasCurrentHolding
+                                ? "bg-blue-600 text-white"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }`}
+                          >
+                            Yes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleHoldingToggle(false)}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                              !hasCurrentHolding
+                                ? "bg-blue-600 text-white"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }`}
+                          >
+                            No
+                          </button>
+                        </div>
+                      </div>
+                      {hasCurrentHolding && (
+                        <div className="mt-4 space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200 animate-in slide-in-from-top-2">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Quantity
+                              </label>
+                              <input
+                                type="text"
+                                value={holdingData.quantity}
+                                onChange={(e) => handleHoldingChange("quantity", e.target.value)}
+                                placeholder="e.g., 100"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required={hasCurrentHolding}
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Entry Price (₹)
+                              </label>
+                              <input
+                                type="text"
+                                value={holdingData.entry_price}
+                                onChange={(e) => handleHoldingChange("entry_price", e.target.value)}
+                                placeholder="e.g., 2450.50"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required={hasCurrentHolding}
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Position Type
+                              </label>
+                              <select
+                                value={holdingData.position_type}
+                                onChange={(e) => handleHoldingChange("position_type", e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required={hasCurrentHolding}
+                              >
+                                <option value="long">Long</option>
+                                <option value="short">Short</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <Separator />

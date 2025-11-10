@@ -8,6 +8,11 @@ export interface AnalysisRequest {
   sector?: string | null; // Optional sector override
   email?: string; // User email for backend user ID mapping
   user_id?: string; // User ID (UUID) - alternative to email
+  current_holding?: {
+    quantity: number;
+    entry_price: number;
+    position_type: "long" | "short";
+  } | null;
 }
 
 export interface ChartData {
