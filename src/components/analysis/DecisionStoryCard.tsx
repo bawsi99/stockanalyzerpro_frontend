@@ -515,6 +515,39 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
 
   const { narrative, decision_chain, agent_summaries } = decisionStory;
 
+  // Process narrative to convert **text** to bold
+  const renderNarrativeWithBold = (text: string) => {
+    if (!text) return null;
+    
+    const parts: (string | JSX.Element)[] = [];
+    const regex = /\*\*(.*?)\*\*/g;
+    let lastIndex = 0;
+    let match;
+    let key = 0;
+
+    while ((match = regex.exec(text)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      // Add bold text
+      parts.push(
+        <strong key={key++} className="font-semibold">
+          {match[1]}
+        </strong>
+      );
+      lastIndex = regex.lastIndex;
+    }
+
+    // Add remaining text after the last match
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    // If no matches found, return the original text
+    return parts.length > 0 ? parts : text;
+  };
+
   const getConfidenceBadge = (confidence: number, level: string) => {
     const badgeColors = {
       high: "bg-green-100 text-green-800 border-green-200",
@@ -599,7 +632,7 @@ const DecisionStoryCard = ({ decisionStory, analysisDate, analysisPeriod, fallba
       {/* Content */}
       <div className="relative z-20">
         <p className="text-base text-slate-700 leading-relaxed text-justify drop-shadow-sm whitespace-pre-wrap">
-          {narrative}
+          {renderNarrativeWithBold(narrative)}
         </p>
       </div>
     </div>
