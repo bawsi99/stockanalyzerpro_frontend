@@ -62,7 +62,8 @@ const NewStockAnalysis = () => {
     period: "365",
     interval: "day",
     end_date: "", // YYYY-MM-DD
-    sector: null
+    sector: null,
+    portfolio_value: "1000000"
   });
 
   // UI state
@@ -259,6 +260,14 @@ const NewStockAnalysis = () => {
         newValue = String(max);
       }
       setFormData(prev => ({ ...prev, [field]: newValue }));
+    } else if (field === "portfolio_value") {
+      // Only allow numeric input, remove non-numeric characters
+      const numericValue = value.replace(/[^0-9]/g, "");
+      // Ensure minimum value of 1000
+      const validatedValue = numericValue && Number(numericValue) >= 1000 
+        ? numericValue 
+        : numericValue; // Allow empty for user to type
+      setFormData(prev => ({ ...prev, [field]: validatedValue }));
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
@@ -303,7 +312,8 @@ const NewStockAnalysis = () => {
         period: parseInt(formData.period),
         interval: formData.interval,
         sector: formData.sector,
-        email: user?.email // Include user email for backend user ID mapping
+        email: user?.email, // Include user email for backend user ID mapping
+        portfolio_value: formData.portfolio_value ? parseFloat(formData.portfolio_value) : 1000000
       };
       if (formData.end_date && formData.end_date.trim().length > 0) {
         payload.end_date = formData.end_date.trim(); // YYYY-MM-DD
@@ -571,6 +581,36 @@ const NewStockAnalysis = () => {
                           />
                           <p className="text-xs text-slate-500">
                             Analysis window: [end_date - period, end_date]
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Portfolio Configuration */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-slate-800 flex items-center">
+                        <Target className="h-5 w-5 mr-2 text-indigo-500" />
+                        Portfolio Configuration
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="portfolio_value" className="text-slate-700 font-medium">
+                            Portfolio Value (₹)
+                          </Label>
+                          <Input
+                            id="portfolio_value"
+                            type="text"
+                            value={formData.portfolio_value}
+                            onChange={(e) => handleInputChange("portfolio_value", e.target.value)}
+                            placeholder="1000000"
+                            className="border-slate-300 focus:border-emerald-400"
+                            required
+                            min={1000}
+                          />
+                          <p className="text-xs text-slate-500">
+                            Total portfolio capital in Indian Rupees. Used for position sizing calculations.
                           </p>
                         </div>
                       </div>
