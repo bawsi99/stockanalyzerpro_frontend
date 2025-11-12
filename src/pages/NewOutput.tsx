@@ -41,7 +41,6 @@ import {
 
 // Analysis Components
 import ConsensusSummaryCard from "@/components/analysis/ConsensusSummaryCard";
-import SignalsSummaryCard from "@/components/analysis/SignalsSummaryCard";
 import AITradingAnalysisOverviewCard from "@/components/analysis/AITradingAnalysisOverviewCard";
 import DecisionStoryCard from "@/components/analysis/DecisionStoryCard";
 import DecisionStoryDetailsCard from "@/components/analysis/DecisionStoryDetailsCard";
@@ -1269,7 +1268,7 @@ const NewOutput: React.FC = () => {
               </div>
               
               {/* Consensus Summary */}
-              <div className="xl:col-span-1">
+              <div className="xl:col-span-2">
                 {analysisLoading ? (
                   <AnalysisCardSkeleton 
                     title="Consensus Summary" 
@@ -1280,20 +1279,9 @@ const NewOutput: React.FC = () => {
                     consensus={consensusForCard as any} 
                     analysisDate={enhancedData?.analysis_timestamp}
                     analysisPeriod={enhancedData?.analysis_period}
-                  />
-                )}
-              </div>
-
-              {/* Deterministic Signals */}
-              <div className="xl:col-span-1">
-                {analysisLoading ? (
-                  <AnalysisCardSkeleton 
-                    title="Deterministic Signals" 
-                    description="Loading signals..." 
-                  />
-                ) : (
-                  <SignalsSummaryCard 
-                    signals={deterministicSignals}
+                    technicalIndicatorsSummary={
+                      (enhancedData?.decision_story || ai_analysis?.decision_story)?.agent_summaries?.["Technical Indicators"]
+                    }
                   />
                 )}
               </div>
@@ -1413,6 +1401,7 @@ const NewOutput: React.FC = () => {
                 return (
                   <VolumeAnalysisCard 
                     volumeData={enhancedData?.technical_indicators?.enhanced_volume?.comprehensive_analysis || enhancedData?.technical_indicators?.volume || indicators?.volume}
+                    enhancedVolumeData={enhancedData?.technical_indicators?.enhanced_volume}
                     priceData={enhancedData?.technical_indicators?.raw_data || analysisData?.data}
                     symbol={stockSymbol}
                     className=""

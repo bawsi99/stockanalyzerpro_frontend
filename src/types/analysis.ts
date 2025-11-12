@@ -103,6 +103,11 @@ export interface Consensus {
       strength: string;
       direction: string;
     };
+    supertrend?: {
+      line: number;
+      direction: string;
+      signal: string;
+    };
   };
 }
 
@@ -157,6 +162,80 @@ export interface TrendData {
   adx: number;
   plus_di: number;
   minus_di: number;
+}
+
+export interface Volatility {
+  atr: number;
+  atr_20_avg?: number | null;
+  volatility_ratio: number;
+  bb_squeeze: boolean;
+  volatility_percentile: number;
+  volatility_regime: string;
+}
+
+export interface Stochastic {
+  stochastic_k: number | null;
+  stochastic_d: number | null;
+  stochastic_status: string;
+}
+
+export interface Ichimoku {
+  tenkan_sen: number | null;
+  kijun_sen: number | null;
+  senkou_span_a: number | null;
+  senkou_span_b: number | null;
+  chikou_span: number | null;
+  signal: string;
+}
+
+export interface EfficiencyRatio {
+  value: number | null;
+  signal: string;
+  trend_quality: string;
+}
+
+export interface KeltnerChannels {
+  upper: number | null;
+  middle: number | null;
+  lower: number | null;
+  signal: string;
+}
+
+export interface DonchianChannels {
+  upper: number | null;
+  middle: number | null;
+  lower: number | null;
+  signal: string;
+}
+
+export interface DPO {
+  value: number | null;
+  signal: string;
+  trend: string;
+}
+
+export interface RelativeStrength {
+  rs_vs_market: number | null;
+  rs_vs_sector: number | null;
+  trend_market: string;
+  trend_sector: string;
+}
+
+export interface WilliamsR {
+  value: number | null;
+  status: string;
+}
+
+export interface StochRSI {
+  stochrsi_k: number | null;
+  stochrsi_d: number | null;
+  status: string;
+}
+
+export interface ADLine {
+  value: number | null;
+  trend: string;
+  signal: string;
 }
 
 // Raw data structure
@@ -215,7 +294,18 @@ export interface Indicators {
   adx: ADX;
   trend_data: TrendData;
   raw_data: RawData;
-  advanced_patterns?: Record<string, unknown>;
+  volatility?: Volatility;
+  stochastic?: Stochastic;
+  ichimoku?: Ichimoku;
+  efficiency_ratio?: EfficiencyRatio;
+  keltner?: KeltnerChannels;
+  donchian?: DonchianChannels;
+    dpo?: DPO;
+    relative_strength?: RelativeStrength;
+    williams_r?: WilliamsR;
+    stochrsi?: StochRSI;
+    ad_line?: ADLine;
+    advanced_patterns?: Record<string, unknown>;
   advanced_risk?: Record<string, unknown>;
   stress_testing?: Record<string, unknown>;
   scenario_analysis?: Record<string, unknown>;

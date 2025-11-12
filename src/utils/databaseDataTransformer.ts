@@ -457,6 +457,69 @@ function extractIndicatorsFromEnhanced(data: Record<string, unknown> | AnalysisR
       close: [],
       volume: []
     },
+    volatility: technicalIndicators.volatility ? {
+      atr: technicalIndicators.volatility.atr || 0,
+      atr_20_avg: technicalIndicators.volatility.atr_20_avg ?? null,
+      volatility_ratio: technicalIndicators.volatility.volatility_ratio || 1.0,
+      bb_squeeze: technicalIndicators.volatility.bb_squeeze || false,
+      volatility_percentile: technicalIndicators.volatility.volatility_percentile || 50.0,
+      volatility_regime: technicalIndicators.volatility.volatility_regime || 'normal'
+    } : undefined,
+    stochastic: technicalIndicators.stochastic ? {
+      stochastic_k: technicalIndicators.stochastic.stochastic_k ?? null,
+      stochastic_d: technicalIndicators.stochastic.stochastic_d ?? null,
+      stochastic_status: technicalIndicators.stochastic.stochastic_status || 'neutral'
+    } : undefined,
+    ichimoku: technicalIndicators.ichimoku ? {
+      tenkan_sen: technicalIndicators.ichimoku.tenkan_sen ?? null,
+      kijun_sen: technicalIndicators.ichimoku.kijun_sen ?? null,
+      senkou_span_a: technicalIndicators.ichimoku.senkou_span_a ?? null,
+      senkou_span_b: technicalIndicators.ichimoku.senkou_span_b ?? null,
+      chikou_span: technicalIndicators.ichimoku.chikou_span ?? null,
+      signal: technicalIndicators.ichimoku.signal || 'neutral'
+    } : undefined,
+    efficiency_ratio: technicalIndicators.efficiency_ratio ? {
+      value: technicalIndicators.efficiency_ratio.value ?? null,
+      signal: technicalIndicators.efficiency_ratio.signal || 'moderate',
+      trend_quality: technicalIndicators.efficiency_ratio.trend_quality || 'moderate efficiency'
+    } : undefined,
+    keltner: technicalIndicators.keltner ? {
+      upper: technicalIndicators.keltner.upper ?? null,
+      middle: technicalIndicators.keltner.middle ?? null,
+      lower: technicalIndicators.keltner.lower ?? null,
+      signal: technicalIndicators.keltner.signal || 'inside'
+    } : undefined,
+    donchian: technicalIndicators.donchian ? {
+      upper: technicalIndicators.donchian.upper ?? null,
+      middle: technicalIndicators.donchian.middle ?? null,
+      lower: technicalIndicators.donchian.lower ?? null,
+      signal: technicalIndicators.donchian.signal || 'inside'
+    } : undefined,
+    dpo: technicalIndicators.dpo ? {
+      value: technicalIndicators.dpo.value ?? null,
+      signal: technicalIndicators.dpo.signal || 'neutral',
+      trend: technicalIndicators.dpo.trend || 'neutral'
+    } : undefined,
+    relative_strength: technicalIndicators.relative_strength ? {
+      rs_vs_market: technicalIndicators.relative_strength.rs_vs_market ?? null,
+      rs_vs_sector: technicalIndicators.relative_strength.rs_vs_sector ?? null,
+      trend_market: technicalIndicators.relative_strength.trend_market || 'neutral',
+      trend_sector: technicalIndicators.relative_strength.trend_sector || 'neutral'
+    } : undefined,
+    williams_r: technicalIndicators.williams_r ? {
+      value: technicalIndicators.williams_r.value ?? null,
+      status: technicalIndicators.williams_r.status || 'neutral'
+    } : undefined,
+    stochrsi: technicalIndicators.stochrsi ? {
+      stochrsi_k: technicalIndicators.stochrsi.stochrsi_k ?? null,
+      stochrsi_d: technicalIndicators.stochrsi.stochrsi_d ?? null,
+      status: technicalIndicators.stochrsi.status || 'neutral'
+    } : undefined,
+    ad_line: technicalIndicators.ad_line ? {
+      value: technicalIndicators.ad_line.value ?? null,
+      trend: technicalIndicators.ad_line.trend || 'neutral',
+      signal: technicalIndicators.ad_line.signal || 'neutral'
+    } : undefined,
     advanced_patterns: data.overlays?.advanced_patterns || null,
     advanced_risk: normalizeAdvancedRisk((data as any).enhanced_metadata?.advanced_risk_metrics) || null,
     stress_testing: data.enhanced_metadata?.stress_testing_metrics || null,
@@ -1236,6 +1299,69 @@ function extractIndicators(data: Record<string, unknown>): Indicators {
       close: [],
       volume: []
     },
+    volatility: indicators.volatility ? {
+      atr: indicators.volatility.atr || 0,
+      atr_20_avg: indicators.volatility.atr_20_avg ?? null,
+      volatility_ratio: indicators.volatility.volatility_ratio || 1.0,
+      bb_squeeze: indicators.volatility.bb_squeeze || false,
+      volatility_percentile: indicators.volatility.volatility_percentile || 50.0,
+      volatility_regime: indicators.volatility.volatility_regime || 'normal'
+    } : undefined,
+    stochastic: indicators.stochastic ? {
+      stochastic_k: indicators.stochastic.stochastic_k ?? null,
+      stochastic_d: indicators.stochastic.stochastic_d ?? null,
+      stochastic_status: indicators.stochastic.stochastic_status || 'neutral'
+    } : undefined,
+    ichimoku: indicators.ichimoku ? {
+      tenkan_sen: indicators.ichimoku.tenkan_sen ?? null,
+      kijun_sen: indicators.ichimoku.kijun_sen ?? null,
+      senkou_span_a: indicators.ichimoku.senkou_span_a ?? null,
+      senkou_span_b: indicators.ichimoku.senkou_span_b ?? null,
+      chikou_span: indicators.ichimoku.chikou_span ?? null,
+      signal: indicators.ichimoku.signal || 'neutral'
+    } : undefined,
+    efficiency_ratio: indicators.efficiency_ratio ? {
+      value: indicators.efficiency_ratio.value ?? null,
+      signal: indicators.efficiency_ratio.signal || 'moderate',
+      trend_quality: indicators.efficiency_ratio.trend_quality || 'moderate efficiency'
+    } : undefined,
+    keltner: indicators.keltner ? {
+      upper: indicators.keltner.upper ?? null,
+      middle: indicators.keltner.middle ?? null,
+      lower: indicators.keltner.lower ?? null,
+      signal: indicators.keltner.signal || 'inside'
+    } : undefined,
+    donchian: indicators.donchian ? {
+      upper: indicators.donchian.upper ?? null,
+      middle: indicators.donchian.middle ?? null,
+      lower: indicators.donchian.lower ?? null,
+      signal: indicators.donchian.signal || 'inside'
+    } : undefined,
+    dpo: indicators.dpo ? {
+      value: indicators.dpo.value ?? null,
+      signal: indicators.dpo.signal || 'neutral',
+      trend: indicators.dpo.trend || 'neutral'
+    } : undefined,
+    relative_strength: indicators.relative_strength ? {
+      rs_vs_market: indicators.relative_strength.rs_vs_market ?? null,
+      rs_vs_sector: indicators.relative_strength.rs_vs_sector ?? null,
+      trend_market: indicators.relative_strength.trend_market || 'neutral',
+      trend_sector: indicators.relative_strength.trend_sector || 'neutral'
+    } : undefined,
+    williams_r: indicators.williams_r ? {
+      value: indicators.williams_r.value ?? null,
+      status: indicators.williams_r.status || 'neutral'
+    } : undefined,
+    stochrsi: indicators.stochrsi ? {
+      stochrsi_k: indicators.stochrsi.stochrsi_k ?? null,
+      stochrsi_d: indicators.stochrsi.stochrsi_d ?? null,
+      status: indicators.stochrsi.status || 'neutral'
+    } : undefined,
+    ad_line: indicators.ad_line ? {
+      value: indicators.ad_line.value ?? null,
+      trend: indicators.ad_line.trend || 'neutral',
+      signal: indicators.ad_line.signal || 'neutral'
+    } : undefined,
     advanced_patterns: data.overlays?.advanced_patterns || null,
     advanced_risk: data.indicators?.advanced_risk_metrics || null,
     stress_testing: data.indicators?.stress_testing_metrics || null,

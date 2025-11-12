@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, AlertTriangle, CheckCircle } from "lucide-react";
+import { TrendingUp, AlertTriangle, CheckCircle, Brain } from "lucide-react";
 import { AnalysisData } from "@/types/analysis";
 import TechnicalIndicatorsCards from "./TechnicalIndicatorsCards";
 
@@ -10,9 +10,10 @@ interface ConsensusSummaryCardProps {
   consensus: AnalysisData['consensus'];
   analysisDate?: string;
   analysisPeriod?: string;
+  technicalIndicatorsSummary?: string;
 }
 
-const ConsensusSummaryCard = ({ consensus, analysisDate, analysisPeriod }: ConsensusSummaryCardProps) => {
+const ConsensusSummaryCard = ({ consensus, analysisDate, analysisPeriod, technicalIndicatorsSummary }: ConsensusSummaryCardProps) => {
 
   
   // Add null checks and default values
@@ -69,9 +70,22 @@ const ConsensusSummaryCard = ({ consensus, analysisDate, analysisPeriod }: Conse
       </CardHeader>
       <CardContent className="pt-0 flex-1 overflow-y-auto max-h-[calc(90vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="space-y-6">
-
-
-
+          {/* Technical Indicators Agent Summary Card - First in list */}
+          {technicalIndicatorsSummary && (
+            <Card className="border-l-4 border-l-indigo-500 bg-gradient-to-r from-indigo-50 to-blue-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Brain className="h-5 w-5 text-indigo-600" />
+                  Technical Indicators Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  {technicalIndicatorsSummary}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Technical Indicators Cards */}
           {consensus.technical_indicators && (

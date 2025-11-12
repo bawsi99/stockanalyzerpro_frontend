@@ -8,6 +8,7 @@ import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, XCircle, B
 
 interface VolumeAnalysisCardProps {
   volumeData?: any;
+  enhancedVolumeData?: any;  // Enhanced volume indicators (VWAP/MFI/CMF)
   priceData?: any[];
   symbol: string;
   className?: string;
@@ -15,7 +16,7 @@ interface VolumeAnalysisCardProps {
   volumeAgentSummaries?: { [agentName: string]: string };  // Agent summaries from decision_story
 }
 
-const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, priceData, symbol, className, volumeAgentsData, volumeAgentSummaries }) => {
+const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, enhancedVolumeData, priceData, symbol, className, volumeAgentsData, volumeAgentSummaries }) => {
 
   // Debug logging for volume agents data
   React.useEffect(() => {
@@ -39,6 +40,13 @@ const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, pri
   const volumeConfirmation = volumeData?.volume_confirmation || {};
   const volumeVolatility = volumeData?.volume_volatility || {};
   const volumeStrengthScore = volumeData?.volume_strength_score || 0;
+  
+  // Extract Enhanced Volume indicators (VWAP/MFI)
+  const vwap = enhancedVolumeData?.vwap;
+  const mfi = enhancedVolumeData?.mfi;
+  const mfiStatus = enhancedVolumeData?.mfi_status || 'neutral';
+  const priceVsVwap = enhancedVolumeData?.price_vs_vwap;
+  const cmf = enhancedVolumeData?.cmf;
   
   // Extract volume agents data (from volume agents orchestrator)
   const volumeAgents = volumeAgentsData?.individual_agents || {};
@@ -168,6 +176,87 @@ const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, pri
               On-Balance Volume trend indicates {obvTrend} buying/selling pressure
             </p>
           </div>
+
+          {/* Enhanced Volume Indicators (VWAP/MFI) */}
+          {enhancedVolumeData && (vwap !== undefined || mfi !== undefined) && (
+            <div className="space-y-3">
+              <h4 className="font-semibold text-slate-800">Enhanced Volume Indicators</h4>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                {/* VWAP */}
+                {vwap !== undefined && vwap !== null && (
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200">
+                    <div className="text-slate-600 text-xs mb-1">Volume Weighted Average Price (VWAP)</div>
+                    <div className="font-semibold text-lg text-blue-700">{safeNumber(vwap, 2)}</div>
+                    {priceVsVwap !== undefined && priceVsVwap !== null && (
+                      <div className={`text-xs mt-1 ${
+                        priceVsVwap > 0 ? 'text-green-600' : priceVsVwap < 0 ? 'text-red-600' : 'text-slate-600'
+                      }`}>
+                        {priceVsVwap > 0 ? '↑' : priceVsVwap < 0 ? '↓' : '→'} {Math.abs(priceVsVwap).toFixed(2)}% vs price
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* MFI */}
+                {mfi !== undefined && mfi !== null && (
+                  <div className={`bg-gradient-to-br p-3 rounded-lg border ${
+                    mfiStatus === 'overbought' ? 'from-red-50 to-orange-50 border-red-200' :
+                    mfiStatus === 'oversold' ? 'from-green-50 to-emerald-50 border-green-200' :
+                    'from-slate-50 to-gray-50 border-slate-200'
+                  }`}>
+                    <div className="text-slate-600 text-xs mb-1">Money Flow Index (MFI)</div>
+                    <div className={`font-semibold text-lg ${
+                      mfiStatus === 'overbought' ? 'text-red-700' :
+                      mfiStatus === 'oversold' ? 'text-green-700' :
+                      'text-slate-700'
+                    }`}>
+                      {safeNumber(mfi, 2)}
+                    </div>
+                    <div className="mt-1">
+                      <Badge className={
+                        mfiStatus === 'overbought' ? 'bg-red-100 text-red-800' :
+                        mfiStatus === 'oversold' ? 'bg-green-100 text-green-800' :
+                        'bg-slate-100 text-slate-800'
+                      }>
+                        {mfiStatus === 'overbought' ? 'Overbought' :
+                         mfiStatus === 'oversold' ? 'Oversold' :
+                         'Neutral'}
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+                
+                {/* CMF */}
+                {cmf?.value !== undefined && cmf?.value !== null && (
+                  <div className={`bg-gradient-to-br p-3 rounded-lg border ${
+                    cmf.signal === 'bullish' ? 'from-green-50 to-emerald-50 border-green-200' :
+                    cmf.signal === 'bearish' ? 'from-red-50 to-pink-50 border-red-200' :
+                    'from-slate-50 to-gray-50 border-slate-200'
+                  }`}>
+                    <div className="text-slate-600 text-xs mb-1">Chaikin Money Flow (CMF)</div>
+                    <div className={`font-semibold text-lg ${
+                      cmf.signal === 'bullish' ? 'text-green-700' :
+                      cmf.signal === 'bearish' ? 'text-red-700' :
+                      'text-slate-700'
+                    }`}>
+                      {safeNumber(cmf.value, 3)}
+                    </div>
+                    <div className="mt-1">
+                      <Badge className={
+                        cmf.signal === 'bullish' ? 'bg-green-100 text-green-800' :
+                        cmf.signal === 'bearish' ? 'bg-red-100 text-red-800' :
+                        'bg-slate-100 text-slate-800'
+                      }>
+                        {cmf.signal === 'bullish' ? '↑ Bullish' :
+                         cmf.signal === 'bearish' ? '↓ Bearish' :
+                         '→ Neutral'}
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Enhanced Volume Metrics */}
           {volumeData?.volume_ratios && (
@@ -458,6 +547,71 @@ const VolumeAnalysisCard: React.FC<VolumeAnalysisCardProps> = ({ volumeData, pri
                   <TrendingUp className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
                   <span className="text-emerald-700 break-words">
                     Volume strength score: {volumeStrengthScore.toFixed(0)}/100
+                  </span>
+                </div>
+              )}
+              
+              {/* VWAP/MFI/CMF Insights */}
+              {vwap !== undefined && priceVsVwap !== undefined && (
+                <div className="flex items-start space-x-2 text-sm">
+                  {priceVsVwap > 2 ? (
+                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  ) : priceVsVwap < -2 ? (
+                    <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  ) : (
+                    <Minus className="h-4 w-4 text-slate-600 mt-0.5 flex-shrink-0" />
+                  )}
+                  <span className={`break-words ${
+                    priceVsVwap > 2 ? 'text-green-700' :
+                    priceVsVwap < -2 ? 'text-red-700' :
+                    'text-slate-700'
+                  }`}>
+                    Price is {Math.abs(priceVsVwap).toFixed(2)}% {priceVsVwap > 0 ? 'above' : 'below'} VWAP
+                    {priceVsVwap > 2 ? ' - Strong buying pressure' :
+                     priceVsVwap < -2 ? ' - Potential selling pressure' :
+                     ' - Trading near average price'}
+                  </span>
+                </div>
+              )}
+              
+              {mfi !== undefined && (
+                <div className="flex items-start space-x-2 text-sm">
+                  {mfiStatus === 'overbought' ? (
+                    <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  ) : mfiStatus === 'oversold' ? (
+                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  ) : (
+                    <Minus className="h-4 w-4 text-slate-600 mt-0.5 flex-shrink-0" />
+                  )}
+                  <span className={`break-words ${
+                    mfiStatus === 'overbought' ? 'text-red-700' :
+                    mfiStatus === 'oversold' ? 'text-green-700' :
+                    'text-slate-700'
+                  }`}>
+                    MFI at {safeNumber(mfi, 2)} indicates {mfiStatus === 'overbought' ? 'potential selling pressure' :
+                                                            mfiStatus === 'oversold' ? 'potential buying opportunity' :
+                                                            'balanced buying/selling pressure'}
+                  </span>
+                </div>
+              )}
+              
+              {cmf?.value !== undefined && cmf?.signal && (
+                <div className="flex items-start space-x-2 text-sm">
+                  {cmf.signal === 'bullish' ? (
+                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  ) : cmf.signal === 'bearish' ? (
+                    <XCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  ) : (
+                    <Minus className="h-4 w-4 text-slate-600 mt-0.5 flex-shrink-0" />
+                  )}
+                  <span className={`break-words ${
+                    cmf.signal === 'bullish' ? 'text-green-700' :
+                    cmf.signal === 'bearish' ? 'text-red-700' :
+                    'text-slate-700'
+                  }`}>
+                    CMF ({safeNumber(cmf.value, 3)}) suggests {cmf.signal === 'bullish' ? 'accumulation (buying pressure)' :
+                                                                cmf.signal === 'bearish' ? 'distribution (selling pressure)' :
+                                                                'neutral money flow'}
                   </span>
                 </div>
               )}

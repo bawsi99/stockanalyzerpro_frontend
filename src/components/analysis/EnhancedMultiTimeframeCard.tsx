@@ -422,6 +422,66 @@ const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol, agentSumma
                             {analysis.key_indicators?.macd_signal || 'N/A'}
                           </span>
                         </div>
+                        {/* Add ADX */}
+                        {analysis.key_indicators?.adx !== undefined && analysis.key_indicators?.adx !== null && (
+                          <div className="flex justify-between">
+                            <span className="text-slate-600">ADX:</span>
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium text-slate-800">
+                                {analysis.key_indicators.adx.toFixed(1)}
+                              </span>
+                              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                analysis.key_indicators.trend_strength === 'strong' 
+                                  ? 'bg-emerald-100 text-emerald-700' 
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {analysis.key_indicators.trend_strength || 'weak'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        {/* Add Bollinger Bands */}
+                        {analysis.key_indicators?.bollinger_bands && (
+                          <div className="flex justify-between">
+                            <span className="text-slate-600">BB Position:</span>
+                            <div className="flex items-center space-x-2">
+                              <span className={`font-medium capitalize ${
+                                analysis.key_indicators.bollinger_bands.position === 'oversold' 
+                                  ? 'text-emerald-600' 
+                                  : analysis.key_indicators.bollinger_bands.position === 'overbought'
+                                  ? 'text-red-600'
+                                  : 'text-slate-800'
+                              }`}>
+                                {analysis.key_indicators.bollinger_bands.position || 'neutral'}
+                              </span>
+                              {analysis.key_indicators.bollinger_bands.upper && (
+                                <span className="text-xs text-slate-500">
+                                  (U: ₹{analysis.key_indicators.bollinger_bands.upper.toFixed(1)})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {/* Add Supertrend */}
+                        {analysis.key_indicators?.supertrend && analysis.key_indicators.supertrend.line !== undefined && analysis.key_indicators.supertrend.line !== null && (
+                          <div className="flex justify-between">
+                            <span className="text-slate-600">Supertrend:</span>
+                            <div className="flex items-center space-x-2">
+                              <span className={`font-medium capitalize ${
+                                analysis.key_indicators.supertrend.signal === 'bullish'
+                                  ? 'text-emerald-600'
+                                  : analysis.key_indicators.supertrend.signal === 'bearish'
+                                  ? 'text-red-600'
+                                  : 'text-slate-800'
+                              }`}>
+                                {analysis.key_indicators.supertrend.signal || 'neutral'}
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                (₹{analysis.key_indicators.supertrend.line.toFixed(2)})
+                              </span>
+                            </div>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-slate-600">Volatility:</span>
                           <span className="font-medium text-slate-800">
