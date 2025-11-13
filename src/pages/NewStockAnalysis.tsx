@@ -508,7 +508,7 @@ const NewStockAnalysis = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <Header />
       <div className="h-16" />
       
@@ -517,7 +517,7 @@ const NewStockAnalysis = () => {
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto mt-5">
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 items-stretch">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 items-start">
               
             {/* Prototype Disclaimer */}
             <div className="xl:col-span-4 mb-4 w-full">
@@ -531,7 +531,7 @@ const NewStockAnalysis = () => {
             </div>
             
             {/* Analysis Configuration Panel */}
-            <div className="xl:col-span-3 h-full">
+            <div className="xl:col-span-3">
               <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm h-[800px] grid grid-rows-[auto,1fr]">
                 <CardHeader className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-t-xl">
                   <div className="flex items-center justify-between">
@@ -865,7 +865,7 @@ const NewStockAnalysis = () => {
             </div>
 
             {/* Previous Analyses Sidebar */}
-            <div className="xl:col-span-1 h-full">
+            <div className="xl:col-span-1">
               <PreviousAnalyses 
                 analyses={analyses}
                 onAnalysisSelect={handleSelectAnalysis}

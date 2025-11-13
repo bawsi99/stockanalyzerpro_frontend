@@ -2,8 +2,10 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
-// Register service worker for offline caching
-if ('serviceWorker' in navigator && !localStorage.getItem('disableServiceWorker')) {
+// Register service worker for offline caching (only in production)
+const isDevelopment = import.meta.env.DEV;
+
+if ('serviceWorker' in navigator && !isDevelopment && !localStorage.getItem('disableServiceWorker')) {
   window.addEventListener('load', () => {
     // Check if there's an existing service worker that might be causing issues
     navigator.serviceWorker.getRegistrations().then((registrations) => {
@@ -47,6 +49,15 @@ if ('serviceWorker' in navigator && !localStorage.getItem('disableServiceWorker'
   });
 } else if (localStorage.getItem('disableServiceWorker')) {
   // console.log('🚫 Service Worker disabled by user preference');
+} else if (isDevelopment) {
+  // Unregister any existing service workers in development to prevent HMR issues
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => {
+        registration.unregister();
+      });
+    });
+  }
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

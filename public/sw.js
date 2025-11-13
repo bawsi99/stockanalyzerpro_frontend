@@ -19,6 +19,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip WebSocket connections (Vite HMR uses WebSocket)
+  if (event.request.url.startsWith('ws://') || event.request.url.startsWith('wss://')) {
+    return;
+  }
+
+  // Skip Vite HMR and dev server requests
+  if (event.request.url.includes('/@vite/') || 
+      event.request.url.includes('/@fs/') ||
+      event.request.url.includes('/@id/') ||
+      event.request.url.includes('?import') ||
+      event.request.url.includes('&import')) {
+    return;
+  }
+
   // Skip requests to external domains
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
