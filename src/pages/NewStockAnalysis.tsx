@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import PreviousAnalyses, { RunningAnalysisItem } from "@/components/analysis/PreviousAnalyses";
+import PreviousAnalysesSelector from "@/components/analysis/PreviousAnalysesSelector";
 import { Play, Settings, TrendingUp, Clock, BarChart3, Target, AlertTriangle } from "lucide-react";
 import { useStockAnalyses, StoredAnalysis } from "@/hooks/useStockAnalyses";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,6 +52,23 @@ const intervalMaxPeriod: Record<string, number | undefined> = {
 
 const getMaxPeriod = (interval: string) => intervalMaxPeriod[interval];
 
+// Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 const NewStockAnalysis = () => {
   // Get the selected stock from the global store
   const { selectedStock, setSelectedStock } = useSelectedStockStore();
@@ -77,6 +95,16 @@ const NewStockAnalysis = () => {
     entry_price: "",
     position_type: "long" as "long" | "short"
   });
+
+  // Previous analyses state
+  const [selectedPreviousAnalyses, setSelectedPreviousAnalyses] = useState<string[]>([]);
+  const [availablePreviousAnalyses, setAvailablePreviousAnalyses] = useState<Array<{
+    id: string;
+    end_date: string | null;
+    interval: string | null;
+    period_days: number | null;
+  }>>([]);
+  const [loadingPreviousAnalyses, setLoadingPreviousAnalyses] = useState(false);
 
   // Sector state
   const [sectors, setSectors] = useState<SectorInfo[]>([]);
@@ -139,6 +167,9 @@ const NewStockAnalysis = () => {
   const { toast } = useToast();
   const { saveAnalysis, analyses, loading, error, loadMoreAnalyses, hasMore } = useStockAnalyses();
   const { user } = useAuth();
+
+  // Debounce stock symbol for fetching previous analyses
+  const debouncedStock = useDebounce(formData.stock, 300);
 
   // Persistence helpers for running analyses
   const STORAGE_KEY = 'runningAnalyses_v1';
@@ -211,6 +242,49 @@ const NewStockAnalysis = () => {
     }
   }, []); // No dependencies to prevent infinite loop
 
+  const fetchPreviousAnalysesForStock = useCallback(async (symbol: string) => {
+    if (!user?.id) {
+      setAvailablePreviousAnalyses([]);
+      setSelectedPreviousAnalyses([]);
+      return;
+    }
+
+    // Normalize stock symbol to uppercase to match database format
+    const normalizedSymbol = symbol?.trim().toUpperCase();
+    if (!normalizedSymbol || normalizedSymbol.length === 0) {
+      setAvailablePreviousAnalyses([]);
+      setSelectedPreviousAnalyses([]);
+      setLoadingPreviousAnalyses(false);
+      return;
+    }
+
+    setLoadingPreviousAnalyses(true);
+    try {
+      const response = await apiService.getStockAnalysesForUser(normalizedSymbol, user.id, 20);
+      if (response.success) {
+        // Backend now returns minimal data: id, end_date, interval, period_days
+        const transformed = response.analyses.map((a: any) => ({
+          id: a.id,
+          end_date: a.end_date || null,
+          interval: a.interval || null,
+          period_days: a.period_days || null,
+        }));
+        setAvailablePreviousAnalyses(transformed);
+        // Clear selections when stock changes
+        setSelectedPreviousAnalyses([]);
+      } else {
+        setAvailablePreviousAnalyses([]);
+        setSelectedPreviousAnalyses([]);
+      }
+    } catch (error) {
+      console.error('Error fetching previous analyses:', error);
+      setAvailablePreviousAnalyses([]);
+      setSelectedPreviousAnalyses([]);
+    } finally {
+      setLoadingPreviousAnalyses(false);
+    }
+  }, [user?.id]);
+
   // Effects
 
   useEffect(() => {
@@ -230,6 +304,32 @@ const NewStockAnalysis = () => {
       fetchStockSector(formData.stock);
     }
   }, [formData.stock, fetchStockSector]);
+
+  // Fetch previous analyses when stock symbol changes
+  useEffect(() => {
+    // Clear immediately when stock changes (before debounced fetch completes)
+    setAvailablePreviousAnalyses([]);
+    setSelectedPreviousAnalyses([]);
+    
+    if (debouncedStock && user?.id) {
+      const normalizedStock = debouncedStock.trim().toUpperCase();
+      if (normalizedStock.length > 0) {
+        fetchPreviousAnalysesForStock(normalizedStock);
+      }
+    }
+  }, [debouncedStock, user?.id, fetchPreviousAnalysesForStock]);
+
+  // Set end_date to today's date if empty
+  useEffect(() => {
+    if (!formData.end_date || formData.end_date.trim() === "") {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
+      setFormData(prev => ({ ...prev, end_date: todayStr }));
+    }
+  }, []); // Run only on mount
 
   // Removed local timer; timers are now shown in PreviousAnalyses for running items
 
@@ -330,6 +430,12 @@ const NewStockAnalysis = () => {
       } else {
         payload.current_holding = null;
         console.log("[FRONTEND] No current holding included in request");
+      }
+
+      // Include previous analysis IDs if provided
+      if (selectedPreviousAnalyses.length > 0) {
+        payload.previous_analysis_ids = selectedPreviousAnalyses.slice(0, 5);
+        console.log("[FRONTEND] Including previous analysis IDs in request:", payload.previous_analysis_ids);
       }
 
       // Create a running item and start async request
@@ -697,6 +803,27 @@ const NewStockAnalysis = () => {
                           </div>
                         </div>
                       )}
+                    </div>
+
+                    <Separator />
+
+                    {/* Previous Analyses Attachment Section */}
+                    <div className="space-y-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <h3 className="text-lg font-semibold text-slate-800 flex items-center">
+                        <BarChart3 className="h-5 w-5 mr-2 text-purple-500" />
+                        Attach Previous Analyses (Optional)
+                      </h3>
+                      <p className="text-sm text-slate-600">
+                        Select up to 5 previous analyses to help the AI avoid recommending duplicate analyses.
+                      </p>
+                      
+                      <PreviousAnalysesSelector
+                        availableAnalyses={availablePreviousAnalyses}
+                        selectedIds={selectedPreviousAnalyses}
+                        onSelectionChange={setSelectedPreviousAnalyses}
+                        loading={loadingPreviousAnalyses}
+                        maxSelections={5}
+                      />
                     </div>
 
                     <Separator />

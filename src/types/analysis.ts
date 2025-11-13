@@ -14,6 +14,7 @@ export interface AnalysisRequest {
     entry_price: number;
     position_type: "long" | "short";
   } | null;
+  previous_analysis_ids?: string[]; // IDs of selected previous analyses (max 5)
 }
 
 export interface ChartData {

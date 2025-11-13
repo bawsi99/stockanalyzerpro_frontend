@@ -661,6 +661,13 @@ class ApiService {
     );
     return response;
   }
+
+  async getStockAnalysesForUser(stockSymbol: string, userId: string, limit: number = 20): Promise<{ success: boolean; analyses: any[]; count: number }> {
+    const response = await this.makeRequest<{ success: boolean; analyses: any[]; count: number }>(
+      `${DATABASE_ENDPOINTS.ANALYSES_BY_SYMBOL}/${stockSymbol}/user/${userId}?limit=${limit}`
+    );
+    return response;
+  }
 }
 
 // Export a singleton instance
@@ -714,4 +721,5 @@ export const {
   getAnalysesBySector,
   getHighConfidenceAnalyses,
   getUserAnalysisSummary,
+  getStockAnalysesForUser,
 } = apiService; 
