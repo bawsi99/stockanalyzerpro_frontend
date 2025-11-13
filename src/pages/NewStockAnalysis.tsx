@@ -508,31 +508,30 @@ const NewStockAnalysis = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <Header />
       <div className="h-16" />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 bg-transparent">
         {/* Page Header removed */}
 
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto mt-5">
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 items-start">
-              
-            {/* Prototype Disclaimer */}
-            <div className="xl:col-span-4 mb-4 w-full">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex flex-wrap items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-amber-500 mr-4 flex-shrink-0" />
-                <p className="text-amber-700 text-center">
-                  <span className="font-semibold">Prototype Notice:</span> This system is currently in prototype stage. Responses might be slow or occasionally unresponsive.<br/>
-                  Generating new analysis may be inoperational between 5:00AM - 7:30AM IST (4:30PM - 7:00PM PDT). Thank you for your patience.
-                </p>
-              </div>
+        <div className="max-w-[1800px] mx-auto mt-5 bg-transparent">
+          {/* Prototype Disclaimer */}
+          <div className="mb-4 w-full">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex flex-wrap items-center justify-center">
+              <AlertTriangle className="h-5 w-5 text-amber-500 mr-4 flex-shrink-0" />
+              <p className="text-amber-700 text-center">
+                <span className="font-semibold">Prototype Notice:</span> This system is currently in prototype stage. Responses might be slow or occasionally unresponsive.<br/>
+                Generating new analysis may be inoperational between 5:00AM - 7:30AM IST (4:30PM - 7:00PM PDT). Thank you for your patience.
+              </p>
             </div>
-            
+          </div>
+          
+          <div className="flex flex-col xl:flex-row gap-8 items-stretch">
             {/* Analysis Configuration Panel */}
-            <div className="xl:col-span-3">
-              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm h-[800px] grid grid-rows-[auto,1fr]">
+            <div className="flex-1 min-w-0 xl:min-w-[1000px]">
+              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm h-[800px] grid grid-rows-[auto,1fr] overflow-hidden">
                 <CardHeader className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-t-xl">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -563,7 +562,7 @@ const NewStockAnalysis = () => {
                         <Target className="h-5 w-5 mr-2 text-emerald-500" />
                         Stock Selection
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                           <StockSelector
                             ref={stockSelectorRef}
@@ -580,43 +579,35 @@ const NewStockAnalysis = () => {
                             <span className="ml-2 text-xs text-slate-500">(Fixed)</span>
                           </div>
                         </div>
-                      </div>
-                    </div>
 
-                    <Separator />
-
-                    {/* Sector Configuration */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-slate-800 flex items-center">
-                        <BarChart3 className="h-5 w-5 mr-2 text-blue-500" />
-                        Sector Analysis
-                      </h3>
-                      <div className="space-y-4">
-                        <Select
-                          value={formData.sector || "none"}
-                          onValueChange={(value) => {
-                            handleInputChange("sector", value === "none" ? null : value);
-                          }}
-                        >
-                          <SelectTrigger className="border-slate-300 focus:border-emerald-400">
-                            <SelectValue placeholder="Select sector for analysis" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No Sector (Use Market Index)</SelectItem>
-                            {sectors.map((sector) => (
-                              <SelectItem key={sector.code} value={sector.code}>
-                                {sector.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        
-                        {detectedSector && formData.sector === detectedSector && (
-                          <p className="text-sm text-slate-500">
-                            Using sector-specific index for more accurate analysis
-                          </p>
-                        )}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium mb-2 text-slate-700">Sector</label>
+                          <Select
+                            value={formData.sector || "none"}
+                            onValueChange={(value) => {
+                              handleInputChange("sector", value === "none" ? null : value);
+                            }}
+                          >
+                            <SelectTrigger className="border-slate-300 focus:border-emerald-400">
+                              <SelectValue placeholder="Select sector" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No Sector (Use Market Index)</SelectItem>
+                              {sectors.map((sector) => (
+                                <SelectItem key={sector.code} value={sector.code}>
+                                  {sector.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
+                      
+                      {detectedSector && formData.sector === detectedSector && (
+                        <p className="text-sm text-slate-500">
+                          Using sector-specific index for more accurate analysis
+                        </p>
+                      )}
                     </div>
 
                     <Separator />
@@ -700,7 +691,7 @@ const NewStockAnalysis = () => {
                         <Target className="h-5 w-5 mr-2 text-indigo-500" />
                         Portfolio Configuration
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <Label htmlFor="portfolio_value" className="text-slate-700 font-medium">
                             Portfolio Value (₹)
@@ -719,91 +710,88 @@ const NewStockAnalysis = () => {
                             Total portfolio capital in Indian Rupees. Used for position sizing calculations.
                           </p>
                         </div>
-                      </div>
-                    </div>
 
-                    <Separator />
-
-                    {/* Current Holdings Section */}
-                    <div className="space-y-4 p-4 bg-white rounded-lg border border-gray-200">
-                      <div className="flex items-center space-x-3">
-                        <label className="text-sm font-medium text-gray-700">
-                          Currently holding this stock?
-                        </label>
-                        <div className="flex space-x-4">
-                          <button
-                            type="button"
-                            onClick={() => handleHoldingToggle(true)}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                              hasCurrentHolding
-                                ? "bg-blue-600 text-white"
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                            }`}
-                          >
-                            Yes
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleHoldingToggle(false)}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                              !hasCurrentHolding
-                                ? "bg-blue-600 text-white"
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                            }`}
-                          >
-                            No
-                          </button>
-                        </div>
-                      </div>
-                      {hasCurrentHolding && (
-                        <div className="mt-4 space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200 animate-in slide-in-from-top-2">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Quantity
-                              </label>
-                              <input
-                                type="text"
-                                value={holdingData.quantity}
-                                onChange={(e) => handleHoldingChange("quantity", e.target.value)}
-                                placeholder="e.g., 100"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                required={hasCurrentHolding}
-                              />
-                            </div>
-                            
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Entry Price (₹)
-                              </label>
-                              <input
-                                type="text"
-                                value={holdingData.entry_price}
-                                onChange={(e) => handleHoldingChange("entry_price", e.target.value)}
-                                placeholder="e.g., 2450.50"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                required={hasCurrentHolding}
-                              />
-                            </div>
-                            
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Position Type
-                              </label>
-                              <select
-                                value={holdingData.position_type}
-                                onChange={(e) => handleHoldingChange("position_type", e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                required={hasCurrentHolding}
-                              >
-                                <option value="long">Long</option>
-                                <option value="short">Short</option>
-                              </select>
-                            </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Currently holding this stock?
+                          </label>
+                          <div className="flex space-x-4">
+                            <button
+                              type="button"
+                              onClick={() => handleHoldingToggle(true)}
+                              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                                hasCurrentHolding
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }`}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleHoldingToggle(false)}
+                              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                                !hasCurrentHolding
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }`}
+                            >
+                              No
+                            </button>
                           </div>
                         </div>
-                      )}
+                      </div>
                     </div>
+
+                    {/* Current Holdings Details */}
+                    {hasCurrentHolding && (
+                      <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200 animate-in slide-in-from-top-2">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Quantity
+                            </label>
+                            <input
+                              type="text"
+                              value={holdingData.quantity}
+                              onChange={(e) => handleHoldingChange("quantity", e.target.value)}
+                              placeholder="e.g., 100"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              required={hasCurrentHolding}
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Entry Price (₹)
+                            </label>
+                            <input
+                              type="text"
+                              value={holdingData.entry_price}
+                              onChange={(e) => handleHoldingChange("entry_price", e.target.value)}
+                              placeholder="e.g., 2450.50"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              required={hasCurrentHolding}
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Position Type
+                            </label>
+                            <select
+                              value={holdingData.position_type}
+                              onChange={(e) => handleHoldingChange("position_type", e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              required={hasCurrentHolding}
+                            >
+                              <option value="long">Long</option>
+                              <option value="short">Short</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <Separator />
 
@@ -814,7 +802,7 @@ const NewStockAnalysis = () => {
                         Attach Previous Analyses (Optional)
                       </h3>
                       <p className="text-sm text-slate-600">
-                        Select up to 5 previous analyses to help the AI avoid recommending duplicate analyses.
+                        If a previous analysis recommended running another analysis for a different timeframe or period, please attach that analysis here.
                       </p>
                       
                       <PreviousAnalysesSelector
@@ -865,7 +853,7 @@ const NewStockAnalysis = () => {
             </div>
 
             {/* Previous Analyses Sidebar */}
-            <div className="xl:col-span-1">
+            <div className="xl:w-72 flex-shrink-0">
               <PreviousAnalyses 
                 analyses={analyses}
                 onAnalysisSelect={handleSelectAnalysis}
@@ -877,8 +865,6 @@ const NewStockAnalysis = () => {
               />
             </div>
           </div>
-
-
         </div>
       </div>
     </div>

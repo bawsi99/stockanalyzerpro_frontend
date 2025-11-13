@@ -145,13 +145,6 @@ const PreviousAnalysesSelector: React.FC<PreviousAnalysesSelectorProps> = ({
           );
         })}
       </div>
-
-      {/* Helper text */}
-      {selectedCount > 0 && (
-        <p className="text-xs text-slate-500 mt-2">
-          Selected analyses will help the AI avoid recommending duplicate analyses.
-        </p>
-      )}
     </div>
   );
 };
