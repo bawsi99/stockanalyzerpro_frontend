@@ -586,7 +586,7 @@ const NewStockAnalysis = () => {
                               handleInputChange("sector", value === "none" ? null : value);
                             }}
                           >
-                            <SelectTrigger className="border-slate-300 focus:border-emerald-400">
+                            <SelectTrigger className="border-slate-300 focus:ring-0 focus:ring-offset-0">
                               <SelectValue placeholder="Select sector" />
                             </SelectTrigger>
                             <SelectContent>
@@ -627,7 +627,7 @@ const NewStockAnalysis = () => {
                             value={formData.period}
                             onChange={(e) => handleInputChange("period", e.target.value)}
                             placeholder="365"
-                            className="border-slate-300 focus:border-emerald-400"
+                            className="border-slate-300 focus-visible:ring-0 focus-visible:ring-offset-0"
                             required
                             min={1}
                             max={getMaxPeriod(formData.interval) || undefined}
@@ -647,7 +647,7 @@ const NewStockAnalysis = () => {
                             value={formData.interval} 
                             onValueChange={(value) => handleInputChange("interval", value)}
                           >
-                            <SelectTrigger id="interval" className="border-slate-300 focus:border-emerald-400">
+                            <SelectTrigger id="interval" className="border-slate-300 focus:ring-0 focus:ring-offset-0">
                               <SelectValue placeholder="Select interval" />
                             </SelectTrigger>
                             <SelectContent>
@@ -672,7 +672,7 @@ const NewStockAnalysis = () => {
                             type="date"
                             value={formData.end_date}
                             onChange={(e) => handleInputChange("end_date", e.target.value)}
-                            className="border-slate-300 focus:border-emerald-400"
+                            className="border-slate-300 focus-visible:ring-0 focus-visible:ring-offset-0"
                           />
                           <p className="text-xs text-slate-500">
                             Analysis window: [end_date - period, end_date]
@@ -700,7 +700,7 @@ const NewStockAnalysis = () => {
                             value={formData.portfolio_value}
                             onChange={(e) => handleInputChange("portfolio_value", e.target.value)}
                             placeholder="1000000"
-                            className="border-slate-300 focus:border-emerald-400"
+                            className="border-slate-300 focus-visible:ring-0 focus-visible:ring-offset-0"
                             required
                             min={1000}
                           />

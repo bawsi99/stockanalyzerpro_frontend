@@ -176,7 +176,7 @@ export const StockSelector = forwardRef<StockSelectorHandle, StockSelectorProps>
       )}
       <button
         type="button"
-        className="w-full flex items-center justify-between rounded-md border bg-white text-black px-3 py-2 text-left ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 border-slate-300 focus:border-emerald-400"
+        className="w-full flex items-center justify-between rounded-md border bg-white text-black px-3 py-2 text-left ring-offset-background focus:outline-none focus:ring-0 focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 border-slate-300"
         onClick={() => !isLoading && setDialogOpen(true)}
         disabled={disabled || isLoading}
         title={isLoading ? "Loading stocks..." : ""}
