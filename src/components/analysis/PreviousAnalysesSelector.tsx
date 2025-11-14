@@ -78,7 +78,7 @@ const PreviousAnalysesSelector: React.FC<PreviousAnalysesSelectorProps> = ({
       </div>
 
       {/* Analyses list */}
-      <div className="space-y-2 max-h-96 overflow-y-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-96 overflow-y-auto">
         {availableAnalyses.map((analysis) => {
           const isSelected = selectedIds.includes(analysis.id);
           const interval = analysis.interval || 'N/A';

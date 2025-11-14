@@ -260,7 +260,7 @@ const NewStockAnalysis = () => {
 
     setLoadingPreviousAnalyses(true);
     try {
-      const response = await apiService.getStockAnalysesForUser(normalizedSymbol, user.id, 20);
+      const response = await apiService.getStockAnalysesForUser(normalizedSymbol, user.id, 10);
       if (response.success) {
         // Backend now returns minimal data: id, end_date, interval, period_days
         const transformed = response.analyses.map((a: any) => ({
@@ -553,7 +553,8 @@ const NewStockAnalysis = () => {
                 
                 <CardContent className="!pl-4 !pr-0 !pt-3 !pb-0 min-h-0 flex-1 flex flex-col scrollbar-always-visible" style={{ scrollbarWidth: 'thin', paddingRight: 0, marginRight: 0 }}>
                   <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-x-hidden" style={{ marginRight: 0, paddingRight: 0 }}>
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4" style={{ scrollbarWidth: 'thin', paddingRight: '1rem', marginRight: 0 }}>
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'thin', marginRight: 0 }}>
+                      <div className="space-y-4 pr-4">
                     {/* Stock Selection Section */}
                     <div className="space-y-3">
                       <h3 className="text-base font-semibold text-slate-800 flex items-center">
@@ -811,7 +812,7 @@ const NewStockAnalysis = () => {
                         maxSelections={5}
                       />
                     </div>
-
+                      </div>
                     </div>
 
                     {/* Analysis Action - Sticky Bottom */}
