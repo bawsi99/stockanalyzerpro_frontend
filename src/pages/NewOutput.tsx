@@ -240,11 +240,17 @@ const NewOutput: React.FC = () => {
         
         if (isEnhancedStructure) {
           // Handle enhanced structure
-          setEnhancedData(analysisData);
+          // Ensure interval is included from top-level if not in analysisData
+          const enhancedDataWithInterval = {
+            ...analysisData,
+            interval: analysisData.interval || parsed.interval || undefined
+          };
+          setEnhancedData(enhancedDataWithInterval);
           setStockSymbol(stockSymbol);
 
           // Capture top-level interval/period (if present) for fallback use in charts
           if (parsed.interval) setRequestInterval(parsed.interval);
+          else if (analysisData.interval) setRequestInterval(analysisData.interval);
           if (parsed.analysis_period) setRequestPeriod(parsed.analysis_period);
           
           // Transform for backward compatibility
@@ -271,7 +277,10 @@ const NewOutput: React.FC = () => {
           
           // console.log('Transformed legacy data:', transformedData);
           setAnalysisData(transformedData);
+          // Capture interval from all possible locations
           if (parsed.interval) setRequestInterval(parsed.interval);
+          else if (analysisData.interval) setRequestInterval(analysisData.interval);
+          else if ((transformedData as any)?.interval) setRequestInterval((transformedData as any).interval);
           if (parsed.analysis_period) setRequestPeriod(parsed.analysis_period);
           setStockSymbol(stockSymbol);
         }
@@ -1089,7 +1098,7 @@ const NewOutput: React.FC = () => {
             </h1>
             
             {/* Analysis Metadata */}
-            {(enhancedData?.analysis_timestamp || enhancedData?.analysis_period || enhancedData?.exchange || enhancedData?.interval) && (
+            {(enhancedData?.analysis_timestamp || enhancedData?.analysis_period || enhancedData?.exchange || enhancedData?.interval || requestInterval || (analysisData as any)?.interval) && (
               <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
                 {enhancedData?.analysis_timestamp && (
                   <div className="flex items-center gap-1">
@@ -1103,10 +1112,10 @@ const NewOutput: React.FC = () => {
                     <span>Period: {enhancedData.analysis_period}</span>
                   </div>
                 )}
-                {enhancedData?.interval && (
+                {(enhancedData?.interval || requestInterval || (analysisData as any)?.interval) && (
                   <div className="flex items-center gap-1">
                     <Activity className="h-4 w-4" />
-                    <span>Data Interval: {enhancedData.interval}</span>
+                    <span>Interval: {enhancedData?.interval || requestInterval || (analysisData as any)?.interval}</span>
                   </div>
                 )}
                 {enhancedData?.exchange && (

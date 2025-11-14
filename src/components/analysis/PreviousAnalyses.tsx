@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, Minus, Clock, History, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Clock, History, Loader2, Activity } from 'lucide-react';
 import { StoredAnalysis } from '@/hooks/useStockAnalyses';
 import { format } from "date-fns";
 import { Button } from '@/components/ui/button';
@@ -49,7 +49,7 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
           View your past stock analysis reports
         </CardDescription>
       </CardHeader>
-      <CardContent className="overflow-y-auto p-4 min-h-0 scrollbar-match-bg-light">
+      <CardContent className="p-4 min-h-0 scrollbar-always-visible-light relative" style={{ overflowY: 'scroll', scrollbarWidth: 'thin', position: 'relative' }}>
         {loading ? (
           <div className="text-center py-8">
             <Loader2 className="h-8 w-8 text-blue-500 mx-auto mb-4 animate-spin" />
@@ -132,13 +132,35 @@ const PreviousAnalyses = ({ analyses, onAnalysisSelect, loading = false, error =
                           );
                         })()}
                       </div>
-                      <div className="flex items-center text-xs text-slate-600">
-                        <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
-                        <span className="truncate">
-                          {analysis.end_date
-                            ? format(new Date(analysis.end_date), 'PP')
-                            : format(new Date(analysis.analysis_timestamp || analysis.created_at), 'PPp')}
-                        </span>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                        <div className="flex items-center">
+                          <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span className="truncate">
+                            {analysis.end_date
+                              ? format(new Date(analysis.end_date), 'PP')
+                              : format(new Date(analysis.analysis_timestamp || analysis.created_at), 'PPp')}
+                          </span>
+                        </div>
+                        {(analysis.period_days || (analysis as any)?.analysis_data?.results?.analysis_period || (analysis as any)?.analysis_data?.analysis_period) && (
+                          <div className="flex items-center">
+                            <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
+                            <span className="truncate">
+                              Period: {(() => {
+                                const period = analysis.period_days || (analysis as any)?.analysis_data?.results?.analysis_period || (analysis as any)?.analysis_data?.analysis_period;
+                                // If it's a number, add "days" suffix, otherwise display as is
+                                return typeof period === 'number' ? `${period} days` : period;
+                              })()}
+                            </span>
+                          </div>
+                        )}
+                        {(analysis.interval || (analysis as any)?.analysis_data?.results?.interval || (analysis as any)?.analysis_data?.interval) && (
+                          <div className="flex items-center">
+                            <Activity className="h-3 w-3 mr-1 flex-shrink-0" />
+                            <span className="truncate">
+                              Interval: {analysis.interval || (analysis as any)?.analysis_data?.results?.interval || (analysis as any)?.analysis_data?.interval}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     {onAnalysisSelect && (

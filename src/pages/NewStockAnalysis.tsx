@@ -516,23 +516,21 @@ const NewStockAnalysis = () => {
         {/* Page Header removed */}
 
         {/* Main Content */}
-        <div className="max-w-[1800px] mx-auto mt-5 bg-transparent">
+        <div className="max-w-[2200px] mx-auto mt-0 bg-transparent">
           {/* Prototype Disclaimer */}
-          <div className="mb-4 w-full">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex flex-wrap items-center justify-center">
-              <AlertTriangle className="h-5 w-5 text-amber-500 mr-4 flex-shrink-0" />
-              <p className="text-amber-700 text-center">
-                <span className="font-semibold">Prototype Notice:</span> This system is currently in prototype stage. Responses might be slow or occasionally unresponsive.<br/>
-                Generating new analysis may be inoperational between 5:00AM - 7:30AM IST (4:30PM - 7:00PM PDT). Thank you for your patience.
+          <div className="mb-4 flex justify-center w-full -mt-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex flex-wrap items-center justify-center" style={{ width: '100%', maxWidth: '2100px', minWidth: '1900px' }}>
+              <p className="text-amber-700 text-center" style={{ width: '100%', maxWidth: '100%' }}>
+                <span className="font-semibold">Prototype Notice:</span> This system is currently in prototype stage. Responses might be slow or occasionally unresponsive. Generating new analysis may be inoperational between 5:00AM - 7:30AM IST (4:30PM - 7:00PM PDT). Thank you for your patience.
               </p>
             </div>
           </div>
           
-          <div className="flex flex-col xl:flex-row gap-8 items-stretch">
+          <div className="flex flex-col xl:flex-row gap-8 items-stretch xl:justify-center">
             {/* Analysis Configuration Panel */}
-            <div className="flex-1 min-w-0 xl:min-w-[1000px]">
-              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm h-[800px] grid grid-rows-[auto,1fr] overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-t-xl">
+            <div className="min-w-0 xl:w-[1000px] xl:flex-shrink-0">
+              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm max-h-[800px] flex flex-col overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-t-xl flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="p-2 bg-white/20 rounded-lg">
@@ -553,16 +551,16 @@ const NewStockAnalysis = () => {
                   </div>
                 </CardHeader>
                 
-                <CardContent className="px-6 pt-4 pb-4 overflow-y-auto min-h-0 scrollbar-match-bg">
-                  <form onSubmit={handleSubmit} className="space-y-8">
-                    
+                <CardContent className="!pl-4 !pr-0 !pt-3 !pb-0 min-h-0 flex-1 flex flex-col scrollbar-always-visible" style={{ scrollbarWidth: 'thin', paddingRight: 0, marginRight: 0 }}>
+                  <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-x-hidden" style={{ marginRight: 0, paddingRight: 0 }}>
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4" style={{ scrollbarWidth: 'thin', paddingRight: '1rem', marginRight: 0 }}>
                     {/* Stock Selection Section */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-slate-800 flex items-center">
-                        <Target className="h-5 w-5 mr-2 text-emerald-500" />
+                    <div className="space-y-3">
+                      <h3 className="text-base font-semibold text-slate-800 flex items-center">
+                        <Target className="h-4 w-4 mr-2 text-emerald-500" />
                         Stock Selection
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
                           <StockSelector
                             ref={stockSelectorRef}
@@ -613,12 +611,12 @@ const NewStockAnalysis = () => {
                     <Separator />
 
                     {/* Time Configuration */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-slate-800 flex items-center">
-                        <Clock className="h-5 w-5 mr-2 text-purple-500" />
+                    <div className="space-y-3">
+                      <h3 className="text-base font-semibold text-slate-800 flex items-center">
+                        <Clock className="h-4 w-4 mr-2 text-purple-500" />
                         Time Configuration
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="period" className="text-slate-700 font-medium">
                             Analysis Period (days)
@@ -686,12 +684,12 @@ const NewStockAnalysis = () => {
                     <Separator />
 
                     {/* Portfolio Configuration */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-slate-800 flex items-center">
-                        <Target className="h-5 w-5 mr-2 text-indigo-500" />
+                    <div className="space-y-3">
+                      <h3 className="text-base font-semibold text-slate-800 flex items-center">
+                        <Target className="h-4 w-4 mr-2 text-indigo-500" />
                         Portfolio Configuration
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="portfolio_value" className="text-slate-700 font-medium">
                             Portfolio Value (₹)
@@ -745,7 +743,7 @@ const NewStockAnalysis = () => {
 
                     {/* Current Holdings Details */}
                     {hasCurrentHolding && (
-                      <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200 animate-in slide-in-from-top-2">
+                      <div className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-200 animate-in slide-in-from-top-2">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -796,9 +794,9 @@ const NewStockAnalysis = () => {
                     <Separator />
 
                     {/* Previous Analyses Attachment Section */}
-                    <div className="space-y-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                      <h3 className="text-lg font-semibold text-slate-800 flex items-center">
-                        <BarChart3 className="h-5 w-5 mr-2 text-purple-500" />
+                    <div className="space-y-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                      <h3 className="text-base font-semibold text-slate-800 flex items-center">
+                        <BarChart3 className="h-4 w-4 mr-2 text-purple-500" />
                         Attach Previous Analyses (Optional)
                       </h3>
                       <p className="text-sm text-slate-600">
@@ -814,11 +812,11 @@ const NewStockAnalysis = () => {
                       />
                     </div>
 
-                    <Separator />
+                    </div>
 
-                    {/* Analysis Action */}
-                    <div className="space-y-4">
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {/* Analysis Action - Sticky Bottom */}
+                    <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm pt-4 pb-4 border-t border-slate-200 -ml-4 pl-4 pr-4 mt-4 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                         <Button 
                           type="submit" 
                           className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
@@ -843,7 +841,7 @@ const NewStockAnalysis = () => {
                         </Button>
                       </div>
 
-<div className="!mt-10 text-center text-sm text-slate-500">
+                      <div className="!mt-4 text-center text-sm text-slate-500">
                         Typical duration 1-2 minutes.
                       </div>
                     </div>
@@ -853,7 +851,7 @@ const NewStockAnalysis = () => {
             </div>
 
             {/* Previous Analyses Sidebar */}
-            <div className="xl:w-72 flex-shrink-0">
+            <div className="xl:w-[500px] flex-shrink-0">
               <PreviousAnalyses 
                 analyses={analyses}
                 onAnalysisSelect={handleSelectAnalysis}
