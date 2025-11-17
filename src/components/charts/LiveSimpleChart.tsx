@@ -236,7 +236,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       syncTimeScales(chartRef.current, volumeChartRef.current);
     }
     // console.log('👆 User interaction detected');
-  }, [debug, syncTimeScales]);
+  }, [syncTimeScales]);
 
   // Calculate volume scaling factor based on max volume
   const calculateVolumeScaleFactor = useCallback((validatedData: any[]): number => {
