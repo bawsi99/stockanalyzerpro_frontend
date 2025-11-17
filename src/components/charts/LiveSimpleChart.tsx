@@ -318,7 +318,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     
     return validatedData.map((d, index) => ({
       time: d.time as any,
-      value: smaValues[index] ? (smaValues[index]! / scaleFactor) : null, // Scale down the average volume
+      value: smaValues[index] !== null && smaValues[index] !== undefined ? (smaValues[index]! / scaleFactor) : null, // Scale down the average volume
     })).filter(d => d.value !== null) as LineData[];
   }, [calculateVolumeScaleFactor]);
 
@@ -1315,6 +1315,8 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           if (volumeChartRef.current) {
             volumeChartRef.current.timeScale().fitContent();
           }
+          // Reset the flag after using it to prevent repeated fit-content on subsequent updates
+          isNewSymbolRef.current = false;
         } else if (hasUserInteractedRef.current) {
           // Restore user's previous view state
           setTimeout(() => {

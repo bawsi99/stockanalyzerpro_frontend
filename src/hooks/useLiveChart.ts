@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { liveDataService, StockInfo } from '@/services/liveDataService';
+import { liveDataService, StockInfo, INTERVAL_MAPPING } from '@/services/liveDataService';
 import { toUTCTimestamp } from '@/utils/chartUtils';
 import { performanceMonitor } from '@/utils/performanceMonitor';
 
@@ -338,6 +338,9 @@ export function useLiveChart({
     try {
       // console.log(`🔌 Connecting to WebSocket for ${symbolRef.current}`);
 
+      // Map frontend timeframe to backend format for WebSocket subscription
+      const backendTimeframe = INTERVAL_MAPPING[timeframeRef.current as keyof typeof INTERVAL_MAPPING] || '1day';
+
       wsRef.current = await liveDataService.connectWebSocket(
         [symbolRef.current], // Send symbol instead of token
         (wsData: WebSocketMessage) => {
@@ -410,21 +413,49 @@ export function useLiveChart({
                   const newData = [...prev.data];
                   if (newData.length > 0) {
                     const lastCandle = newData[newData.length - 1];
-                    const oldClose = lastCandle.close;
                     
-                    // Update the last candle with new price
-                    newData[newData.length - 1] = {
-                      ...lastCandle,
-                      close: price,
-                      high: Math.max(lastCandle.high, price),
-                      low: Math.min(lastCandle.low, price)
+                    // Calculate expected interval in seconds based on current timeframe
+                    const intervalSeconds: Record<string, number> = {
+                      '1min': 60,
+                      '5min': 300,
+                      '15min': 900,
+                      '60min': 3600,
+                      '1day': 86400
                     };
+                    const currentBackendTimeframe = INTERVAL_MAPPING[timeframeRef.current as keyof typeof INTERVAL_MAPPING] || '1day';
+                    const expectedInterval = intervalSeconds[currentBackendTimeframe] || 86400;
                     
-                    // console.log('📊 Candle updated with tick:', {
-                    //   oldClose,
-                    //   newClose: price,
-                    //   dataLength: newData.length
-                    // });
+                    // Calculate the time window for the last candle
+                    const lastCandleStartTime = lastCandle.time;
+                    const lastCandleEndTime = lastCandleStartTime + expectedInterval;
+                    
+                    // Only update if tick timestamp falls within the last candle's time window
+                    // This prevents daily tick data from incorrectly updating interval-specific candles
+                    if (tickTime >= lastCandleStartTime && tickTime < lastCandleEndTime) {
+                      const oldClose = lastCandle.close;
+                      
+                      // Update the last candle with new price
+                      newData[newData.length - 1] = {
+                        ...lastCandle,
+                        close: price,
+                        high: Math.max(lastCandle.high, price),
+                        low: Math.min(lastCandle.low, price)
+                      };
+                      
+                      // console.log('📊 Candle updated with tick:', {
+                      //   oldClose,
+                      //   newClose: price,
+                      //   dataLength: newData.length
+                      // });
+                    } else {
+                      // Tick is outside the current candle's time window, skip update
+                      // console.log('⚠️ Tick outside current candle window, skipping update:', {
+                      //   tickTime,
+                      //   lastCandleStartTime,
+                      //   lastCandleEndTime,
+                      //   expectedInterval
+                      // });
+                    }
                   }
                   
                   return {
@@ -460,7 +491,10 @@ export function useLiveChart({
             // Handle heartbeat to keep connection alive
             // console.log('💓 WebSocket heartbeat received');
           }
-        }
+        },
+        undefined, // onError
+        undefined, // onClose
+        [backendTimeframe] // timeframes - pass the mapped timeframe
       );
 
       // console.log('WebSocket connected to Data Service');
