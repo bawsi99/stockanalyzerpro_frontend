@@ -1175,6 +1175,11 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       if (!data || data.length === 0) {
         // console.log('Data cleared, resetting chart state');
         lastDataRef.current = [];
+        // Clear candlestick series data
+        if (candlestickSeriesRef.current) {
+          candlestickSeriesRef.current.setData([]);
+        }
+        // Clear volume series data
         if (volumeSeriesRef.current) {
           volumeSeriesRef.current.setData([]);
         }
