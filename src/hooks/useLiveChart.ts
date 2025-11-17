@@ -353,14 +353,18 @@ export function useLiveChart({
           if (wsData.type === 'candle' && wsData.data) {
             // console.log('🕯️ Processing candle data:', wsData.data);
             try {
-              const candleData = wsData.data as CandleData;
-              if (candleData && typeof candleData.open === 'number') {
+              const candleData = wsData.data;
+              // WebSocketCandleMessage.data uses 'start' property, not 'time'
+              const candleTime = candleData.start;
+              
+              if (candleData && typeof candleData.open === 'number' && typeof candleTime === 'number') {
                 setState(prev => {
                   const newData = [...prev.data];
-                  // Convert CandleData to LiveChartData format
+                  // Convert WebSocket candle data to LiveChartData format
+                  // Map 'start' to 'time' for consistency with chart data format
                   const liveChartData: LiveChartData = {
-                    date: new Date(candleData.time * 1000).toISOString(),
-                    time: candleData.time,
+                    date: new Date(candleTime * 1000).toISOString(),
+                    time: candleTime,
                     open: candleData.open,
                     high: candleData.high,
                     low: candleData.low,
@@ -368,7 +372,7 @@ export function useLiveChart({
                     volume: candleData.volume
                   };
                   
-                  const existingIndex = newData.findIndex(d => d.time === candleData.time);
+                  const existingIndex = newData.findIndex(d => d.time === candleTime);
                   
                   if (existingIndex >= 0) {
                     newData[existingIndex] = liveChartData;
@@ -385,7 +389,7 @@ export function useLiveChart({
                     lastUpdate: Date.now(),
                     isLive: true,
                     lastTickPrice: liveChartData.close,
-                    lastTickTime: candleData.time
+                    lastTickTime: candleTime
                   };
                 });
               }
