@@ -339,7 +339,23 @@ export function useLiveChart({
       // console.log(`🔌 Connecting to WebSocket for ${symbolRef.current}`);
 
       // Map frontend timeframe to backend format for WebSocket subscription
-      const backendTimeframe = INTERVAL_MAPPING[timeframeRef.current as keyof typeof INTERVAL_MAPPING] || '1day';
+      // Handle both frontend format ('1m', '5m', etc.) and backend format ('1min', '5min', etc.)
+      const currentTimeframe = timeframeRef.current;
+      let backendTimeframe: string;
+      
+      // First, try mapping from frontend format
+      if (INTERVAL_MAPPING[currentTimeframe as keyof typeof INTERVAL_MAPPING]) {
+        backendTimeframe = INTERVAL_MAPPING[currentTimeframe as keyof typeof INTERVAL_MAPPING];
+      } else {
+        // Check if it's already in backend format
+        const backendFormats = ['1min', '5min', '15min', '60min', '1day'];
+        if (backendFormats.includes(currentTimeframe)) {
+          backendTimeframe = currentTimeframe;
+        } else {
+          // Fallback to daily if format is unrecognized
+          backendTimeframe = '1day';
+        }
+      }
 
       wsRef.current = await liveDataService.connectWebSocket(
         [symbolRef.current], // Send symbol instead of token
@@ -426,7 +442,15 @@ export function useLiveChart({
                       '60min': 3600,
                       '1day': 86400
                     };
-                    const currentBackendTimeframe = INTERVAL_MAPPING[timeframeRef.current as keyof typeof INTERVAL_MAPPING] || '1day';
+                    // Map timeframe to backend format (handle both frontend and backend formats)
+                    const currentTimeframe = timeframeRef.current;
+                    let currentBackendTimeframe: string;
+                    if (INTERVAL_MAPPING[currentTimeframe as keyof typeof INTERVAL_MAPPING]) {
+                      currentBackendTimeframe = INTERVAL_MAPPING[currentTimeframe as keyof typeof INTERVAL_MAPPING];
+                    } else {
+                      const backendFormats = ['1min', '5min', '15min', '60min', '1day'];
+                      currentBackendTimeframe = backendFormats.includes(currentTimeframe) ? currentTimeframe : '1day';
+                    }
                     const expectedInterval = intervalSeconds[currentBackendTimeframe] || 86400;
                     
                     // Calculate the time window for the last candle
