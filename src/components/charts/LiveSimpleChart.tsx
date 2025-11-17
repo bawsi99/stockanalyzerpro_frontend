@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { createChart, IChartApi, ISeriesApi, CandlestickData, LineData } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, CandlestickData, LineData, HistogramData } from 'lightweight-charts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatPercentage } from '@/utils/numberFormatter';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TrendingUp, TrendingDown, Minus, Activity, Wifi, WifiOff, RefreshCw, Settings, ZoomIn, AlertTriangle } from 'lucide-react';
-import { toUTCTimestamp, validateChartDataForTradingView, initializeChartWithRetry, createChartTheme, safeChartCleanup, type ChartContainer } from '@/utils/chartUtils';
+import { toUTCTimestamp, validateChartDataForTradingView, initializeChartWithRetry, createChartTheme, safeChartCleanup, type ChartContainer, calcSMA } from '@/utils/chartUtils';
 
 interface ChartData {
   date: string;
@@ -111,19 +111,29 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 }) => {
   // Refs
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const volumeChartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const volumeChartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const obvSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const avgVolumeSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const volumeScaleFactorRef = useRef<number>(1); // Store volume scaling factor
   const isMountedRef = useRef(true);
   const lastSymbolRef = useRef(symbol);
   const lastTimeframeRef = useRef(timeframe);
   const lastDataRef = useRef<CandlestickData[]>([]);
+  const lastVolumeDataRef = useRef<any[]>([]);
   const isInitializingRef = useRef(false);
   const isNewSymbolRef = useRef(false);
   const isInitialLoadRef = useRef(true);
   const chartStateRef = useRef<ChartState | null>(null);
+  const volumeChartStateRef = useRef<ChartState | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const volumeResizeObserverRef = useRef<ResizeObserver | null>(null);
   const initializationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initializationAttemptsRef = useRef(0);
+  const isSyncingTimeScaleRef = useRef(false);
 
   // State
   const [isChartReady, setIsChartReady] = useState(false);
@@ -197,11 +207,120 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     }
   }, [debug]);
 
+  // Synchronize time scales between price and volume charts
+  const syncTimeScales = useCallback((sourceChart: IChartApi, targetChart: IChartApi) => {
+    if (isSyncingTimeScaleRef.current) return;
+    
+    try {
+      const sourceTimeScale = sourceChart.timeScale();
+      const targetTimeScale = targetChart.timeScale();
+      const visibleRange = sourceTimeScale.getVisibleRange();
+      
+      if (visibleRange) {
+        isSyncingTimeScaleRef.current = true;
+        targetTimeScale.setVisibleRange(visibleRange);
+        setTimeout(() => {
+          isSyncingTimeScaleRef.current = false;
+        }, 0);
+      }
+    } catch (error) {
+      isSyncingTimeScaleRef.current = false;
+    }
+  }, []);
+
   // Handle user interaction (zoom, pan, etc.)
   const handleUserInteraction = useCallback(() => {
     hasUserInteractedRef.current = true;
+    // Sync time scales when user interacts
+    if (chartRef.current && volumeChartRef.current) {
+      syncTimeScales(chartRef.current, volumeChartRef.current);
+    }
     // console.log('👆 User interaction detected');
-  }, [debug]);
+  }, [debug, syncTimeScales]);
+
+  // Calculate volume scaling factor based on max volume
+  const calculateVolumeScaleFactor = useCallback((validatedData: any[]): number => {
+    if (validatedData.length === 0) return 1;
+    
+    const maxVolume = Math.max(...validatedData.map(d => d.volume));
+    
+    // Determine appropriate scaling factor
+    if (maxVolume >= 1000000000) {
+      return 1000000000; // Billions
+    } else if (maxVolume >= 1000000) {
+      return 1000000; // Millions
+    } else if (maxVolume >= 1000) {
+      return 1000; // Thousands
+    } else {
+      return 1; // No scaling
+    }
+  }, []);
+
+  // Prepare volume data with color coding and scaling
+  const prepareVolumeData = useCallback((validatedData: any[]): HistogramData[] => {
+    // Calculate and store scaling factor
+    const scaleFactor = calculateVolumeScaleFactor(validatedData);
+    volumeScaleFactorRef.current = scaleFactor;
+    
+    return validatedData.map((d, index) => {
+      const prevClose = index > 0 ? validatedData[index - 1].close : d.close;
+      const isUp = d.close >= prevClose;
+      
+      return {
+        time: d.time as any,
+        value: d.volume / scaleFactor, // Scale down the volume
+        color: isUp ? '#26a69a' : '#ef5350', // Green for up, red for down
+      };
+    });
+  }, [calculateVolumeScaleFactor]);
+
+  // Calculate OBV (On-Balance Volume)
+  const calculateOBV = useCallback((validatedData: any[]): LineData[] => {
+    if (validatedData.length === 0) return [];
+    
+    let obv = 0;
+    const obvData: LineData[] = [];
+    
+    validatedData.forEach((d, index) => {
+      if (index === 0) {
+        // First data point: OBV starts at 0 or first volume
+        obv = d.volume;
+      } else {
+        const prevClose = validatedData[index - 1].close;
+        const currentClose = d.close;
+        
+        if (currentClose > prevClose) {
+          // Price up: add volume
+          obv = obv + d.volume;
+        } else if (currentClose < prevClose) {
+          // Price down: subtract volume
+          obv = obv - d.volume;
+        }
+        // If price unchanged, OBV stays the same
+      }
+      
+      obvData.push({
+        time: d.time as any,
+        value: obv,
+      });
+    });
+    
+    return obvData;
+  }, []);
+
+  // Calculate Average Volume (SMA of volume) with scaling
+  const calculateAverageVolume = useCallback((validatedData: any[], period: number = 20): LineData[] => {
+    if (validatedData.length === 0) return [];
+    
+    const scaleFactor = volumeScaleFactorRef.current || calculateVolumeScaleFactor(validatedData);
+    const volumes = validatedData.map(d => d.volume);
+    const smaValues = calcSMA(volumes, period);
+    
+    return validatedData.map((d, index) => ({
+      time: d.time as any,
+      value: smaValues[index] ? (smaValues[index]! / scaleFactor) : null, // Scale down the average volume
+    })).filter(d => d.value !== null) as LineData[];
+  }, [calculateVolumeScaleFactor]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -215,13 +334,17 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         initializationTimeoutRef.current = null;
       }
       
-      // Cleanup resize observer
+      // Cleanup resize observers
       if (resizeObserverRef.current) {
         resizeObserverRef.current.disconnect();
         resizeObserverRef.current = null;
       }
+      if (volumeResizeObserverRef.current) {
+        volumeResizeObserverRef.current.disconnect();
+        volumeResizeObserverRef.current = null;
+      }
       
-      // Cleanup chart
+      // Cleanup charts
       if (chartRef.current) {
         try {
           safeChartCleanup(chartRef);
@@ -231,32 +354,38 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         chartRef.current = null;
         candlestickSeriesRef.current = null;
       }
+      if (volumeChartRef.current) {
+        try {
+          safeChartCleanup(volumeChartRef);
+        } catch (error) {
+          // console.warn('Error during volume chart cleanup:', error);
+        }
+        volumeChartRef.current = null;
+        volumeSeriesRef.current = null;
+        obvSeriesRef.current = null;
+        avgVolumeSeriesRef.current = null;
+      }
     };
   }, []); // Only run on unmount
 
   // Improved container readiness detection with better timing
   useEffect(() => {
     const container = chartContainerRef.current;
-    if (!container) return;
+    const volumeContainer = volumeChartContainerRef.current;
+    if (!container || !volumeContainer) return;
 
     const checkContainerReady = () => {
       const rect = container.getBoundingClientRect();
-      // console.log('Checking container readiness:', {
-      //   clientWidth: container.clientWidth,
-      //   clientHeight: container.clientHeight,
-      //   offsetWidth: container.offsetWidth,
-      //   offsetHeight: container.offsetHeight,
-      //   rectWidth: rect.width,
-      //   rectHeight: rect.height,
-      //   isVisible: container.offsetParent !== null
-      // });
+      const volumeRect = volumeContainer.getBoundingClientRect();
       
-      // Check if container has dimensions and is visible - use multiple dimension sources
+      // Check if both containers have dimensions and are visible
       const hasWidth = container.clientWidth > 0 || container.offsetWidth > 0 || rect.width > 0;
       const hasHeight = container.clientHeight > 0 || container.offsetHeight > 0 || rect.height > 0;
+      const volumeHasWidth = volumeContainer.clientWidth > 0 || volumeContainer.offsetWidth > 0 || volumeRect.width > 0;
+      const volumeHasHeight = volumeContainer.clientHeight > 0 || volumeContainer.offsetHeight > 0 || volumeRect.height > 0;
       
-      if (container && hasWidth && hasHeight && container.offsetParent !== null) {
-        // console.log('Container is ready, setting containerReady to true');
+      if (container && hasWidth && hasHeight && container.offsetParent !== null &&
+          volumeContainer && volumeHasWidth && volumeHasHeight && volumeContainer.offsetParent !== null) {
         setContainerReady(true);
         return true;
       }
@@ -274,13 +403,20 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       () => setTimeout(checkContainerReady, 100),
       // After a longer delay
       () => setTimeout(checkContainerReady, 200),
-      // Use ResizeObserver to detect when container gets dimensions
+      // Use ResizeObserver to detect when containers get dimensions
       () => {
-        if (window.ResizeObserver) {
+        if (window.ResizeObserver && container && volumeContainer) {
           const observer = new ResizeObserver((entries) => {
+            let containerReady = false;
+            let volumeContainerReady = false;
             for (const entry of entries) {
               if (entry.target === container && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-                // console.log('ResizeObserver detected container ready');
+                containerReady = true;
+              }
+              if (entry.target === volumeContainer && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+                volumeContainerReady = true;
+              }
+              if (containerReady && volumeContainerReady) {
                 setContainerReady(true);
                 observer.disconnect();
                 return;
@@ -288,6 +424,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
             }
           });
           observer.observe(container);
+          observer.observe(volumeContainer);
           return () => observer.disconnect();
         }
         return () => {};
@@ -303,12 +440,13 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     };
   }, []); // Only run once on mount
 
-  // Force container ready when data is available and container exists
+  // Force container ready when data is available and containers exist
   useEffect(() => {
-    if (data && data.length > 0 && chartContainerRef.current && !containerReady) {
+    if (data && data.length > 0 && chartContainerRef.current && volumeChartContainerRef.current && !containerReady) {
       const container = chartContainerRef.current;
-      if (container.clientWidth > 0 || container.offsetWidth > 0) {
-        // console.log('Data available, forcing container ready state');
+      const volumeContainer = volumeChartContainerRef.current;
+      if ((container.clientWidth > 0 || container.offsetWidth > 0) && 
+          (volumeContainer.clientWidth > 0 || volumeContainer.offsetWidth > 0)) {
         setContainerReady(true);
       }
     }
@@ -326,27 +464,41 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       setChartError(null);
       initializationAttemptsRef.current = 0;
       lastDataRef.current = []; // Clear stored data
+      lastVolumeDataRef.current = [];
       
       // Reset chart state management for new symbol
       chartStateRef.current = null;
       hasUserInteractedRef.current = false;
       isInitialLoadRef.current = true;
       
-      // Cleanup existing chart
+      // Cleanup existing charts
       if (chartRef.current) {
         try {
-          // Remove resize observer first
           if (resizeObserverRef.current) {
             resizeObserverRef.current.disconnect();
             resizeObserverRef.current = null;
           }
-          
           safeChartCleanup(chartRef);
         } catch (error) {
           // console.warn('Error during symbol change cleanup:', error);
         }
         chartRef.current = null;
         candlestickSeriesRef.current = null;
+      }
+      if (volumeChartRef.current) {
+        try {
+          if (volumeResizeObserverRef.current) {
+            volumeResizeObserverRef.current.disconnect();
+            volumeResizeObserverRef.current = null;
+          }
+          safeChartCleanup(volumeChartRef);
+        } catch (error) {
+          // console.warn('Error during volume chart cleanup:', error);
+        }
+        volumeChartRef.current = null;
+        volumeSeriesRef.current = null;
+        obvSeriesRef.current = null;
+        avgVolumeSeriesRef.current = null;
       }
     }
   }, [symbol]);
@@ -362,27 +514,41 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       setChartError(null);
       initializationAttemptsRef.current = 0;
       lastDataRef.current = []; // Clear stored data
+      lastVolumeDataRef.current = [];
       
       // Reset chart state management for new timeframe
       chartStateRef.current = null;
       hasUserInteractedRef.current = false;
       isInitialLoadRef.current = true;
       
-      // Cleanup existing chart
+      // Cleanup existing charts
       if (chartRef.current) {
         try {
-          // Remove resize observer first
           if (resizeObserverRef.current) {
             resizeObserverRef.current.disconnect();
             resizeObserverRef.current = null;
           }
-          
           safeChartCleanup(chartRef);
         } catch (error) {
           // console.warn('Error during timeframe change cleanup:', error);
         }
         chartRef.current = null;
         candlestickSeriesRef.current = null;
+      }
+      if (volumeChartRef.current) {
+        try {
+          if (volumeResizeObserverRef.current) {
+            volumeResizeObserverRef.current.disconnect();
+            volumeResizeObserverRef.current = null;
+          }
+          safeChartCleanup(volumeChartRef);
+        } catch (error) {
+          // console.warn('Error during volume chart cleanup:', error);
+        }
+        volumeChartRef.current = null;
+        volumeSeriesRef.current = null;
+        obvSeriesRef.current = null;
+        avgVolumeSeriesRef.current = null;
       }
     }
   }, [timeframe]);
@@ -401,21 +567,25 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       return;
     }
 
-    // Check if container is ready with better validation
-    if (!chartContainerRef.current) {
+    // Check if containers are ready with better validation
+    if (!chartContainerRef.current || !volumeChartContainerRef.current) {
       // console.log('Container ref not available, will retry when available');
       // Don't retry immediately - let the container readiness effect handle this
       return;
     }
 
     const container = chartContainerRef.current;
+    const volumeContainer = volumeChartContainerRef.current;
     
     // Check container dimensions with comprehensive validation
     const rect = container.getBoundingClientRect();
+    const volumeRect = volumeContainer.getBoundingClientRect();
     const containerWidth = container.clientWidth || container.offsetWidth || rect.width;
     const containerHeight = container.clientHeight || container.offsetHeight || rect.height;
+    const volumeContainerWidth = volumeContainer.clientWidth || volumeContainer.offsetWidth || volumeRect.width;
+    const volumeContainerHeight = volumeContainer.clientHeight || volumeContainer.offsetHeight || volumeRect.height;
     
-    if (containerWidth === 0 || containerHeight === 0) {
+    if (containerWidth === 0 || containerHeight === 0 || volumeContainerWidth === 0 || volumeContainerHeight === 0) {
       // console.log('Container has no dimensions yet, waiting for container to be ready', {
       //   clientWidth: container.clientWidth,
       //   clientHeight: container.clientHeight,
@@ -444,10 +614,11 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     setChartError(null);
 
     try {
-      // Clear container
+      // Clear containers
       container.innerHTML = '';
+      volumeContainer.innerHTML = '';
 
-      // Create chart with proper configuration - use actual container dimensions
+      // Create price chart with proper configuration - use actual container dimensions
       const chart = createChart(container, {
         width: container.clientWidth || containerWidth,
         height: container.clientHeight || containerHeight,
@@ -581,10 +752,195 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         borderUpColor: '#26a69a',
         wickDownColor: '#ef5350',
         wickUpColor: '#26a69a',
+        priceScaleId: 'right',
       });
 
       // Store series reference
       candlestickSeriesRef.current = candlestickSeries;
+
+      // Create volume chart with proper configuration
+      const volumeChart = createChart(volumeContainer, {
+        width: volumeContainer.clientWidth || volumeContainerWidth,
+        height: volumeContainer.clientHeight || volumeContainerHeight,
+        layout: {
+          background: { color: theme === 'dark' ? '#1a1a1a' : '#ffffff' },
+          textColor: theme === 'dark' ? '#ffffff' : '#333333',
+        },
+        grid: {
+          vertLines: { color: theme === 'dark' ? '#2a2a2a' : '#f0f0f0' },
+          horzLines: { color: theme === 'dark' ? '#2a2a2a' : '#f0f0f0' },
+        },
+        timeScale: {
+          timeVisible: true,
+          secondsVisible: false,
+          rightOffset: 12,
+          barSpacing: 3,
+          borderColor: theme === 'dark' ? '#2a2a2a' : '#e1e1e1',
+          visible: true,
+          tickMarkFormatter: (time: number) => {
+            const date = new Date(time * 1000);
+            if (timeframe === '1d' || timeframe === '1day') {
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                year: 'numeric'
+              });
+            } else if (timeframe === '1h' || timeframe === '60min' || timeframe === '60minute') {
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            } else {
+              return date.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
+          },
+        },
+        rightPriceScale: {
+          visible: true, // Show right scale for volume plot
+          autoScale: true,
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.1,
+          },
+          borderColor: theme === 'dark' ? '#2a2a2a' : '#e1e1e1',
+        },
+        leftPriceScale: {
+          visible: false, // Hide left scale (volume moved to right)
+          autoScale: true,
+          borderColor: theme === 'dark' ? '#2a2a2a' : '#e1e1e1',
+        },
+        watermark: {
+          visible: true,
+          color: theme === 'dark' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
+          fontSize: 12,
+          horzAlign: 'left',
+          vertAlign: 'top',
+          text: '', // Will be set dynamically based on scale factor
+        },
+        crosshair: {
+          mode: 1,
+          vertLine: {
+            color: theme === 'dark' ? '#ffffff' : '#000000',
+            width: 1,
+            style: 3,
+          },
+          horzLine: {
+            color: theme === 'dark' ? '#ffffff' : '#000000',
+            width: 1,
+            style: 3,
+          },
+        },
+        handleScroll: {
+          mouseWheel: true,
+          pressedMouseMove: true,
+          horzTouchDrag: true,
+          vertTouchDrag: true,
+        },
+        handleScale: {
+          axisPressedMouseMove: true,
+          mouseWheel: true,
+          pinch: true,
+        },
+        localization: {
+          timeFormatter: (time: number) => {
+            const utcDate = new Date(time * 1000);
+            if (timeframe === '1d' || timeframe === '1day') {
+              return utcDate.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+            } else if (timeframe === '1h' || timeframe === '60min' || timeframe === '60minute') {
+              return utcDate.toLocaleDateString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            } else {
+              return utcDate.toLocaleTimeString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+            }
+          },
+          priceFormatter: (price: number) => {
+            // Format scaled volume to minimum 6 digits total with appropriate decimal places
+            const priceStr = price.toString();
+            const parts = priceStr.split('.');
+            const integerPart = parts[0];
+            const decimalPart = parts[1] || '';
+            
+            // Calculate how many digits we have
+            const totalDigits = integerPart.length + decimalPart.length;
+            
+            // If we have less than 6 digits, add more decimal places
+            if (totalDigits < 6) {
+              const neededDecimals = Math.max(2, 6 - integerPart.length);
+              return price.toFixed(neededDecimals);
+            } else {
+              // If we already have 6+ digits, show 4 decimal places for precision
+              return price.toFixed(4);
+            }
+          },
+        },
+      });
+
+      // Store volume chart reference
+      volumeChartRef.current = volumeChart;
+
+      // Create volume histogram series in volume chart
+      const volumeSeries = volumeChart.addHistogramSeries({
+        priceScaleId: 'right', // Y-axis on the right side
+        priceFormat: {
+          type: 'volume',
+        },
+        color: '#26a69a', // Default color (will be overridden per bar)
+      });
+      volumeSeriesRef.current = volumeSeries;
+
+      // OBV plot disabled
+      // const obvSeries = volumeChart.addLineSeries({
+      //   priceScaleId: 'right',
+      //   color: '#9c27b0', // Purple color for OBV line
+      //   lineWidth: 2,
+      //   priceFormat: {
+      //     type: 'price',
+      //     precision: 0,
+      //     minMove: 1,
+      //   },
+      //   title: 'OBV',
+      // });
+      obvSeriesRef.current = null;
+
+      // Create average volume line series in volume chart
+      const avgVolumeSeries = volumeChart.addLineSeries({
+        priceScaleId: 'right', // Use same scale as volume histogram (right side)
+        color: '#ff9800', // Orange color for average volume line
+        lineWidth: 2,
+        priceFormat: {
+          type: 'volume',
+        },
+        title: 'Avg Volume (20)',
+      });
+      avgVolumeSeriesRef.current = avgVolumeSeries;
 
       // console.log('Chart and candlestick series created successfully');
 
@@ -592,15 +948,50 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
       setIsChartReady(true);
       initializationAttemptsRef.current = 0; // Reset attempts counter
 
-      // Add user interaction handlers to detect zoom/pan
+      // Add user interaction handlers to detect zoom/pan and synchronize time scales
       const timeScale = chart.timeScale();
+      const volumeTimeScale = volumeChart.timeScale();
       
-      // Subscribe to time scale changes (zoom/pan)
+      // Subscribe to time scale changes (zoom/pan) - sync from price to volume
       timeScale.subscribeVisibleTimeRangeChange(() => {
         handleUserInteraction();
+        // Sync volume chart time scale with price chart
+        if (volumeChartRef.current && !isSyncingTimeScaleRef.current) {
+          syncTimeScales(chart, volumeChart);
+          // OBV disabled - no need to update OBV scale
+          // if (obvSeriesRef.current) {
+          //   try {
+          //     const rightPriceScale = volumeChart.priceScale('right');
+          //     if (rightPriceScale) {
+          //       rightPriceScale.applyOptions({ autoScale: true });
+          //     }
+          //   } catch (error) {
+          //     // Ignore errors during scale update
+          //   }
+          // }
+        }
       });
 
-      // Add resize handler with better dimension detection
+      // Subscribe to volume chart time scale changes - sync from volume to price
+      volumeTimeScale.subscribeVisibleTimeRangeChange(() => {
+        // Sync price chart time scale with volume chart
+        if (chartRef.current && !isSyncingTimeScaleRef.current) {
+          syncTimeScales(volumeChart, chart);
+        }
+        // OBV disabled - no need to update OBV scale
+        // if (obvSeriesRef.current) {
+        //   try {
+        //     const rightPriceScale = volumeChart.priceScale('right');
+        //     if (rightPriceScale) {
+        //       rightPriceScale.applyOptions({ autoScale: true });
+        //     }
+        //   } catch (error) {
+        //     // Ignore errors during scale update
+        //   }
+        // }
+      });
+
+      // Add resize handler for price chart
       const handleResize = () => {
         if (chart && container) {
           try {
@@ -608,15 +999,12 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
             const newHeight = container.clientHeight || container.offsetHeight || container.getBoundingClientRect().height;
             
             if (newWidth > 0 && newHeight > 0) {
-              // console.log('Resizing chart to:', { width: newWidth, height: newHeight });
               chart.applyOptions({
                 width: newWidth,
                 height: newHeight,
               });
             }
           } catch (error) {
-            // console.warn('Error during chart resize:', error);
-            // If chart is disposed, clean up the reference
             if (error instanceof Error && error.message.includes('disposed')) {
               chartRef.current = null;
             }
@@ -624,20 +1012,46 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         }
       };
 
-      // Store resize observer reference
+      // Add resize handler for volume chart
+      const handleVolumeResize = () => {
+        if (volumeChart && volumeContainer) {
+          try {
+            const newWidth = volumeContainer.clientWidth || volumeContainer.offsetWidth || volumeContainer.getBoundingClientRect().width;
+            const newHeight = volumeContainer.clientHeight || volumeContainer.offsetHeight || volumeContainer.getBoundingClientRect().height;
+            
+            if (newWidth > 0 && newHeight > 0) {
+              volumeChart.applyOptions({
+                width: newWidth,
+                height: newHeight,
+              });
+            }
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('disposed')) {
+              volumeChartRef.current = null;
+            }
+          }
+        }
+      };
+
+      // Store resize observer references
       if (window.ResizeObserver) {
         resizeObserverRef.current = new ResizeObserver(handleResize);
         resizeObserverRef.current.observe(container);
+        volumeResizeObserverRef.current = new ResizeObserver(handleVolumeResize);
+        volumeResizeObserverRef.current.observe(volumeContainer);
       }
 
       // Register reset function if callback provided
       if (onRegisterReset) {
         onRegisterReset(() => {
-          if (chart) {
+          if (chart && volumeChart) {
             // Reset user interaction state when manually resetting
             hasUserInteractedRef.current = false;
             chartStateRef.current = null;
+            volumeChartStateRef.current = null;
+            // Reset both charts
             chart.timeScale().fitContent();
+            volumeChart.timeScale().fitContent();
           }
         });
       }
@@ -649,7 +1063,7 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     } finally {
       isInitializingRef.current = false;
     }
-  }, [symbol, timeframe, theme, onRegisterReset]); // Added onRegisterReset to dependencies
+  }, [symbol, timeframe, theme, onRegisterReset, syncTimeScales, handleUserInteraction]); // Added dependencies
 
   // Trigger chart initialization when ready
   useEffect(() => {
@@ -705,49 +1119,18 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     }
   }, [initializeChart, containerReady, isChartReady]);
 
-  // Handle data updates when chart is ready
-  useEffect(() => {
-    if (isChartReady && data && data.length > 0 && chartRef.current && candlestickSeriesRef.current) {
-      // console.log('Data received after chart initialization, updating...');
-      // Force a data update
-      const validatedData = validateChartDataForTradingView(data);
-      const candlestickData = validatedData.map(d => ({
-        time: d.time,
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
-      }));
-      
-      candlestickSeriesRef.current.setData(candlestickData as any);
-      lastDataRef.current = candlestickData as any;
-      // console.log('Initial data set:', candlestickData.length, 'candles');
-      
-      // Only fit content for initial load or new symbol, preserve user's view otherwise
-      if (isInitialLoadRef.current || isNewSymbolRef.current) {
-        if (chartRef.current) {
-          chartRef.current.timeScale().fitContent();
-        }
-        isInitialLoadRef.current = false;
-      } else if (hasUserInteractedRef.current) {
-        // Restore user's previous view state for same symbol updates
-        setTimeout(() => {
-          restoreChartState();
-        }, 0);
-      }
-    }
-  }, [isChartReady, data, restoreChartState]);
-
   // Fallback initialization trigger - ensure chart initializes even if container detection fails
   useEffect(() => {
-    if (!isChartReady && data && data.length > 0 && chartContainerRef.current) {
+    if (!isChartReady && data && data.length > 0 && chartContainerRef.current && volumeChartContainerRef.current) {
       const container = chartContainerRef.current;
+      const volumeContainer = volumeChartContainerRef.current;
       const hasDimensions = (container.clientWidth > 0 || container.offsetWidth > 0) && 
                            (container.clientHeight > 0 || container.offsetHeight > 0);
+      const volumeHasDimensions = (volumeContainer.clientWidth > 0 || volumeContainer.offsetWidth > 0) && 
+                                 (volumeContainer.clientHeight > 0 || volumeContainer.offsetHeight > 0);
       
-      // If we have data and container exists but chart isn't ready, try to initialize
-      if (hasDimensions && !isInitializingRef.current) {
-        // console.log('Fallback: Attempting chart initialization with data available');
+      // If we have data and containers exist but chart isn't ready, try to initialize
+      if (hasDimensions && volumeHasDimensions && !isInitializingRef.current) {
         initializeChart();
       }
     }
@@ -784,16 +1167,27 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
 
   // Update chart data when data changes
   useEffect(() => {
-    if (!isChartReady || !chartRef.current || !candlestickSeriesRef.current) {
+    if (!isChartReady || !chartRef.current || !candlestickSeriesRef.current || !volumeChartRef.current || !volumeSeriesRef.current || !avgVolumeSeriesRef.current) {
       return;
     }
 
-    // Handle case when data is cleared (empty array)
-    if (!data || data.length === 0) {
-      // console.log('Data cleared, resetting chart state');
-      lastDataRef.current = [];
-      return;
-    }
+      // Handle case when data is cleared (empty array)
+      if (!data || data.length === 0) {
+        // console.log('Data cleared, resetting chart state');
+        lastDataRef.current = [];
+        if (volumeSeriesRef.current) {
+          volumeSeriesRef.current.setData([]);
+        }
+        if (avgVolumeSeriesRef.current) {
+          avgVolumeSeriesRef.current.setData([]);
+        }
+        // OBV disabled
+        // if (obvSeriesRef.current) {
+        //   obvSeriesRef.current.setData([]);
+        // }
+        lastVolumeDataRef.current = [];
+        return;
+      }
 
     try {
       const validatedData = validateChartDataForTradingView(data);
@@ -812,6 +1206,42 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         low: d.low,
         close: d.close,
       })) as any; // Cast the entire array to satisfy TradingView's type requirements
+
+      // Prepare volume data (this will calculate and store the scale factor)
+      const volumeData = prepareVolumeData(validatedData);
+      
+      // Update watermark with scale factor
+      const scaleFactor = volumeScaleFactorRef.current;
+      let scaleText = '';
+      if (scaleFactor >= 1000000000) {
+        scaleText = 'Volume × 1B';
+      } else if (scaleFactor >= 1000000) {
+        scaleText = 'Volume × 1M';
+      } else if (scaleFactor >= 1000) {
+        scaleText = 'Volume × 1K';
+      } else {
+        scaleText = 'Volume';
+      }
+      
+      // Update volume chart watermark
+      if (volumeChartRef.current) {
+        volumeChartRef.current.applyOptions({
+          watermark: {
+            visible: true,
+            color: theme === 'dark' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
+            fontSize: 12,
+            horzAlign: 'left',
+            vertAlign: 'top',
+            text: scaleText,
+          },
+        });
+      }
+      
+      // Calculate average volume data
+      const avgVolumeData = calculateAverageVolume(validatedData, 20);
+      
+      // OBV disabled
+      // const obvData = calculateOBV(validatedData);
 
       // Debug processed timestamps
       // console.log('Processed candlestick timestamps:', candlestickData.slice(0, 5).map(d => ({
@@ -856,10 +1286,29 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         lastDataRef.current = candlestickData as any;
         // console.log('Full dataset updated:', candlestickData.length, 'candles');
         
+        // Update volume series
+        if (volumeSeriesRef.current) {
+          volumeSeriesRef.current.setData(volumeData as any);
+          lastVolumeDataRef.current = volumeData as any;
+        }
+        
+        // Update average volume series
+        if (avgVolumeSeriesRef.current) {
+          avgVolumeSeriesRef.current.setData(avgVolumeData as any);
+        }
+        
+        // OBV disabled
+        // if (obvSeriesRef.current) {
+        //   obvSeriesRef.current.setData(obvData as any);
+        // }
+        
         // Only fit content for new symbol, preserve user's view for same symbol
         if (isNewSymbolRef.current) {
           if (chartRef.current) {
             chartRef.current.timeScale().fitContent();
+          }
+          if (volumeChartRef.current) {
+            volumeChartRef.current.timeScale().fitContent();
           }
         } else if (hasUserInteractedRef.current) {
           // Restore user's previous view state
@@ -892,6 +1341,37 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           }
         }
         
+        // Update volume series for tick update
+        if (volumeSeriesRef.current && volumeData.length > 0) {
+          const lastVolume = volumeData[volumeData.length - 1];
+          const lastStoredVolume = lastVolumeDataRef.current.length > 0 
+            ? lastVolumeDataRef.current[lastVolumeDataRef.current.length - 1] 
+            : null;
+          
+          // Check if volume changed
+          if (!lastStoredVolume || lastStoredVolume.value !== lastVolume.value || lastStoredVolume.time !== lastVolume.time) {
+            volumeSeriesRef.current.update(lastVolume as any);
+            // Update the stored reference array
+            if (lastVolumeDataRef.current.length === volumeData.length) {
+              lastVolumeDataRef.current[lastVolumeDataRef.current.length - 1] = lastVolume;
+            } else {
+              lastVolumeDataRef.current = [...lastVolumeDataRef.current.slice(0, -1), lastVolume];
+            }
+          }
+        }
+        
+        // Update average volume series for tick update
+        if (avgVolumeSeriesRef.current && avgVolumeData.length > 0) {
+          const lastAvgVolume = avgVolumeData[avgVolumeData.length - 1];
+          avgVolumeSeriesRef.current.update(lastAvgVolume as any);
+        }
+        
+        // OBV disabled
+        // if (obvSeriesRef.current && obvData.length > 0) {
+        //   const lastOBV = obvData[obvData.length - 1];
+        //   obvSeriesRef.current.update(lastOBV as any);
+        // }
+        
         // Update the stored data reference
         lastDataRef.current = candlestickData as any;
       } else {
@@ -905,6 +1385,34 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           // console.log('New candle added:', newLastCandle);
         }
         
+        // Update volume series for new candle
+        if (volumeSeriesRef.current && volumeData.length > lastVolumeDataRef.current.length) {
+          const lastVolume = volumeData[volumeData.length - 1];
+          volumeSeriesRef.current.update(lastVolume as any);
+          // Update stored volume data reference
+          lastVolumeDataRef.current = [...lastVolumeDataRef.current, lastVolume];
+        } else if (volumeSeriesRef.current && volumeData.length === lastVolumeDataRef.current.length && volumeData.length > 0) {
+          // Update last volume bar if it changed
+          const lastVolume = volumeData[volumeData.length - 1];
+          const lastStoredVolume = lastVolumeDataRef.current[lastVolumeDataRef.current.length - 1];
+          if (!lastStoredVolume || lastStoredVolume.value !== lastVolume.value || lastStoredVolume.time !== lastVolume.time) {
+            volumeSeriesRef.current.update(lastVolume as any);
+            lastVolumeDataRef.current[lastVolumeDataRef.current.length - 1] = lastVolume;
+          }
+        }
+        
+        // Update average volume series for new candle
+        if (avgVolumeSeriesRef.current && avgVolumeData.length > 0) {
+          const lastAvgVolume = avgVolumeData[avgVolumeData.length - 1];
+          avgVolumeSeriesRef.current.update(lastAvgVolume as any);
+        }
+        
+        // OBV disabled
+        // if (obvSeriesRef.current && obvData.length > 0) {
+        //   const lastOBV = obvData[obvData.length - 1];
+        //   obvSeriesRef.current.update(lastOBV as any);
+        // }
+        
         // Update the stored data reference
         lastDataRef.current = candlestickData as any;
       }
@@ -913,13 +1421,13 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     } catch (error) {
       // console.error('Error updating chart data:', error);
     }
-  }, [data, isChartReady, saveChartState, restoreChartState]); // Added chart state functions to dependencies
+  }, [data, isChartReady, saveChartState, restoreChartState, prepareVolumeData, calculateAverageVolume, theme]); // Added theme to dependencies for watermark
 
   // Handle chart reset
   const handleChartReset = useCallback(() => {
     // console.log('🔄 Manual chart reset triggered');
     
-    // Cleanup existing chart
+    // Cleanup existing charts
     if (chartRef.current) {
       try {
         safeChartCleanup(chartRef);
@@ -927,17 +1435,28 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         // console.warn('Error during manual chart cleanup:', error);
       }
     }
+    if (volumeChartRef.current) {
+      try {
+        safeChartCleanup(volumeChartRef);
+      } catch (error) {
+        // console.warn('Error during volume chart cleanup:', error);
+      }
+    }
     
     // Reset state
     chartRef.current = null;
+    volumeChartRef.current = null;
     candlestickSeriesRef.current = null;
+    volumeSeriesRef.current = null;
     setIsChartReady(false);
     setChartError(null);
     initializationAttemptsRef.current = 0;
     lastDataRef.current = [];
+    lastVolumeDataRef.current = [];
     
     // Reset chart state management
     chartStateRef.current = null;
+    volumeChartStateRef.current = null;
     hasUserInteractedRef.current = false;
     isInitialLoadRef.current = true;
     
@@ -946,16 +1465,16 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
     
     // Restart initialization with proper timing
     setTimeout(() => {
-      if (isMountedRef.current && chartContainerRef.current) {
+      if (isMountedRef.current && chartContainerRef.current && volumeChartContainerRef.current) {
         const container = chartContainerRef.current;
+        const volumeContainer = volumeChartContainerRef.current;
         const hasDimensions = (container.clientWidth > 0 || container.offsetWidth > 0) && 
                              (container.clientHeight > 0 || container.offsetHeight > 0);
+        const volumeHasDimensions = (volumeContainer.clientWidth > 0 || volumeContainer.offsetWidth > 0) && 
+                                   (volumeContainer.clientHeight > 0 || volumeContainer.offsetHeight > 0);
         
-        if (hasDimensions) {
-          // console.log('Container ready after reset, initializing chart');
+        if (hasDimensions && volumeHasDimensions) {
           setContainerReady(true);
-        } else {
-          // console.log('Container not ready after reset, will wait for container detection');
         }
       }
     }, 100);
@@ -1145,28 +1664,44 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
           height: '100%',
           minHeight: `clamp(280px, 60vh, ${height}px)`,
           maxWidth: '100%',
-          width: '100%'
+          width: '100%',
+          position: 'relative'
         }}
       >
-
-        
-        {/* Chart Container */}
+        {/* Price Chart Container - Takes 70% of height */}
         <div 
           ref={chartContainerRef} 
-          className="w-full h-full"
+          className="w-full absolute"
           style={{ 
-            position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
-            bottom: 0,
+            height: '70%',
+            overflow: 'hidden',
             pointerEvents: 'auto',
             isolation: 'isolate',
             backgroundColor: debug ? 'rgba(255, 0, 0, 0.1)' : 'transparent',
-            width: '100%',
-            height: '100%'
           }}
-          data-chart-container="true"
+          data-chart-container="price"
+          data-symbol={symbol}
+          data-timeframe={timeframe}
+        />
+        
+        {/* Volume Chart Container - Takes 30% of height */}
+        <div 
+          ref={volumeChartContainerRef} 
+          className="w-full absolute"
+          style={{ 
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '30%',
+            overflow: 'hidden',
+            pointerEvents: 'auto',
+            isolation: 'isolate',
+            backgroundColor: debug ? 'rgba(0, 255, 0, 0.1)' : 'transparent',
+          }}
+          data-chart-container="volume"
           data-symbol={symbol}
           data-timeframe={timeframe}
         />
