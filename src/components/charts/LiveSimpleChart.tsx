@@ -1270,15 +1270,18 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         lastDataRef.current[0]?.time && candlestickData[0]?.time &&
         lastDataRef.current[0].time === candlestickData[0].time;
 
-      // console.log('Chart data update analysis:', {
-      //   dataLength: candlestickData.length,
-      //   lastDataLength: lastDataRef.current.length,
-      //   isNewDataset,
-      //   isTickUpdate,
-      //   isNewSymbol: isNewSymbolRef.current,
-      //   firstTime: candlestickData[0]?.time,
-      //   lastDataFirstTime: lastDataRef.current[0]?.time
-      // });
+      console.log('📊 [LiveSimpleChart] Chart data update analysis:', {
+        dataLength: candlestickData.length,
+        lastDataLength: lastDataRef.current.length,
+        isNewDataset,
+        isTickUpdate,
+        isNewSymbol: isNewSymbolRef.current,
+        firstTime: candlestickData[0]?.time,
+        lastDataFirstTime: lastDataRef.current[0]?.time,
+        lastCandleTime: candlestickData[candlestickData.length - 1]?.time,
+        lastStoredCandleTime: lastDataRef.current[lastDataRef.current.length - 1]?.time,
+        timeframe
+      });
 
       if (isNewDataset || isNewSymbolRef.current) {
         // Save current chart state before updating data
@@ -1387,9 +1390,30 @@ const LiveSimpleChart: React.FC<LiveSimpleChartProps> = ({
         const newLastCandle = candlestickData[candlestickData.length - 1];
 
         if (lastStoredCandle && newLastCandle && candlestickData.length > lastDataRef.current.length) {
-          // New candle added
+          // New candle added - add it to the series
           candlestickSeriesRef.current.update(newLastCandle as any);
-          // console.log('New candle added:', newLastCandle);
+          console.log('➕ [LiveSimpleChart] New candle added to chart:', {
+            newCandle: newLastCandle,
+            oldLength: lastDataRef.current.length,
+            newLength: candlestickData.length,
+            timeframe
+          });
+          
+          // Update the stored data reference
+          lastDataRef.current = candlestickData as any;
+        } else if (lastStoredCandle && newLastCandle) {
+          // Same length but might be a new candle with different timestamp
+          // Check if the last candle timestamp changed (new interval started)
+          if (newLastCandle.time !== lastStoredCandle.time) {
+            // This is actually a new candle, not an update
+            candlestickSeriesRef.current.update(newLastCandle as any);
+            console.log('🔄 [LiveSimpleChart] New candle detected (different timestamp):', {
+              oldCandle: lastStoredCandle,
+              newCandle: newLastCandle,
+              timeframe
+            });
+            lastDataRef.current = candlestickData as any;
+          }
         }
         
         // Update volume series for new candle

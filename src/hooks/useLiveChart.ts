@@ -167,21 +167,117 @@ export function useLiveChart({
     try {
       console.log(`🔄 [useLiveChart] Starting loadHistoricalData for ${currentSymbol} (attempt ${retryCount + 1})`);
 
+      // Get date in YYYY-MM-DD format for historical data request
+      // For daily timeframe: use end_date (works correctly)
+      // For intraday timeframes: don't use end_date - backend automatically uses latest available candle
+      const today = new Date();
+      const isDailyTimeframe = currentTimeframe === '1d' || currentTimeframe === '1day';
+      
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const endDate = `${year}-${month}-${day}`; // Format: YYYY-MM-DD in local timezone
+      
+      console.log(`📅 [useLiveChart] Requesting historical data${isDailyTimeframe ? ` with end_date: ${endDate}` : ' (limit-only, no end_date for intraday)'} for timeframe: ${currentTimeframe}`);
+      if (!isDailyTimeframe) {
+        console.log(`📅 [useLiveChart] Note: For intraday, backend automatically uses latest available candle (including today) when no end_date is provided`);
+      }
+
       const response = await liveDataService.getHistoricalData(
         currentSymbol,
         currentTimeframe,
         exchange,
-        maxDataPoints
+        maxDataPoints,
+        endDate
       );
 
+      // Detailed analysis of received data
+      console.log('🔍 [useLiveChart] Starting gap analysis - candles count:', response.candles?.length);
+      const now = new Date();
+      const nowTimestamp = Math.floor(now.getTime() / 1000);
+      const firstCandle = response.candles?.[0];
+      const lastCandle = response.candles?.[response.candles?.length - 1];
+      
+      console.log('🔍 [useLiveChart] First candle:', firstCandle ? { time: firstCandle.time, date: new Date(firstCandle.time * 1000).toISOString() } : 'null');
+      console.log('🔍 [useLiveChart] Last candle:', lastCandle ? { time: lastCandle.time, date: new Date(lastCandle.time * 1000).toISOString() } : 'null');
+      console.log('🔍 [useLiveChart] Current time:', { timestamp: nowTimestamp, date: now.toISOString() });
+      console.log('🔍 [useLiveChart] Requested endDate:', endDate);
+      
+      let gapAnalysis: any = {};
+      if (lastCandle) {
+        console.log('🔍 [useLiveChart] Last candle exists, calculating gap...');
+        const lastCandleDate = new Date(lastCandle.time * 1000);
+        const timeDiff = nowTimestamp - lastCandle.time;
+        const hoursDiff = timeDiff / 3600;
+        const minutesDiff = timeDiff / 60;
+        
+        gapAnalysis = {
+          lastCandleTimestamp: lastCandle.time,
+          lastCandleDate: lastCandleDate.toISOString(),
+          lastCandleLocalDate: lastCandleDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+          currentTimestamp: nowTimestamp,
+          currentDate: now.toISOString(),
+          currentLocalDate: now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+          gapSeconds: timeDiff,
+          gapMinutes: Math.round(minutesDiff),
+          gapHours: Math.round(hoursDiff * 10) / 10,
+          isLastCandleToday: lastCandleDate.toDateString() === now.toDateString(),
+          requestedEndDate: endDate
+        };
+        
+        // Calculate expected interval for this timeframe
+        const expectedIntervalSeconds: Record<string, number> = {
+          '1min': 60,
+          '5min': 300,
+          '15min': 900,
+          '60min': 3600,
+          '1day': 86400
+        };
+        const intervalMapping: Record<string, string> = {
+          '1m': '1min',
+          '5m': '5min',
+          '15m': '15min',
+          '1h': '60min',
+          '1d': '1day'
+        };
+        const backendInterval = intervalMapping[currentTimeframe] || currentTimeframe;
+        const intervalSeconds = expectedIntervalSeconds[backendInterval] || 86400;
+        
+        gapAnalysis.expectedInterval = {
+          timeframe: currentTimeframe,
+          backendInterval,
+          intervalSeconds,
+          isGapSignificant: timeDiff > intervalSeconds * 2,
+          missingCandlesEstimate: Math.floor(timeDiff / intervalSeconds)
+        };
+      }
+      
       console.log('📊 [useLiveChart] Backend API response received:', {
         symbol: currentSymbol,
+        timeframe: currentTimeframe,
         responseSuccess: response.success,
         responseSymbol: response.symbol,
         candlesLength: response.candles?.length,
-        firstCandle: response.candles?.[0],
-        lastCandle: response.candles?.[response.candles?.length - 1]
+        firstCandle: firstCandle,
+        lastCandle: lastCandle,
+        gapAnalysis
       });
+      
+      // Expanded gap analysis logging
+      if (gapAnalysis.lastCandleTimestamp) {
+        console.log('⏰ [useLiveChart] GAP ANALYSIS (After API Response):', {
+          'Last Candle Time': gapAnalysis.lastCandleLocalDate,
+          'Current Time': gapAnalysis.currentLocalDate,
+          'Gap (seconds)': gapAnalysis.gapSeconds,
+          'Gap (minutes)': gapAnalysis.gapMinutes,
+          'Gap (hours)': gapAnalysis.gapHours,
+          'Is Last Candle Today?': gapAnalysis.isLastCandleToday,
+          'Requested End Date': gapAnalysis.requestedEndDate,
+          'Expected Interval (seconds)': gapAnalysis.expectedInterval?.intervalSeconds,
+          'Is Gap Significant?': gapAnalysis.expectedInterval?.isGapSignificant,
+          'Estimated Missing Candles': gapAnalysis.expectedInterval?.missingCandlesEstimate
+        });
+      }
 
       // Add more detailed debugging for the first few candles
       if (response.candles && response.candles.length > 0) {
@@ -202,11 +298,24 @@ export function useLiveChart({
       console.log(`🔄 [useLiveChart] Converting ${response.candles.length} candles for ${currentSymbol}`);
       const convertedData = liveDataService.convertToChartData(response.candles);
       
-      console.log('🔄 [useLiveChart] Converted data sample:', {
+      // CRITICAL: Sort by time to ensure chronological order
+      // Backend returns candles in chronological order, but we need to ensure this
+      convertedData.sort((a, b) => a.time - b.time);
+      
+      // Log the full range of data we received
+      console.log('🔄 [useLiveChart] Converted and sorted data:', {
         originalCount: response.candles.length,
         convertedCount: convertedData.length,
-        firstConverted: convertedData[0],
-        lastConverted: convertedData[convertedData.length - 1]
+        firstCandle: {
+          time: convertedData[0]?.time,
+          date: convertedData[0] ? new Date(convertedData[0].time * 1000).toISOString() : 'null',
+          localDate: convertedData[0] ? new Date(convertedData[0].time * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'null'
+        },
+        lastCandle: {
+          time: convertedData[convertedData.length - 1]?.time,
+          date: convertedData[convertedData.length - 1] ? new Date(convertedData[convertedData.length - 1].time * 1000).toISOString() : 'null',
+          localDate: convertedData[convertedData.length - 1] ? new Date(convertedData[convertedData.length - 1].time * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'null'
+        }
       });
 
       // Validate data before setting
@@ -215,8 +324,8 @@ export function useLiveChart({
       }
       
       // Additional validation: check for reasonable price values
-      const lastCandle = convertedData[convertedData.length - 1];
-      const firstCandle = convertedData[0];
+      const lastConvertedCandle = convertedData[convertedData.length - 1];
+      const firstConvertedCandle = convertedData[0];
       
       // Check for suspicious price values (likely old data from different stock)
       // REMOVED: Hardcoded price range validation that was too restrictive
@@ -226,25 +335,25 @@ export function useLiveChart({
       let validationErrors: string[] = [];
       
       // Check OHLC logic consistency
-      if (lastCandle.high < lastCandle.low) {
+      if (lastConvertedCandle.high < lastConvertedCandle.low) {
         validationErrors.push('High < Low in last candle');
       }
-      if (lastCandle.high < Math.max(lastCandle.open, lastCandle.close)) {
+      if (lastConvertedCandle.high < Math.max(lastConvertedCandle.open, lastConvertedCandle.close)) {
         validationErrors.push('High < max(Open, Close) in last candle');
       }
-      if (lastCandle.low > Math.min(lastCandle.open, lastCandle.close)) {
+      if (lastConvertedCandle.low > Math.min(lastConvertedCandle.open, lastConvertedCandle.close)) {
         validationErrors.push('Low > min(Open, Close) in last candle');
       }
       
       // Check for reasonable price relationships (not absolute values)
-      const priceRange = Math.abs(lastCandle.close - firstCandle.close);
-      const avgPrice = (lastCandle.close + firstCandle.close) / 2;
+      const priceRange = Math.abs(lastConvertedCandle.close - firstConvertedCandle.close);
+      const avgPrice = (lastConvertedCandle.close + firstConvertedCandle.close) / 2;
       const priceChangePercent = (priceRange / avgPrice) * 100;
       
       // Log price information for debugging
       console.log(`🔍 [useLiveChart] Price analysis for ${currentSymbol}:`, {
-        lastClose: lastCandle.close,
-        firstClose: firstCandle.close,
+        lastClose: lastConvertedCandle.close,
+        firstClose: firstConvertedCandle.close,
         priceRange,
         avgPrice,
         priceChangePercent: priceChangePercent.toFixed(2) + '%'
@@ -256,12 +365,12 @@ export function useLiveChart({
       }
       
       // Check for negative prices (invalid)
-      if (lastCandle.close < 0 || firstCandle.close < 0) {
+      if (lastConvertedCandle.close < 0 || firstConvertedCandle.close < 0) {
         validationErrors.push('Negative prices detected');
       }
       
       // Check for zero prices (invalid)
-      if (lastCandle.close === 0 || firstCandle.close === 0) {
+      if (lastConvertedCandle.close === 0 || firstConvertedCandle.close === 0) {
         validationErrors.push('Zero prices detected');
       }
       
@@ -272,16 +381,107 @@ export function useLiveChart({
       
       console.log('✅ [useLiveChart] Data validation passed for', currentSymbol);
       
-      // Limit data points for performance
+      // Limit data points for performance - take the MOST RECENT candles
+      // Since data is sorted chronologically (oldest first), slice(-N) gives us the newest N
       const limitedData = convertedData.slice(-maxDataPoints);
+      
+      // Log what we're keeping vs discarding
+      if (convertedData.length > maxDataPoints) {
+        const discardedCount = convertedData.length - maxDataPoints;
+        console.log(`⚠️ [useLiveChart] Discarding ${discardedCount} older candles, keeping ${maxDataPoints} most recent`);
+        console.log(`📊 [useLiveChart] Data range after limiting:`, {
+          firstKept: {
+            time: limitedData[0].time,
+            date: new Date(limitedData[0].time * 1000).toISOString(),
+            localDate: new Date(limitedData[0].time * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+          },
+          lastKept: {
+            time: limitedData[limitedData.length - 1].time,
+            date: new Date(limitedData[limitedData.length - 1].time * 1000).toISOString(),
+            localDate: new Date(limitedData[limitedData.length - 1].time * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+          },
+          firstDiscarded: {
+            time: convertedData[0].time,
+            date: new Date(convertedData[0].time * 1000).toISOString(),
+            localDate: new Date(convertedData[0].time * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+          }
+        });
+      } else {
+        console.log(`✅ [useLiveChart] All ${convertedData.length} candles fit within limit of ${maxDataPoints}`);
+      }
+      
+      // Final gap analysis after limiting data
+      const finalLastCandle = limitedData[limitedData.length - 1];
+      const finalNow = new Date();
+      const finalNowTimestamp = Math.floor(finalNow.getTime() / 1000);
+      let finalGapAnalysis: any = {};
+      
+      if (finalLastCandle) {
+        const finalLastCandleDate = new Date(finalLastCandle.time * 1000);
+        const finalTimeDiff = finalNowTimestamp - finalLastCandle.time;
+        const finalMinutesDiff = finalTimeDiff / 60;
+        const finalHoursDiff = finalTimeDiff / 3600;
+        
+        const intervalMapping: Record<string, string> = {
+          '1m': '1min',
+          '5m': '5min',
+          '15m': '15min',
+          '1h': '60min',
+          '1d': '1day'
+        };
+        const expectedIntervalSeconds: Record<string, number> = {
+          '1min': 60,
+          '5min': 300,
+          '15min': 900,
+          '60min': 3600,
+          '1day': 86400
+        };
+        const backendInterval = intervalMapping[currentTimeframe] || currentTimeframe;
+        const intervalSeconds = expectedIntervalSeconds[backendInterval] || 86400;
+        
+        finalGapAnalysis = {
+          lastCandleTimestamp: finalLastCandle.time,
+          lastCandleDate: finalLastCandleDate.toISOString(),
+          lastCandleLocalDate: finalLastCandleDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+          currentTimestamp: finalNowTimestamp,
+          gapSeconds: finalTimeDiff,
+          gapMinutes: Math.round(finalMinutesDiff),
+          gapHours: Math.round(finalHoursDiff * 10) / 10,
+          isLastCandleToday: finalLastCandleDate.toDateString() === finalNow.toDateString(),
+          expectedIntervalSeconds: intervalSeconds,
+          isGapSignificant: finalTimeDiff > intervalSeconds * 2,
+          estimatedMissingCandles: Math.floor(finalTimeDiff / intervalSeconds),
+          willWebSocketFillGap: finalTimeDiff <= intervalSeconds * 2
+        };
+      }
       
       console.log('📊 [useLiveChart] Historical data loaded successfully:', {
         symbol: currentSymbol,
         timeframe: currentTimeframe,
         dataPoints: limitedData.length,
         firstCandle: limitedData[0],
-        lastCandle: limitedData[limitedData.length - 1]
+        lastCandle: finalLastCandle,
+        finalGapAnalysis
       });
+      
+      // Expanded final gap analysis logging
+      if (finalGapAnalysis.lastCandleTimestamp) {
+        console.log('⏰ [useLiveChart] FINAL GAP ANALYSIS (After Limiting Data):', {
+          'Last Candle Time': finalGapAnalysis.lastCandleLocalDate,
+          'Current Time': new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+          'Gap (seconds)': finalGapAnalysis.gapSeconds,
+          'Gap (minutes)': finalGapAnalysis.gapMinutes,
+          'Gap (hours)': finalGapAnalysis.gapHours,
+          'Is Last Candle Today?': finalGapAnalysis.isLastCandleToday,
+          'Expected Interval (seconds)': finalGapAnalysis.expectedIntervalSeconds,
+          'Is Gap Significant?': finalGapAnalysis.isGapSignificant,
+          'Estimated Missing Candles': finalGapAnalysis.estimatedMissingCandles,
+          'Will WebSocket Fill Gap?': finalGapAnalysis.willWebSocketFillGap
+        });
+        
+        // Log a clear summary
+        console.log(`📊 FINAL GAP SUMMARY: ${finalGapAnalysis.gapHours.toFixed(1)} hours (${finalGapAnalysis.estimatedMissingCandles} candles missing) - ${finalGapAnalysis.isLastCandleToday ? 'Last candle is from TODAY ✅' : 'Last candle is NOT from today ⚠️'} - ${finalGapAnalysis.willWebSocketFillGap ? 'WebSocket will fill gap ✅' : 'Gap too large for WebSocket ⚠️'}`);
+      }
       
       dataRef.current = limitedData;
       setState(prev => ({
@@ -357,6 +557,13 @@ export function useLiveChart({
         }
       }
 
+      console.log('🔌 [useLiveChart] Connecting WebSocket with:', {
+        symbol: symbolRef.current,
+        frontendTimeframe: currentTimeframe,
+        backendTimeframe: backendTimeframe,
+        timeframes: [backendTimeframe]
+      });
+
       wsRef.current = await liveDataService.connectWebSocket(
         [symbolRef.current], // Send symbol instead of token
         (wsData: WebSocketMessage) => {
@@ -366,8 +573,20 @@ export function useLiveChart({
           // console.log('📨 wsData.data type:', typeof wsData.data);
           
           // Enhanced message handling with better validation
+          // Log all WebSocket messages for debugging
+          console.log('📨 [useLiveChart] WebSocket message received:', {
+            type: wsData.type,
+            hasData: !!wsData.data,
+            timeframe: timeframeRef.current,
+            timestamp: new Date().toISOString()
+          });
+          
           if (wsData.type === 'candle' && wsData.data) {
-            // console.log('🕯️ Processing candle data:', wsData.data);
+            console.log('🕯️ [useLiveChart] Processing candle data:', {
+              candleData: wsData.data,
+              timeframe: timeframeRef.current,
+              candleTime: wsData.data.start
+            });
             try {
               const candleData = wsData.data;
               // WebSocketCandleMessage.data uses 'start' property, not 'time'
@@ -376,6 +595,27 @@ export function useLiveChart({
               if (candleData && typeof candleData.open === 'number' && typeof candleTime === 'number') {
                 setState(prev => {
                   const newData = [...prev.data];
+                  
+                  // Calculate expected interval in seconds based on current timeframe
+                  const intervalSeconds: Record<string, number> = {
+                    '1min': 60,
+                    '5min': 300,
+                    '15min': 900,
+                    '60min': 3600,
+                    '1day': 86400
+                  };
+                  
+                  // Map timeframe to backend format (handle both frontend and backend formats)
+                  const currentTimeframe = timeframeRef.current;
+                  let currentBackendTimeframe: string;
+                  if (INTERVAL_MAPPING[currentTimeframe as keyof typeof INTERVAL_MAPPING]) {
+                    currentBackendTimeframe = INTERVAL_MAPPING[currentTimeframe as keyof typeof INTERVAL_MAPPING];
+                  } else {
+                    const backendFormats = ['1min', '5min', '15min', '60min', '1day'];
+                    currentBackendTimeframe = backendFormats.includes(currentTimeframe) ? currentTimeframe : '1day';
+                  }
+                  const expectedInterval = intervalSeconds[currentBackendTimeframe] || 86400;
+                  
                   // Convert WebSocket candle data to LiveChartData format
                   // Map 'start' to 'time' for consistency with chart data format
                   const liveChartData: LiveChartData = {
@@ -388,103 +628,394 @@ export function useLiveChart({
                     volume: candleData.volume
                   };
                   
-                  const existingIndex = newData.findIndex(d => d.time === candleTime);
+                  // Get the last historical candle for comparison
+                  const lastHistoricalCandle = newData.length > 0 ? newData[newData.length - 1] : null;
                   
-                  if (existingIndex >= 0) {
-                    newData[existingIndex] = liveChartData;
-                    // console.log('🔄 Updated existing candle:', liveChartData);
-                  } else {
-                    newData.push(liveChartData);
-                    // console.log('➕ Added new candle:', liveChartData);
+                  // Check gap between last historical candle and this WebSocket candle
+                  let gapInfo: any = {};
+                  if (lastHistoricalCandle) {
+                    const timeDiff = candleTime - lastHistoricalCandle.time;
+                    gapInfo = {
+                      lastHistoricalTimestamp: lastHistoricalCandle.time,
+                      lastHistoricalDate: new Date(lastHistoricalCandle.time * 1000).toISOString(),
+                      websocketCandleTimestamp: candleTime,
+                      websocketCandleDate: new Date(candleTime * 1000).toISOString(),
+                      gapSeconds: timeDiff,
+                      gapMinutes: Math.round(timeDiff / 60),
+                      gapHours: Math.round(timeDiff / 3600 * 10) / 10,
+                      expectedInterval,
+                      isExactMatch: timeDiff === 0,
+                      isNewer: timeDiff > 0,
+                      isOlder: timeDiff < 0
+                    };
                   }
                   
-                  // console.log('🔄 Setting lastTickPrice from candle data:', liveChartData.close, 'old lastTickPrice:', prev.lastTickPrice);
-                  return {
-                    ...prev,
-                    data: newData,
-                    lastUpdate: Date.now(),
-                    isLive: true,
-                    lastTickPrice: liveChartData.close,
-                    lastTickTime: candleTime
-                  };
+                  // Smart candle matching logic:
+                  // 1. If exact timestamp match with last candle: Update/merge (discard duplicate)
+                  // 2. If WebSocket candle is newer: Append (during market hours, new candle)
+                  // 3. Otherwise: Use interval-based matching for other cases
+                  
+                  if (lastHistoricalCandle && candleTime === lastHistoricalCandle.time) {
+                    // Exact timestamp match: Update the last candle with WebSocket data (more recent)
+                    // This handles the case where historical data and WebSocket both have the same candle
+                    // Use WebSocket data as it's more up-to-date
+                    newData[newData.length - 1] = liveChartData;
+                    console.log('🔄 [useLiveChart] Exact timestamp match - Updated last candle with WebSocket data (duplicate handling):', {
+                      timestamp: candleTime,
+                      candle: liveChartData,
+                      timeframe: timeframeRef.current,
+                      dataLength: newData.length,
+                      gapInfo
+                    });
+                    
+                    // Update dataRef to keep it in sync
+                    dataRef.current = newData;
+                    
+                    return {
+                      ...prev,
+                      data: newData,
+                      lastUpdate: Date.now(),
+                      isLive: true,
+                      lastTickPrice: liveChartData.close,
+                      lastTickTime: candleTime
+                    };
+                  } else if (lastHistoricalCandle && candleTime > lastHistoricalCandle.time) {
+                    // WebSocket candle is newer: Append it (new candle during market hours)
+                    newData.push(liveChartData);
+                    // Sort by time to maintain chronological order (should already be sorted, but ensure it)
+                    newData.sort((a, b) => a.time - b.time);
+                    
+                    // Limit to maxDataPoints to prevent unbounded growth
+                    // Keep the most recent candles
+                    const limitedData = newData.length > maxDataPoints 
+                      ? newData.slice(-maxDataPoints) 
+                      : newData;
+                    
+                    console.log('➕ [useLiveChart] WebSocket candle is newer - Appended new candle:', {
+                      candle: liveChartData,
+                      timeframe: timeframeRef.current,
+                      dataLength: limitedData.length,
+                      expectedInterval,
+                      maxDataPoints,
+                      gapInfo
+                    });
+                    
+                    // Update dataRef to keep it in sync
+                    dataRef.current = limitedData;
+                    
+                    return {
+                      ...prev,
+                      data: limitedData,
+                      lastUpdate: Date.now(),
+                      isLive: true,
+                      lastTickPrice: liveChartData.close,
+                      lastTickTime: candleTime
+                    };
+                  } else {
+                    // Use interval-based matching for other cases (candle might be older or in middle of data)
+                    // Find candles within the same interval window (allows for small timestamp differences)
+                    const existingIndex = newData.findIndex(d => {
+                      const timeDiff = Math.abs(d.time - candleTime);
+                      // Match if timestamps are within the same interval window
+                      // Use 80% of interval as tolerance to account for rounding differences
+                      return timeDiff < expectedInterval * 0.8;
+                    });
+                    
+                    if (existingIndex >= 0) {
+                      // Update existing candle - use the WebSocket timestamp to maintain consistency
+                      newData[existingIndex] = liveChartData;
+                      console.log('🔄 [useLiveChart] Interval-based match - Updated existing candle:', {
+                        index: existingIndex,
+                        candle: liveChartData,
+                        timeframe: timeframeRef.current,
+                        dataLength: newData.length,
+                        gapInfo
+                      });
+                      
+                      // Update dataRef to keep it in sync
+                      dataRef.current = newData;
+                      
+                      return {
+                        ...prev,
+                        data: newData,
+                        lastUpdate: Date.now(),
+                        isLive: true,
+                        lastTickPrice: liveChartData.close,
+                        lastTickTime: candleTime
+                      };
+                    } else {
+                      // No match found: Add new candle
+                      newData.push(liveChartData);
+                      // Sort by time to maintain chronological order
+                      newData.sort((a, b) => a.time - b.time);
+                      
+                      // Limit to maxDataPoints to prevent unbounded growth
+                      // Keep the most recent candles
+                      const limitedData = newData.length > maxDataPoints 
+                        ? newData.slice(-maxDataPoints) 
+                        : newData;
+                      
+                      console.log('➕ [useLiveChart] No match found - Added new candle:', {
+                        candle: liveChartData,
+                        timeframe: timeframeRef.current,
+                        dataLength: limitedData.length,
+                        expectedInterval,
+                        maxDataPoints,
+                        gapInfo
+                      });
+                      
+                      // Update dataRef to keep it in sync
+                      dataRef.current = limitedData;
+                      
+                      return {
+                        ...prev,
+                        data: limitedData,
+                        lastUpdate: Date.now(),
+                        isLive: true,
+                        lastTickPrice: liveChartData.close,
+                        lastTickTime: candleTime
+                      };
+                    }
+                  }
                 });
               }
             } catch (error) {
               // console.error('Error processing candle data:', error);
             }
           } else if (wsData.type === 'tick') {
-            // console.log('🔍 Processing tick data:', wsData);
-            // console.log('🔍 Tick data type:', typeof wsData);
-            // console.log('🔍 Tick data keys:', Object.keys(wsData));
+            console.log('🔍 [useLiveChart] Processing tick data:', {
+              tickData: wsData,
+              timeframe: timeframeRef.current
+            });
             
             try {
               // Handle both direct tick data and nested data structure
               const tickData = (wsData as any).data || wsData;
               const price = parseFloat(tickData.price || tickData.close || tickData.last_price || '0');
-              const tickTime = parseFloat(tickData.timestamp || tickData.time || Date.now() / 1000);
+              let tickTime = parseFloat(tickData.timestamp || tickData.time || Date.now() / 1000);
+              const tickVolume = parseFloat(tickData.volume || tickData.volume_traded || '0') || 0;
+              
+              // Normalize tick timestamp to seconds if it's in milliseconds
+              // Timestamps > 1e12 are likely in milliseconds, convert to seconds
+              if (tickTime > 1e12) {
+                tickTime = tickTime / 1000;
+              }
               
               if (price > 0 && tickTime > 0) {
-                // console.log('🔄 TICK RECEIVED:', { price, tickTime, originalData: tickData });
+                console.log('🔄 [useLiveChart] TICK RECEIVED:', { 
+                  price, 
+                  tickTime, 
+                  tickVolume,
+                  timeframe: timeframeRef.current,
+                  originalData: tickData 
+                });
                 
                 // Update last tick info
                 lastTickRef.current = { price, time: tickTime };
                 
                 setState(prev => {
                   const newData = [...prev.data];
+                  
+                  // Calculate expected interval in seconds based on current timeframe
+                  const intervalSeconds: Record<string, number> = {
+                    '1min': 60,
+                    '5min': 300,
+                    '15min': 900,
+                    '60min': 3600,
+                    '1day': 86400
+                  };
+                  // Map timeframe to backend format (handle both frontend and backend formats)
+                  const currentTimeframe = timeframeRef.current;
+                  let currentBackendTimeframe: string;
+                  if (INTERVAL_MAPPING[currentTimeframe as keyof typeof INTERVAL_MAPPING]) {
+                    currentBackendTimeframe = INTERVAL_MAPPING[currentTimeframe as keyof typeof INTERVAL_MAPPING];
+                  } else {
+                    const backendFormats = ['1min', '5min', '15min', '60min', '1day'];
+                    currentBackendTimeframe = backendFormats.includes(currentTimeframe) ? currentTimeframe : '1day';
+                  }
+                  const expectedInterval = intervalSeconds[currentBackendTimeframe] || 86400;
+                  
                   if (newData.length > 0) {
                     const lastCandle = newData[newData.length - 1];
-                    
-                    // Calculate expected interval in seconds based on current timeframe
-                    const intervalSeconds: Record<string, number> = {
-                      '1min': 60,
-                      '5min': 300,
-                      '15min': 900,
-                      '60min': 3600,
-                      '1day': 86400
-                    };
-                    // Map timeframe to backend format (handle both frontend and backend formats)
-                    const currentTimeframe = timeframeRef.current;
-                    let currentBackendTimeframe: string;
-                    if (INTERVAL_MAPPING[currentTimeframe as keyof typeof INTERVAL_MAPPING]) {
-                      currentBackendTimeframe = INTERVAL_MAPPING[currentTimeframe as keyof typeof INTERVAL_MAPPING];
-                    } else {
-                      const backendFormats = ['1min', '5min', '15min', '60min', '1day'];
-                      currentBackendTimeframe = backendFormats.includes(currentTimeframe) ? currentTimeframe : '1day';
-                    }
-                    const expectedInterval = intervalSeconds[currentBackendTimeframe] || 86400;
                     
                     // Calculate the time window for the last candle
                     const lastCandleStartTime = lastCandle.time;
                     const lastCandleEndTime = lastCandleStartTime + expectedInterval;
                     
-                    // Only update if tick timestamp falls within the last candle's time window
-                    // This prevents daily tick data from incorrectly updating interval-specific candles
-                    if (tickTime >= lastCandleStartTime && tickTime < lastCandleEndTime) {
+                    // Check if tick falls within the last candle's time window
+                    const timeDiff = tickTime - lastCandleStartTime;
+                    const isWithinWindow = tickTime >= lastCandleStartTime && tickTime < lastCandleEndTime;
+                    
+                    console.log('🔍 [useLiveChart] Checking tick against candle window:', {
+                      tickTime,
+                      tickTimeDate: new Date(tickTime * 1000).toISOString(),
+                      lastCandleStartTime,
+                      lastCandleStartDate: new Date(lastCandleStartTime * 1000).toISOString(),
+                      lastCandleEndTime,
+                      lastCandleEndDate: new Date(lastCandleEndTime * 1000).toISOString(),
+                      timeDiff,
+                      expectedInterval,
+                      isWithinWindow,
+                      timeframe: timeframeRef.current
+                    });
+                    
+                    if (isWithinWindow) {
+                      // Update the last candle with new tick data
                       const oldClose = lastCandle.close;
                       
-                      // Update the last candle with new price
                       newData[newData.length - 1] = {
                         ...lastCandle,
                         close: price,
                         high: Math.max(lastCandle.high, price),
-                        low: Math.min(lastCandle.low, price)
+                        low: Math.min(lastCandle.low, price),
+                        volume: lastCandle.volume + tickVolume // Accumulate volume
                       };
                       
-                      // console.log('📊 Candle updated with tick:', {
-                      //   oldClose,
-                      //   newClose: price,
-                      //   dataLength: newData.length
-                      // });
+                      console.log('📊 [useLiveChart] Updated existing candle with tick:', {
+                        oldClose,
+                        newClose: price,
+                        high: newData[newData.length - 1].high,
+                        low: newData[newData.length - 1].low,
+                        dataLength: newData.length,
+                        timeframe: timeframeRef.current
+                      });
+                      
+                      // Update dataRef to keep it in sync
+                      dataRef.current = newData;
+                      
+                      return {
+                        ...prev,
+                        data: newData,
+                        lastUpdate: Date.now(),
+                        isLive: true,
+                        lastTickPrice: price,
+                        lastTickTime: tickTime
+                      };
                     } else {
-                      // Tick is outside the current candle's time window, skip update
-                      // console.log('⚠️ Tick outside current candle window, skipping update:', {
-                      //   tickTime,
-                      //   lastCandleStartTime,
-                      //   lastCandleEndTime,
-                      //   expectedInterval
-                      // });
+                      // Tick is outside the current candle's time window - create a new candle
+                      // Calculate the start time of the interval that contains this tick
+                      // Round down to the nearest interval boundary
+                      const newCandleStartTime = Math.floor(tickTime / expectedInterval) * expectedInterval;
+                      
+                      // Check if this new candle timestamp matches the last historical candle
+                      // If it does, update the last candle instead of creating a duplicate
+                      if (newCandleStartTime === lastCandleStartTime) {
+                        // Same candle interval: Update the last candle with tick data
+                        const oldClose = lastCandle.close;
+                        
+                        newData[newData.length - 1] = {
+                          ...lastCandle,
+                          close: price,
+                          high: Math.max(lastCandle.high, price),
+                          low: Math.min(lastCandle.low, price),
+                          volume: lastCandle.volume + tickVolume
+                        };
+                        
+                        console.log('🔄 [useLiveChart] Tick in same interval as last candle - Updated (duplicate prevention):', {
+                          newCandleStartTime,
+                          lastCandleStartTime,
+                          oldClose,
+                          newClose: price,
+                          timeframe: timeframeRef.current
+                        });
+                        
+                        // Update dataRef to keep it in sync
+                        dataRef.current = newData;
+                        
+                        return {
+                          ...prev,
+                          data: newData,
+                          lastUpdate: Date.now(),
+                          isLive: true,
+                          lastTickPrice: price,
+                          lastTickTime: tickTime
+                        };
+                      }
+                      
+                      console.log('🆕 [useLiveChart] Tick outside current candle window, creating new candle:', {
+                        tickTime,
+                        tickTimeDate: new Date(tickTime * 1000).toISOString(),
+                        lastCandleStartTime,
+                        lastCandleEndTime,
+                        lastCandleEndDate: new Date(lastCandleEndTime * 1000).toISOString(),
+                        expectedInterval,
+                        newCandleStartTime,
+                        newCandleStartDate: new Date(newCandleStartTime * 1000).toISOString(),
+                        timeframe: timeframeRef.current
+                      });
+                      
+                      // Create a new candle for the new interval
+                      const newCandle: LiveChartData = {
+                        date: new Date(newCandleStartTime * 1000).toISOString(),
+                        time: newCandleStartTime,
+                        open: price, // Use current price as open (or use last close if available)
+                        high: price,
+                        low: price,
+                        close: price,
+                        volume: tickVolume
+                      };
+                      
+                      // If we have a previous candle, use its close as the new candle's open
+                      if (newData.length > 0) {
+                        newCandle.open = lastCandle.close;
+                      }
+                      
+                      newData.push(newCandle);
+                      // Sort by time to maintain chronological order
+                      newData.sort((a, b) => a.time - b.time);
+                      
+                      // Limit to maxDataPoints to prevent unbounded growth
+                      // Keep the most recent candles
+                      const limitedData = newData.length > maxDataPoints 
+                        ? newData.slice(-maxDataPoints) 
+                        : newData;
+                      
+                      console.log('➕ [useLiveChart] Created new candle from tick:', {
+                        newCandle,
+                        tickTime,
+                        newCandleStartTime,
+                        expectedInterval,
+                        timeframe: timeframeRef.current,
+                        newDataLength: newData.length,
+                        limitedDataLength: limitedData.length,
+                        maxDataPoints,
+                        firstCandleTime: limitedData[0]?.time,
+                        lastCandleTime: limitedData[limitedData.length - 1]?.time
+                      });
+                      
+                      // Update dataRef to keep it in sync
+                      dataRef.current = limitedData;
+                      
+                      return {
+                        ...prev,
+                        data: limitedData,
+                        lastUpdate: Date.now(),
+                        isLive: true,
+                        lastTickPrice: price,
+                        lastTickTime: tickTime
+                      };
                     }
-                  }
+                  } else {
+                    // No existing data - create first candle from tick
+                    const newCandleStartTime = Math.floor(tickTime / expectedInterval) * expectedInterval;
+                    const newCandle: LiveChartData = {
+                      date: new Date(newCandleStartTime * 1000).toISOString(),
+                      time: newCandleStartTime,
+                      open: price,
+                      high: price,
+                      low: price,
+                      close: price,
+                      volume: tickVolume
+                    };
+                    
+                    newData.push(newCandle);
+                    console.log('🆕 [useLiveChart] Created first candle from tick:', {
+                      newCandle,
+                      timeframe: timeframeRef.current
+                    });
+                    
+                    // Update dataRef to keep it in sync
+                    dataRef.current = newData;
                   
                   return {
                     ...prev,
@@ -494,10 +1025,11 @@ export function useLiveChart({
                     lastTickPrice: price,
                     lastTickTime: tickTime
                   };
+                  }
                 });
               }
             } catch (error) {
-              // console.error('Error processing tick data:', error);
+              console.error('❌ [useLiveChart] Error processing tick data:', error);
             }
           } else if (wsData.type === 'subscribed') {
             // console.log('✅ Successfully subscribed to WebSocket feed');

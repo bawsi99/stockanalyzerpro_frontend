@@ -84,7 +84,8 @@ class LiveDataService {
     symbol: string,
     interval: string = '1d',
     exchange: string = 'NSE',
-    limit: number = 1000
+    limit: number = 1000,
+    endDate?: string
   ): Promise<HistoricalDataResponse> {
     const apiCallKey = `getHistoricalData-${symbol}-${interval}`;
     
@@ -93,6 +94,7 @@ class LiveDataService {
       interval,
       exchange,
       limit,
+      endDate,
       apiCallKey
     });
     
@@ -107,14 +109,67 @@ class LiveDataService {
 
         const backendInterval = INTERVAL_MAPPING[interval as keyof typeof INTERVAL_MAPPING] || '1day';
         
-        const url = `${ENDPOINTS.DATA.STOCK_HISTORY}/${symbol}/history?interval=${backendInterval}&exchange=${exchange}&limit=${limit}`;
+        // Build URL with end_date if provided
+        // Use end_date approach for all timeframes to ensure we get today's data
+        // The backend supports end_date for both daily and intraday timeframes
+        console.log('🔍 [liveDataService] Building URL - endDate provided:', !!endDate, 'endDate value:', endDate);
+        let url: string;
+        let calculatedPeriod: number | undefined;
+        
+        if (endDate) {
+          // For daily timeframe, use period + end_date (works correctly)
+          if (backendInterval === '1day') {
+            const period = limit;
+            calculatedPeriod = period;
+            url = `${ENDPOINTS.DATA.STOCK_HISTORY}/${symbol}/history?interval=${backendInterval}&exchange=${exchange}&period=${period}&end_date=${encodeURIComponent(endDate)}`;
+            
+            console.log('🔗 [liveDataService] Using period + end_date for daily:', {
+              symbol,
+              interval,
+              backendInterval,
+              limit,
+              period,
+              endDate,
+              url
+            });
+          } else {
+            // For intraday timeframes: Use ONLY limit (no end_date)
+            // Backend automatically uses latest available candle and fetches backwards
+            // This includes today's incomplete candles
+            url = `${ENDPOINTS.DATA.STOCK_HISTORY}/${symbol}/history?interval=${backendInterval}&exchange=${exchange}&limit=${limit}`;
+            
+            console.log('🔗 [liveDataService] Using limit-only for intraday (no end_date - gets latest data including today):', {
+              symbol,
+              interval,
+              backendInterval,
+              limit,
+              endDate: 'ignored (not used for intraday)',
+              url,
+              reason: 'No end_date - backend automatically uses latest available candle and fetches backwards, including today\'s data'
+            });
+          }
+        } else {
+          url = `${ENDPOINTS.DATA.STOCK_HISTORY}/${symbol}/history?interval=${backendInterval}&exchange=${exchange}&limit=${limit}`;
+        }
+        
         console.log('🔗 [liveDataService] Calling historical data API:', {
           symbol,
           interval,
           backendInterval,
           exchange,
           limit,
+          endDate: endDate || 'not provided (using limit only)',
+          calculatedPeriod,
           url
+        });
+        console.log('🔗 [liveDataService] FULL API REQUEST URL:', url);
+        console.log('🔗 [liveDataService] Request parameters breakdown:', {
+          endpoint: `${ENDPOINTS.DATA.STOCK_HISTORY}/${symbol}/history`,
+          queryParams: {
+            interval: backendInterval,
+            exchange: exchange,
+            ...(endDate && calculatedPeriod ? { period: calculatedPeriod, end_date: endDate } : { limit: limit })
+          }
         });
         
         const response = await fetch(url, {
@@ -153,15 +208,164 @@ class LiveDataService {
           error: data.error
         });
         
+        // Check if backend returned fewer candles than requested
+        if (data.candles && endDate && calculatedPeriod) {
+          const expectedCandles = limit;
+          const actualCandles = data.candles.length;
+          console.log('🔍 [liveDataService] Candle count analysis:', {
+            requestedLimit: limit,
+            actualCandles: actualCandles,
+            expectedCandles: expectedCandles,
+            difference: actualCandles - expectedCandles,
+            isLessThanExpected: actualCandles < expectedCandles,
+            requestedPeriod: calculatedPeriod,
+            requestedEndDate: endDate
+          });
+        }
+        
         if (!data.success) {
           throw new Error(data.error || 'Failed to fetch historical data');
         }
 
+        // Detailed timestamp analysis
+        console.log('🔍 [liveDataService] Starting timestamp analysis - candles count:', data.candles?.length);
+        const now = new Date();
+        const nowTimestamp = Math.floor(now.getTime() / 1000);
+        const firstCandle = data.candles?.[0];
+        const lastCandle = data.candles?.[data.candles?.length - 1];
+        
+        // Parse the requested end_date to compare with actual last candle
+        let requestedEndDateTimestamp: number | null = null;
+        if (endDate) {
+          const endDateParts = endDate.split('-');
+          if (endDateParts.length === 3) {
+            // Create date at start of day in IST (midnight)
+            const requestedDate = new Date(parseInt(endDateParts[0]), parseInt(endDateParts[1]) - 1, parseInt(endDateParts[2]));
+            // Convert to UTC timestamp (IST is UTC+5:30, so subtract 5.5 hours)
+            requestedEndDateTimestamp = Math.floor(requestedDate.getTime() / 1000) - (5.5 * 3600);
+          }
+        }
+        
+        console.log('🔍 [liveDataService] First candle:', firstCandle ? { time: firstCandle.time, date: new Date(firstCandle.time * 1000).toISOString() } : 'null');
+        console.log('🔍 [liveDataService] Last candle:', lastCandle ? { time: lastCandle.time, date: new Date(lastCandle.time * 1000).toISOString() } : 'null');
+        console.log('🔍 [liveDataService] Current time:', { timestamp: nowTimestamp, date: now.toISOString() });
+        console.log('🔍 [liveDataService] Requested end_date:', endDate, 'Parsed timestamp:', requestedEndDateTimestamp, 'Date:', requestedEndDateTimestamp ? new Date(requestedEndDateTimestamp * 1000).toISOString() : 'null');
+        
+        // Check if last candle is from the requested end_date
+        if (lastCandle && requestedEndDateTimestamp) {
+          const lastCandleDate = new Date(lastCandle.time * 1000);
+          const requestedDate = new Date(requestedEndDateTimestamp * 1000);
+          const lastCandleDateStr = lastCandleDate.toISOString().split('T')[0];
+          const requestedDateStr = requestedDate.toISOString().split('T')[0];
+          
+          const daysDifference = Math.floor((lastCandle.time - requestedEndDateTimestamp) / 86400);
+          const hoursDifference = (lastCandle.time - requestedEndDateTimestamp) / 3600;
+          
+          console.log('🔍 [liveDataService] Date comparison:', {
+            lastCandleDateStr,
+            requestedDateStr,
+            isFromRequestedDate: lastCandleDateStr === requestedDateStr,
+            daysDifference,
+            hoursDifference: hoursDifference.toFixed(2),
+            issue: daysDifference < 0 ? `Last candle is ${Math.abs(daysDifference)} day(s) BEFORE requested end_date` : 
+                   daysDifference > 0 ? `Last candle is ${daysDifference} day(s) AFTER requested end_date` :
+                   'Last candle is from requested date'
+          });
+          
+          // If last candle is before requested end_date, the backend is not returning today's data
+          if (daysDifference < 0) {
+            console.warn('⚠️ [liveDataService] BACKEND ISSUE: Requested end_date is', endDate, 'but last candle is from', lastCandleDateStr, '- Backend is not returning today\'s data for intraday timeframes');
+          }
+        }
+        
+        let timestampAnalysis: any = {
+          currentTime: {
+            timestamp: nowTimestamp,
+            date: now.toISOString(),
+            localDate: now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+          },
+          requestedEndDate: endDate
+        };
+        
+        if (firstCandle && lastCandle) {
+          console.log('🔍 [liveDataService] Both candles exist, calculating gap...');
+          const firstCandleDate = new Date(firstCandle.time * 1000);
+          const lastCandleDate = new Date(lastCandle.time * 1000);
+          const timeDiffFromNow = nowTimestamp - lastCandle.time;
+          const hoursDiff = timeDiffFromNow / 3600;
+          const minutesDiff = timeDiffFromNow / 60;
+          
+          timestampAnalysis.dataRange = {
+            firstCandle: {
+              timestamp: firstCandle.time,
+              date: firstCandleDate.toISOString(),
+              localDate: firstCandleDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+            },
+            lastCandle: {
+              timestamp: lastCandle.time,
+              date: lastCandleDate.toISOString(),
+              localDate: lastCandleDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+            },
+            gapFromNow: {
+              seconds: timeDiffFromNow,
+              minutes: Math.round(minutesDiff),
+              hours: Math.round(hoursDiff * 10) / 10,
+              isToday: lastCandleDate.toDateString() === now.toDateString()
+            }
+          };
+          
+          // Check if last candle is from today
+          const lastCandleDateStr = lastCandleDate.toISOString().split('T')[0];
+          const todayDateStr = now.toISOString().split('T')[0];
+          timestampAnalysis.isLastCandleToday = lastCandleDateStr === todayDateStr;
+          
+          // Check if there's a significant gap (more than 1 interval)
+          const expectedIntervalSeconds: Record<string, number> = {
+            '1min': 60,
+            '5min': 300,
+            '15min': 900,
+            '60min': 3600,
+            '1day': 86400
+          };
+          const intervalSeconds = expectedIntervalSeconds[backendInterval] || 86400;
+          timestampAnalysis.gapAnalysis = {
+            intervalSeconds,
+            timeDiffFromNow,
+            isGapSignificant: timeDiffFromNow > intervalSeconds * 2,
+            expectedNextCandleTime: lastCandle.time + intervalSeconds,
+            expectedNextCandleDate: new Date((lastCandle.time + intervalSeconds) * 1000).toISOString()
+          };
+        }
+
         console.log(`✅ [liveDataService] Successfully fetched data for ${symbol}:`, {
           candlesCount: data.candles?.length,
-          firstCandle: data.candles?.[0],
-          lastCandle: data.candles?.[data.candles?.length - 1]
+          firstCandle: firstCandle,
+          lastCandle: lastCandle,
+          timestampAnalysis
         });
+        
+        // Expanded gap analysis logging
+        if (timestampAnalysis.dataRange) {
+          const gapSeconds = timestampAnalysis.dataRange.gapFromNow.seconds;
+          const gapHours = timestampAnalysis.dataRange.gapFromNow.hours;
+          const intervalSeconds = timestampAnalysis.gapAnalysis?.intervalSeconds || 3600;
+          const missingCandles = Math.floor(gapSeconds / intervalSeconds);
+          
+          console.log('⏰ [liveDataService] TIMESTAMP GAP ANALYSIS:', {
+            'Last Candle Time': timestampAnalysis.dataRange.lastCandle.localDate,
+            'Current Time': timestampAnalysis.currentTime.localDate,
+            'Gap (seconds)': gapSeconds,
+            'Gap (minutes)': timestampAnalysis.dataRange.gapFromNow.minutes,
+            'Gap (hours)': gapHours,
+            'Is Last Candle Today?': timestampAnalysis.isLastCandleToday,
+            'Is Gap Significant?': timestampAnalysis.gapAnalysis?.isGapSignificant,
+            'Expected Interval (seconds)': intervalSeconds,
+            'Estimated Missing Candles': missingCandles
+          });
+          
+          // Log a clear summary
+          console.log(`📊 GAP SUMMARY: ${gapHours.toFixed(1)} hours (${missingCandles} candles missing) - ${timestampAnalysis.isLastCandleToday ? 'Last candle is from TODAY' : 'Last candle is NOT from today'}`);
+        }
 
         return data;
       } catch (error) {
@@ -329,7 +533,7 @@ class LiveDataService {
               symbols: symbols, // Send symbols instead of tokens
               timeframes: timeframes
             };
-            // console.log('Sending subscription message:', subscriptionMessage);
+            console.log('📤 [liveDataService] Sending WebSocket subscription message:', subscriptionMessage);
             this.wsConnection.send(JSON.stringify(subscriptionMessage));
           } catch (error) {
             // console.error('Error sending subscription message:', error);
@@ -354,12 +558,13 @@ class LiveDataService {
             return;
           }
 
-          // console.log('WebSocket message received:', {
-          //   type: data.type,
-          //   timestamp: new Date().toISOString(),
-          //   dataLength: JSON.stringify(data).length,
-          //   fullData: data // Log the full data to see structure
-          // });
+          console.log('📥 [liveDataService] WebSocket message received:', {
+            type: data.type,
+            timestamp: new Date().toISOString(),
+            dataLength: JSON.stringify(data).length,
+            hasData: !!data.data,
+            fullData: data // Log the full data to see structure
+          });
 
           // Process the message
           onData(data);
