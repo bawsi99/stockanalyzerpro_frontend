@@ -167,6 +167,24 @@ export function useLiveChart({
     try {
       console.log(`🔄 [useLiveChart] Starting loadHistoricalData for ${currentSymbol} (attempt ${retryCount + 1})`);
 
+      // Calculate number of days to fetch based on interval
+      // Limit parameter represents number of days, not candles
+      const getDaysForInterval = (timeframe: string): number => {
+        const daysToFetch: Record<string, number> = {
+          '1m': 30,       // 1 minute: 30 days
+          '5m': 90,       // 5 minute: 90 days
+          '15m': 180,     // 15 minute: 180 days
+          '30m': 180,     // 30 minute: 180 days
+          '1h': 365,      // 1 hour: 365 days
+          '1d': 2000,     // 1 day: 2000 days
+        };
+
+        return daysToFetch[timeframe] || 1;
+      };
+
+      const daysLimit = getDaysForInterval(currentTimeframe);
+      console.log(`📊 [useLiveChart] Using limit=${daysLimit} days for interval=${currentTimeframe}`);
+
       // Get date in YYYY-MM-DD format for historical data request
       // For daily timeframe: use end_date (works correctly)
       // For intraday timeframes: don't use end_date - backend automatically uses latest available candle
@@ -187,7 +205,7 @@ export function useLiveChart({
         currentSymbol,
         currentTimeframe,
         exchange,
-        maxDataPoints,
+        daysLimit,  // Send number of days as limit
         endDate
       );
 
