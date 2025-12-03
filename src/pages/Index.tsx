@@ -1,7 +1,6 @@
 import Hero from "@/components/Hero";
 import Problem from "@/components/Problem";
 import Solution from "@/components/Solution";
-import TechnicalAgent from "@/components/TechnicalAgent";
 import Traction from "@/components/Traction";
 import Footer from "@/components/Footer";
 import { useEffect } from "react";
@@ -20,7 +19,6 @@ const Index = () => {
     <Hero key="hero" />,
     <Problem key="problem" />,
     <Solution key="solution" />,
-    <TechnicalAgent key="technical-agent" />,
     <Traction key="traction" />,
     <Footer key="footer" />,
   ];
