@@ -194,6 +194,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const frontendUrl = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${frontendUrl}/reset-password`,
+      });
+
+      if (error) {
+        return { error: { message: error.message } };
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      return { error: { message: error.message || 'Failed to send password reset email' } };
+    }
+  };
+
   const value = {
     user,
     session,
@@ -202,6 +219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signInWithGoogle,
     signOut,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
