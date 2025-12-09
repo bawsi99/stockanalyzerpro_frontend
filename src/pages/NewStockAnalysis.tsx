@@ -543,11 +543,6 @@ const NewStockAnalysis = () => {
                         </CardDescription>
                       </div>
                     </div>
-                    <div className="flex-shrink-0">
-                      <span className="inline-block bg-white/20 text-white text-sm font-semibold px-3 py-1 rounded-full border border-white/30">
-                        🚀 Now 2x faster!
-                      </span>
-                    </div>
                   </div>
                 </CardHeader>
                 
@@ -843,7 +838,7 @@ const NewStockAnalysis = () => {
                       </div>
 
                       <div className="!mt-4 text-center text-sm text-slate-500">
-                        Typical duration 1-2 minutes.
+                        Typical duration 2-3 minutes.
                       </div>
                     </div>
                   </form>

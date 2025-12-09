@@ -10,7 +10,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { validateConfig } from "@/config";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
-import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import StockAnalysis from "./pages/StockAnalysis";
 import Output from "./pages/Output";
 import NewStockAnalysis from "./pages/NewStockAnalysis";
@@ -38,7 +38,7 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route 
                 path="/dashboard" 
                 element={

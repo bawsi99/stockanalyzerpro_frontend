@@ -27,7 +27,7 @@ const Header = () => {
         title: "Signed out successfully",
         description: "You have been logged out.",
       });
-      navigate("/auth");
+      navigate("/login");
     }
   };
 
@@ -66,6 +66,15 @@ const Header = () => {
             >
               Results
             </Link>
+            <Button
+              onClick={handleSignOut}
+              variant="ghost"
+              size="sm"
+              className="text-slate-300 hover:text-emerald-400 hover:bg-slate-700 flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
           </nav>
           
           {/* Mobile Menu Button */}
@@ -119,6 +128,18 @@ const Header = () => {
             >
               Results
             </Link>
+            <Button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                handleSignOut();
+              }}
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-slate-300 hover:text-emerald-400 hover:bg-slate-700 flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
           </div>
         </div>
       )}

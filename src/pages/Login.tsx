@@ -5,30 +5,43 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, Mail, Lock } from "lucide-react";
+import { TrendingUp, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const GOOGLE_FORM_URL = "https://forms.gle/WBhbtK4QZtWfnq4YA";
+
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login process
-    setTimeout(() => {
-      setIsLoading(false);
+    const { error } = await signIn(email, password);
+
+    if (error) {
       toast({
-        title: "Login Successful",
-        description: "Welcome to StockAnalyzer Pro!",
+        title: "Sign In Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Welcome back!",
+        description: "Successfully signed in.",
       });
       navigate("/analysis");
-    }, 1500);
+    }
+    setIsLoading(false);
   };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center p-4">
@@ -43,14 +56,14 @@ const Login = () => {
               <TrendingUp className="h-8 w-8 text-emerald-400" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-white">Welcome Back</CardTitle>
+          <CardTitle className="text-2xl font-bold text-white">StockAnalyzer Pro</CardTitle>
           <CardDescription className="text-slate-300">
             Sign in to access your stock analysis dashboard
           </CardDescription>
         </CardHeader>
         
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSignIn} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-slate-200">Email</Label>
               <div className="relative">
@@ -73,13 +86,24 @@ const Login = () => {
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-emerald-400"
+                  className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-emerald-400"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-emerald-400 transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
             
@@ -90,13 +114,21 @@ const Login = () => {
             >
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
-            
-            <div className="text-center">
-              <a href="#" className="text-emerald-400 hover:text-emerald-300 text-sm">
-                Forgot password?
-              </a>
-            </div>
           </form>
+
+          <div className="mt-6 pt-6 border-t border-white/20">
+            <p className="text-center text-slate-300 text-sm mb-3">
+              Don't have an account? Sign up to get started.
+            </p>
+            <Button
+              type="button"
+              onClick={() => window.open(GOOGLE_FORM_URL, '_blank', 'noopener,noreferrer')}
+              variant="outline"
+              className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-emerald-400 transition-colors"
+            >
+              Sign Up
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

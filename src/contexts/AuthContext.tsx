@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext, User, Session, AuthError } from './auth-context';
+import { supabase } from '@/integrations/supabase/client';
 
 // Export the useAuth hook from this file to maintain compatibility
 export const useAuth = () => {
@@ -17,63 +18,180 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // On mount, check for JWT token in localStorage
-    const token = localStorage.getItem('jwt_token');
-    const email = localStorage.getItem('user_email');
-    const id = localStorage.getItem('user_id');
-    
-    if (token && email && id) {
-      setUser({ id, email });
-      setSession({ token });
-    } else {
-      // Auto-login with the correct user if no authentication exists
-      const correctEmail = 'aaryanmanawat99@gmail.com';
-      const correctUserId = '6036aee5-624c-4275-8482-f77d32723c32'; // Actual UUID from database
-      setUser({ id: correctUserId, email: correctEmail });
-      setSession({ token: 'dummy' });
-      localStorage.setItem('user_email', correctEmail);
-      localStorage.setItem('user_id', correctUserId);
-      localStorage.setItem('jwt_token', 'dummy');
-    }
-    setLoading(false);
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email || ''
+        });
+        setSession({ token: session.access_token });
+        localStorage.setItem('jwt_token', session.access_token);
+        localStorage.setItem('user_email', session.user.email || '');
+        localStorage.setItem('user_id', session.user.id);
+      }
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email || ''
+        });
+        setSession({ token: session.access_token });
+        localStorage.setItem('jwt_token', session.access_token);
+        localStorage.setItem('user_email', session.user.email || '');
+        localStorage.setItem('user_id', session.user.id);
+      } else {
+        setUser(null);
+        setSession(null);
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('user_email');
+        localStorage.removeItem('user_id');
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    // TODO: Connect to backend /auth/signup endpoint
-    // For now, just fake a user with proper UUID
-    const userId = '6036aee5-624c-4275-8482-f77d32723c32'; // Use existing user ID for now
-    setUser({ id: userId, email });
-    setSession({ token: 'dummy' });
-    localStorage.setItem('user_email', email);
-    localStorage.setItem('user_id', userId);
-    localStorage.setItem('jwt_token', 'dummy');
-    return { error: null };
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName || '',
+          },
+        },
+      });
+
+      if (error) {
+        return { error: { message: error.message } };
+      }
+
+      if (data.user) {
+        // Ensure profile exists (create if database trigger didn't fire)
+        try {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: data.user.id,
+              email: data.user.email,
+              full_name: fullName || '',
+              subscription_tier: 'free',
+              preferences: {},
+              analysis_count: 0,
+              favorite_stocks: [],
+            }, {
+              onConflict: 'id'
+            });
+
+          if (profileError) {
+            console.warn('Profile creation warning:', profileError);
+            // Don't fail signup if profile creation fails, but log it
+          }
+        } catch (profileErr) {
+          console.warn('Profile creation error:', profileErr);
+        }
+
+        // Set user state
+        setUser({
+          id: data.user.id,
+          email: data.user.email || ''
+        });
+
+        // With email verification disabled, session should be available immediately
+        if (data.session) {
+          setSession({ token: data.session.access_token });
+          localStorage.setItem('jwt_token', data.session.access_token);
+          localStorage.setItem('user_email', data.user.email || '');
+          localStorage.setItem('user_id', data.user.id);
+        } else {
+          // If no session, try to get it (shouldn't happen with email verification disabled)
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData.session) {
+            setSession({ token: sessionData.session.access_token });
+            localStorage.setItem('jwt_token', sessionData.session.access_token);
+            localStorage.setItem('user_email', data.user.email || '');
+            localStorage.setItem('user_id', data.user.id);
+          }
+        }
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      return { error: { message: error.message || 'Failed to sign up' } };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    // TODO: Connect to backend /auth/signin endpoint
-    // For now, just fake a user with proper UUID
-    const userId = '6036aee5-624c-4275-8482-f77d32723c32'; // Use existing user ID for now
-    setUser({ id: userId, email });
-    setSession({ token: 'dummy' });
-    localStorage.setItem('user_email', email);
-    localStorage.setItem('user_id', userId);
-    localStorage.setItem('jwt_token', 'dummy');
-    return { error: null };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { error: { message: error.message } };
+      }
+
+      if (data.user && data.session) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email || ''
+        });
+        setSession({ token: data.session.access_token });
+        localStorage.setItem('jwt_token', data.session.access_token);
+        localStorage.setItem('user_email', data.user.email || '');
+        localStorage.setItem('user_id', data.user.id);
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      return { error: { message: error.message || 'Failed to sign in' } };
+    }
   };
 
   const signInWithGoogle = async () => {
-    // TODO: Implement Google OAuth with backend
-    return { error: { message: 'Not implemented' } };
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        return { error: { message: error.message } };
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      return { error: { message: error.message || 'Failed to sign in with Google' } };
+    }
   };
 
   const signOut = async () => {
-    setUser(null);
-    setSession(null);
-    localStorage.removeItem('user_email');
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('jwt_token');
-    return { error: null };
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        return { error: { message: error.message } };
+      }
+      setUser(null);
+      setSession(null);
+      localStorage.removeItem('jwt_token');
+      localStorage.removeItem('user_email');
+      localStorage.removeItem('user_id');
+      return { error: null };
+    } catch (error: any) {
+      return { error: { message: error.message || 'Failed to sign out' } };
+    }
   };
 
   const value = {
