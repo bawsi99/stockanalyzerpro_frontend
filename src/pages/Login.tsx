@@ -5,20 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { TrendingUp, Mail, Lock, Eye, EyeOff, User, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { DATABASE_SERVICE_URL } from "@/config";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
+  const [signUpName, setSignUpName] = useState("");
+  const [signUpEmail, setSignUpEmail] = useState("");
+  const [signUpPhone, setSignUpPhone] = useState("");
+  const [isSigningUp, setIsSigningUp] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signIn } = useAuth();
-
-  const GOOGLE_FORM_URL = "https://forms.gle/WBhbtK4QZtWfnq4YA";
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +46,53 @@ const Login = () => {
     setIsLoading(false);
   };
 
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSigningUp(true);
+
+    try {
+      const response = await fetch(`${DATABASE_SERVICE_URL}/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: signUpName.trim(),
+          email: signUpEmail.trim().toLowerCase(),
+          phone: signUpPhone.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || "Sign-up request failed");
+      }
+
+      if (data.success) {
+        toast({
+          title: "Sign-Up Request Submitted!",
+          description: data.message || "We'll review your request and send you account details soon.",
+        });
+        
+        // Reset form
+        setSignUpName("");
+        setSignUpEmail("");
+        setSignUpPhone("");
+        setShowSignUp(false);
+      } else {
+        throw new Error(data.error || "Sign-up request failed");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Sign-Up Error",
+        description: error.message || "Failed to submit sign-up request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSigningUp(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center p-4">
@@ -58,12 +109,13 @@ const Login = () => {
           </div>
           <CardTitle className="text-2xl font-bold text-white">StockAnalyzer Pro</CardTitle>
           <CardDescription className="text-slate-300">
-            Sign in to access your stock analysis dashboard
+            {showSignUp ? "Create an account to get started" : "Sign in to access your stock analysis dashboard"}
           </CardDescription>
         </CardHeader>
         
         <CardContent>
-          <form onSubmit={handleSignIn} className="space-y-4">
+          {!showSignUp ? (
+            <form onSubmit={handleSignIn} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-slate-200">Email</Label>
               <div className="relative">
@@ -123,19 +175,96 @@ const Login = () => {
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
+          ) : (
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="signUpName" className="text-slate-200">Full Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="signUpName"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={signUpName}
+                    onChange={(e) => setSignUpName(e.target.value)}
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-emerald-400"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="signUpEmail" className="text-slate-200">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="signUpEmail"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={signUpEmail}
+                    onChange={(e) => setSignUpEmail(e.target.value)}
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-emerald-400"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="signUpPhone" className="text-slate-200">Phone Number</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="signUpPhone"
+                    type="tel"
+                    placeholder="Enter your phone number"
+                    value={signUpPhone}
+                    onChange={(e) => setSignUpPhone(e.target.value)}
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-emerald-400"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
+                disabled={isSigningUp}
+              >
+                {isSigningUp ? "Submitting..." : "Submit Sign-Up Request"}
+              </Button>
+            </form>
+          )}
 
           <div className="mt-6 pt-6 border-t border-white/20">
-            <p className="text-center text-slate-300 text-sm mb-3">
-              Don't have an account? Sign up to get started.
-            </p>
-            <Button
-              type="button"
-              onClick={() => window.open(GOOGLE_FORM_URL, '_blank', 'noopener,noreferrer')}
-              variant="outline"
-              className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-emerald-400 transition-colors"
-            >
-              Sign Up
-            </Button>
+            {!showSignUp ? (
+              <>
+                <p className="text-center text-slate-300 text-sm mb-3">
+                  Don't have an account? Sign up to get started.
+                </p>
+                <Button
+                  type="button"
+                  onClick={() => setShowSignUp(true)}
+                  variant="outline"
+                  className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-emerald-400 transition-colors"
+                >
+                  Sign Up
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-center text-slate-300 text-sm mb-3">
+                  Already have an account? Sign in instead.
+                </p>
+                <Button
+                  type="button"
+                  onClick={() => setShowSignUp(false)}
+                  variant="outline"
+                  className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-emerald-400 transition-colors"
+                >
+                  Back to Sign In
+                </Button>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
