@@ -87,7 +87,7 @@ const PriceStatisticsCard: React.FC<PriceStatisticsProps> = ({
   }
 
   return (
-    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[99%]">
+    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[400px] md:h-[500px] lg:h-[600px] xl:h-[99%]">
       <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
         <div className="flex items-center space-x-2">
           <Target className="h-6 w-6" />

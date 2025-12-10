@@ -516,11 +516,11 @@ const NewStockAnalysis = () => {
         {/* Page Header removed */}
 
         {/* Main Content */}
-        <div className="max-w-[2200px] mx-auto mt-0 bg-transparent">
+        <div className="max-w-full xl:max-w-[2200px] mx-auto mt-0 bg-transparent">
           {/* Prototype Disclaimer */}
           <div className="mb-4 flex justify-center w-full -mt-4">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex flex-wrap items-center justify-center" style={{ width: '100%', maxWidth: '2100px', minWidth: '1900px' }}>
-              <p className="text-amber-700 text-center" style={{ width: '100%', maxWidth: '100%' }}>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex flex-wrap items-center justify-center w-full max-w-full xl:max-w-[2100px] xl:min-w-[1900px]">
+              <p className="text-amber-700 text-center w-full max-w-full">
                 <span className="font-semibold">Prototype Notice:</span> This system is currently in prototype stage. Responses might be slow or occasionally unresponsive. Generating new analysis may be inoperational between 5:00AM - 7:30AM IST (4:30PM - 7:00PM PDT). Thank you for your patience.
               </p>
             </div>
@@ -528,8 +528,8 @@ const NewStockAnalysis = () => {
           
           <div className="flex flex-col xl:flex-row gap-8 items-stretch xl:justify-center">
             {/* Analysis Configuration Panel */}
-            <div className="min-w-0 xl:w-[1000px] xl:flex-shrink-0">
-              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm max-h-[800px] flex flex-col overflow-hidden">
+            <div className="min-w-0 w-full xl:w-[1000px] xl:flex-shrink-0">
+              <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm max-h-[600px] md:max-h-[700px] xl:max-h-[800px] flex flex-col overflow-hidden">
                 <CardHeader className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-t-xl flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -851,7 +851,7 @@ const NewStockAnalysis = () => {
                       </div>
                       <div className="!mt-2 text-center text-xs text-slate-400 italic">
                         By running this analysis, you acknowledge that outputs are
-                        algorithm-generated, may be wrong or delayed, and should not be relied on
+                        ai generated, may be wrong or delayed, and should not be relied on
                         as financial advice.
                       </div>
                     </div>
@@ -861,7 +861,7 @@ const NewStockAnalysis = () => {
             </div>
 
             {/* Previous Analyses Sidebar */}
-            <div className="xl:w-[500px] flex-shrink-0">
+            <div className="w-full xl:w-[500px] flex-shrink-0">
               <PreviousAnalyses 
                 analyses={analyses}
                 onAnalysisSelect={handleSelectAnalysis}

@@ -54,7 +54,7 @@ const Hero = () => {
       <div className="relative z-10 w-full max-w-none pt-24 pb-8 text-center px-8 md:px-16">
         <div className="w-full max-w-none space-y-8">
           <div ref={titleAnimation.ref} style={titleAnimation.style}>
-            <h2 className="text-left text-6xl md:text-8xl font-bold tracking-wider mb-20 -mt-20 ml-6 md:ml-16" style={{
+            <h2 className="text-left text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-wider mb-8 sm:mb-12 md:mb-16 xl:mb-20 -mt-8 sm:-mt-12 md:-mt-16 xl:-mt-20 ml-2 sm:ml-4 md:ml-8 xl:ml-16" style={{
               textShadow: 'inset 0 4px 8px rgba(0,0,0,0.6), inset 0 -2px 4px rgba(0,0,0,0.3), 0 2px 0 rgba(255,255,255,0.15)',
               filter: 'brightness(1.0) contrast(1.2)'
             }}>
@@ -103,9 +103,7 @@ const Hero = () => {
             <div className="mt-6 max-w-3xl mx-auto">
               <p className="text-sm text-slate-400 leading-relaxed">
                 Access to StockAnalyzer Pro is by private invite only and is intended for testing
-                AI-generated technical research tools. The platform does not provide personalised
-                financial advice, does not manage client funds, and should not be treated as a tips
-                or signal service.{" "}
+                AI-generated technical research tools. The trade setups, entry/exit levels, and strategies shown here are hypothetical analyses based on historical data, are not financial advice or recommendations, and may be wrong or incomplete. You are solely responsible for all trading decisions and risk.{" "}
                 <Link to="/disclaimer" className="text-emerald-400 hover:text-emerald-300 underline">
                   Learn more
                 </Link>

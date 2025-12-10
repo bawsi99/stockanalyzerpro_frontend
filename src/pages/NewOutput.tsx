@@ -1051,7 +1051,7 @@ const NewOutput: React.FC = () => {
 
   // Loading skeleton for analysis cards
   const AnalysisCardSkeleton = ({ title, description }: { title: string; description: string }) => (
-    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-[90%]">
+    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-[400px] md:h-[500px] xl:h-[90%]">
       <CardHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-4">
           <CardTitle className="flex items-center text-slate-800">
@@ -1095,7 +1095,7 @@ const NewOutput: React.FC = () => {
         {/* Stock Header */}
         <div className="mb-8">
           <div className="text-center mb-6">
-            <h1 className="text-4xl font-bold text-slate-800 mb-2">
+            <h1 className="text-2xl sm:text-3xl xl:text-4xl font-bold text-slate-800 mb-2">
               {stockSymbol || "Loading..."} Analysis
             </h1>
             
@@ -1174,7 +1174,7 @@ const NewOutput: React.FC = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <div className="flex w-fit justify-center bg-transparent p-3 gap-3 h-16 mx-auto">
+          <div className="flex w-full sm:w-fit justify-center bg-transparent p-3 gap-3 h-16 mx-auto">
             <TabsList className="flex bg-transparent gap-3 h-full relative">
               {/* Sliding Background Bubble */}
               <div 
@@ -1187,34 +1187,34 @@ const NewOutput: React.FC = () => {
               <TabsTrigger 
                 ref={(el) => (tabRefs.current.overview = el)}
                 value="overview" 
-                className="flex items-center justify-center space-x-2 h-full px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
+                className="flex items-center justify-center space-x-2 h-full px-2 sm:px-4 md:px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
               >
                 <Eye className="h-4 w-4 data-[state=active]:h-5 data-[state=active]:w-5" />
-                <span className="data-[state=active]:text-2xl text-sm whitespace-nowrap">Overview</span>
+                <span className="data-[state=active]:text-lg sm:data-[state=active]:text-xl xl:data-[state=active]:text-2xl text-sm whitespace-nowrap">Overview</span>
               </TabsTrigger>
               <TabsTrigger 
                 ref={(el) => (tabRefs.current.technical = el)}
                 value="technical" 
-                className="flex items-center justify-center space-x-2 h-full px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
+                className="flex items-center justify-center space-x-2 h-full px-2 sm:px-4 md:px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
               >
                 <TrendingUp className="h-4 w-4 data-[state=active]:h-5 data-[state=active]:w-5" />
-                <span className="data-[state=active]:text-2xl text-sm whitespace-nowrap">Technical</span>
+                <span className="data-[state=active]:text-lg sm:data-[state=active]:text-xl xl:data-[state=active]:text-2xl text-sm whitespace-nowrap">Technical</span>
               </TabsTrigger>
               <TabsTrigger 
                 ref={(el) => (tabRefs.current.sector = el)}
                 value="sector" 
-                className="flex items-center justify-center space-x-2 h-full px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
+                className="flex items-center justify-center space-x-2 h-full px-2 sm:px-4 md:px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
               >
                 <Building2 className="h-4 w-4 data-[state=active]:h-5 data-[state=active]:w-5" />
-                <span className="data-[state=active]:text-2xl text-sm whitespace-nowrap">Sector</span>
+                <span className="data-[state=active]:text-lg sm:data-[state=active]:text-xl xl:data-[state=active]:text-2xl text-sm whitespace-nowrap">Sector</span>
               </TabsTrigger>
               <TabsTrigger 
                 ref={(el) => (tabRefs.current.advanced = el)}
                 value="advanced" 
-                className="flex items-center justify-center space-x-2 h-full px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
+                className="flex items-center justify-center space-x-2 h-full px-2 sm:px-4 md:px-6 rounded-full transition-all duration-300 ease-out hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-800 data-[state=active]:font-semibold data-[state=active]:scale-105 data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-800 data-[state=inactive]:scale-100 min-w-fit"
               >
                 <Settings className="h-4 w-4 data-[state=active]:h-5 data-[state=active]:w-5" />
-                <span className="data-[state=active]:text-2xl text-sm whitespace-nowrap">Advanced</span>
+                <span className="data-[state=active]:text-lg sm:data-[state=active]:text-xl xl:data-[state=active]:text-2xl text-sm whitespace-nowrap">Advanced</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1260,7 +1260,7 @@ const NewOutput: React.FC = () => {
               )}
             </div>
             {/* Top Row - AI Trading Analysis, Indicator Consensus, and Price Statistics */}
-            <div className="mt-8 grid grid-cols-1 xl:grid-cols-4 gap-6 h-[99%]">
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 h-[400px] md:h-[500px] lg:h-[600px] xl:h-[99%]">
               {/* AI Trading Analysis */}
               <div className="xl:col-span-1">
                 {analysisLoading ? (

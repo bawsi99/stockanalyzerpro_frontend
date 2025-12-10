@@ -14,7 +14,7 @@ interface AITradingAnalysisOverviewCardProps {
 const AITradingAnalysisOverviewCard = ({ aiAnalysis, analysisDate, analysisPeriod, indicatorSummary }: AITradingAnalysisOverviewCardProps) => {
   if (!aiAnalysis) {
     return (
-      <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-[99%] flex flex-col">
+      <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-[400px] md:h-[500px] lg:h-[600px] xl:h-[99%] flex flex-col">
         <CardHeader className="flex-shrink-0">
           <CardTitle className="flex items-center text-slate-800 text-lg">
             <Target className="h-4 w-4 mr-2 text-green-500" />
@@ -59,7 +59,7 @@ const AITradingAnalysisOverviewCard = ({ aiAnalysis, analysisDate, analysisPerio
     // Handle new AI analysis format
     const newAnalysis = aiAnalysis as AIAnalysis;
     return (
-      <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-[99%] flex flex-col">
+      <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-[400px] md:h-[500px] lg:h-[600px] xl:h-[99%] flex flex-col">
         <CardHeader className="flex-shrink-0">
           <CardTitle className="flex items-center text-slate-800 text-lg">
             <Target className="h-4 w-4 mr-2 text-green-500" />
@@ -214,7 +214,7 @@ const AITradingAnalysisOverviewCard = ({ aiAnalysis, analysisDate, analysisPerio
   const legacyAnalysis = aiAnalysis as LegacyAIAnalysis;
   
   return (
-    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-[90%] flex flex-col">
+    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-[350px] md:h-[450px] lg:h-[550px] xl:h-[90%] flex flex-col">
       <CardHeader className="flex-shrink-0">
         <CardTitle className="flex items-center text-slate-800 text-lg">
           <Target className="h-4 w-4 mr-2 text-green-500" />

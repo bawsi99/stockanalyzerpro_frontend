@@ -69,7 +69,7 @@ export default function SignalsSummaryCard({ signals }: { signals: {
   };
   
   return (
-    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-[99%] flex flex-col">
+    <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-[400px] md:h-[500px] lg:h-[600px] xl:h-[99%] flex flex-col">
       <CardHeader className="pb-8 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle>Deterministic Signals</CardTitle>
@@ -78,7 +78,7 @@ export default function SignalsSummaryCard({ signals }: { signals: {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="p-6 pt-0 flex-1 overflow-y-auto max-h-[calc(90vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <CardContent className="p-3 sm:p-4 md:p-5 xl:p-6 pt-0 flex-1 overflow-y-auto max-h-[calc(90vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="text-sm text-slate-600 mb-8">
           <div className="flex items-center justify-between">
             <span>Confidence: {formatConfidence(signals.confidence, '0%')}</span>

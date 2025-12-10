@@ -131,10 +131,43 @@ const Disclaimer = () => {
               </ul>
             </section>
 
-            <section className="pt-4 border-t border-slate-200">
-              <p className="text-sm text-slate-600 italic">
-                Last updated: {new Date().toLocaleDateString()}
+            <section>
+              <h2 className="text-xl font-semibold text-slate-800 mb-3">7. Intellectual Property and Technology Protection</h2>
+              <p className="text-sm leading-relaxed">
+                StockAnalyzer Pro, including its technology, algorithms, user interface, design, code, and all associated intellectual property, is proprietary and protected by copyright, trademark, and other intellectual property laws. By accessing this platform, you agree that:
               </p>
+              <ul className="list-disc list-inside mt-2 space-y-1 text-sm ml-4">
+                <li>
+                  <strong>No Copying or Reproduction:</strong> You will not copy, reproduce, duplicate, or clone any part of the platform, including but not limited to its code, design, algorithms, user interface, or functionality
+                </li>
+                <li>
+                  <strong>No Reverse Engineering:</strong> You will not reverse engineer, decompile, disassemble, or attempt to derive the source code, algorithms, or underlying technology of the platform
+                </li>
+                <li>
+                  <strong>No Derivative Works:</strong> You will not create derivative works, modifications, or adaptations based on the platform&apos;s technology, design, or functionality
+                </li>
+                <li>
+                  <strong>No Competitive Use:</strong> You will not use any information, insights, or knowledge gained from the platform to develop, create, or assist in creating a competing product or service
+                </li>
+                <li>
+                  <strong>Confidentiality:</strong> As a private beta user, you acknowledge that the platform&apos;s technology, features, and implementation details are confidential and proprietary
+                </li>
+                <li>
+                  <strong>No Unauthorized Sharing:</strong> You will not share access credentials, API endpoints, technical documentation, or any proprietary information about the platform with unauthorized third parties
+                </li>
+                <li>
+                  <strong>Ownership:</strong> All rights, title, and interest in and to the platform remain the exclusive property of StockAnalyzer Pro and its creators
+                </li>
+                <li>
+                  <strong>Violation Consequences:</strong> Any violation of these terms may result in immediate termination of access and may subject you to legal action for damages and injunctive relief
+                </li>
+              </ul>
+              <p className="text-sm leading-relaxed mt-3">
+                This platform is provided for your personal use only. Any unauthorized use, copying, or reproduction of the platform or its technology is strictly prohibited and may violate applicable laws.
+              </p>
+            </section>
+
+            <section className="pt-4 border-t border-slate-200">
               <p className="text-sm text-slate-600 mt-2">
                 If you have questions about this disclaimer, please contact us at{" "}
                 <a

@@ -19,7 +19,7 @@ const ConsensusSummaryCard = ({ consensus, analysisDate, analysisPeriod, technic
   // Add null checks and default values
   if (!consensus) {
     return (
-      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[99%] flex flex-col">
+      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[400px] md:h-[500px] lg:h-[600px] xl:h-[99%] flex flex-col">
         <CardHeader className="pb-6 flex-shrink-0">
           <CardTitle className="flex items-center text-slate-800 text-2xl">
             <TrendingUp className="h-7 w-7 mr-3 text-emerald-500" />
@@ -61,7 +61,7 @@ const ConsensusSummaryCard = ({ consensus, analysisDate, analysisPeriod, technic
 
 
   return (
-    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[99%] flex flex-col">
+    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[400px] md:h-[500px] lg:h-[600px] xl:h-[99%] flex flex-col">
       <CardHeader className="pb-6 flex-shrink-0">
         <CardTitle className="flex items-center text-slate-800 text-2xl">
           <TrendingUp className="h-7 w-7 mr-3 text-emerald-500" />

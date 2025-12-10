@@ -84,15 +84,15 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
         
         {/* Summary Metrics & Top Correlations */}
         <div className="flex justify-center">
-          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-6 max-w-full px-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-6 max-w-full px-4">
             {/* Summary Metrics */}
-            <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[100px] min-w-[140px]">
+            <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[80px] min-w-full sm:min-w-[100px] md:min-w-[120px] xl:min-w-[140px]">
               <div className="text-xl font-bold text-slate-800 mb-1">
                 {average_correlation != null ? (average_correlation * 100).toFixed(1) : 'N/A'}%
               </div>
               <div className="text-sm text-slate-600 text-center leading-tight">Average Correlation</div>
             </div>
-            <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[100px] min-w-[140px]">
+            <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[80px] min-w-full sm:min-w-[100px] md:min-w-[120px] xl:min-w-[140px]">
               <div className="mb-1">
                 <Badge className={getDiversificationQualityColor(diversification_insights?.diversification_quality || 'unknown')}>
                   {diversification_insights?.diversification_quality || 'unknown'}
@@ -103,13 +103,13 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
                 {getDiversificationInterpretation(diversification_insights?.diversification_quality || 'unknown')}
               </div>
             </div>
-            <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[100px] min-w-[140px]">
+            <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[80px] min-w-full sm:min-w-[100px] md:min-w-[120px] xl:min-w-[140px]">
               <div className="text-xl font-bold text-slate-800 mb-1">
                 {sector_volatility != null ? sector_volatility.toFixed(1) : 'N/A'}%
               </div>
               <div className="text-sm text-slate-600 text-center leading-tight">Sector Volatility</div>
             </div>
-            <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[100px] min-w-[140px]">
+            <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[80px] min-w-full sm:min-w-[100px] md:min-w-[120px] xl:min-w-[140px]">
               <div className="text-xl font-bold text-slate-800 mb-1">
                 {sectors.length}
               </div>
@@ -118,7 +118,7 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
             
             {/* Top 4 Sector Correlations */}
             {sortedSectorCorrelations.slice(0, 4).map(([sector, correlation]) => (
-              <div key={sector} className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[100px] min-w-[140px]">
+              <div key={sector} className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[80px] min-w-full sm:min-w-[100px] md:min-w-[120px] xl:min-w-[140px]">
                 <div className="flex items-center mb-1">
                   {getCorrelationIcon(correlation)}
                 </div>

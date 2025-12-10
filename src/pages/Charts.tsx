@@ -812,7 +812,7 @@ const Charts = React.memo(function Charts() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <Header />
       <div className="h-16" />
-      <div className="container mx-auto px-2 py-8 max-w-[1920px]">
+      <div className="container mx-auto px-2 py-8 max-w-full xl:max-w-[1920px]">
 
 
         {/* Main Content */}
@@ -868,9 +868,9 @@ const Charts = React.memo(function Charts() {
           </Card>
 
           {/* Chart and Price Statistics Side by Side */}
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
             {/* Enhanced Live Chart Section - Takes 3/4 of the width */}
-            <div className="xl:col-span-3 h-full">
+            <div className="col-span-1 xl:col-span-3 h-full">
               <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm h-full flex flex-col" style={{ minHeight: 'clamp(280px, 60vh, 800px)' }}>
                 <CardHeader>
                   <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">

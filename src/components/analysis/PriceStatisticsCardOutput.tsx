@@ -61,7 +61,7 @@ const PriceStatisticsCardOutput: React.FC<PriceStatisticsProps> = ({
 
   if (!summaryStats || stats.current === 0) {
     return (
-      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[99%] flex flex-col">
+      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[400px] md:h-[500px] lg:h-[600px] xl:h-[99%] flex flex-col">
         <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg pb-6 flex-shrink-0">
           <div className="flex items-center space-x-2">
             <Target className="h-6 w-6" />
@@ -71,7 +71,7 @@ const PriceStatisticsCardOutput: React.FC<PriceStatisticsProps> = ({
             {timeframe} Analysis
           </div>
         </CardHeader>
-        <CardContent className="p-6 pt-0 flex-1 overflow-y-auto max-h-[calc(90vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <CardContent className="p-3 sm:p-4 md:p-5 xl:p-6 pt-0 flex-1 overflow-y-auto max-h-[calc(90vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="text-center text-gray-500">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
             <p>Loading price statistics...</p>
@@ -82,14 +82,14 @@ const PriceStatisticsCardOutput: React.FC<PriceStatisticsProps> = ({
   }
 
   return (
-    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[99%] flex flex-col">
+    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm h-[400px] md:h-[500px] lg:h-[600px] xl:h-[99%] flex flex-col">
       <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg pb-6 flex-shrink-0">
         <div className="flex items-center space-x-2">
           <Target className="h-6 w-6" />
           <CardTitle className="text-xl">Price Statistics</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="p-6 pt-0 flex-1 overflow-y-auto max-h-[calc(90vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <CardContent className="p-3 sm:p-4 md:p-5 xl:p-6 pt-0 flex-1 overflow-y-auto max-h-[calc(90vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="space-y-4 mb-6 mt-4">
           <div className="grid grid-cols-1 gap-4">
             <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 mt-2">

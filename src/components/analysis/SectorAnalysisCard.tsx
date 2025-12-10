@@ -302,19 +302,19 @@ const SectorAnalysisCard: React.FC<SectorAnalysisCardProps> = ({
         <CardContent className="p-6">
           <div className="flex justify-center">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl px-4">
-              <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[90px] min-w-[160px]">
+              <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[70px] min-w-full sm:min-w-[120px] md:min-w-[140px] xl:min-w-[160px]">
                 <div className="text-xl font-bold text-slate-800 mb-1">
                   {rotation_insights.sector_rank || 'N/A'}
                 </div>
                 <div className="text-sm text-slate-600 text-center leading-tight">Sector Rank</div>
               </div>
-              <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[90px] min-w-[160px]">
+              <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[70px] min-w-full sm:min-w-[120px] md:min-w-[140px] xl:min-w-[160px]">
                 <div className="text-lg font-bold text-slate-800 mb-1 capitalize">
                   {correlation_insights.diversification_quality}
                 </div>
                 <div className="text-sm text-slate-600 text-center leading-tight">Diversification Quality</div>
               </div>
-              <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[90px] min-w-[160px]">
+              <div className="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 shadow-sm rounded-lg min-h-[70px] min-w-full sm:min-w-[120px] md:min-w-[140px] xl:min-w-[160px]">
                 <div className="text-xl font-bold text-slate-800 mb-1">
                   {trading_recommendations.length}
                 </div>

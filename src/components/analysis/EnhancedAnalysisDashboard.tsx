@@ -130,7 +130,7 @@ export const EnhancedAnalysisDashboard: React.FC<EnhancedAnalysisDashboardProps>
   return (
     <div className={className}>
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analyses">Analyses</TabsTrigger>
           <TabsTrigger value="sectors">Sectors</TabsTrigger>
@@ -239,7 +239,7 @@ export const EnhancedAnalysisDashboard: React.FC<EnhancedAnalysisDashboardProps>
             <CardContent>
               <div className="flex flex-wrap gap-4">
                 <Select value={selectedSignal} onValueChange={handleSignalFilter}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Filter by signal" />
                   </SelectTrigger>
                   <SelectContent>
@@ -251,7 +251,7 @@ export const EnhancedAnalysisDashboard: React.FC<EnhancedAnalysisDashboardProps>
                 </Select>
 
                 <Select value={selectedSector} onValueChange={handleSectorFilter}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Filter by sector" />
                   </SelectTrigger>
                   <SelectContent>
