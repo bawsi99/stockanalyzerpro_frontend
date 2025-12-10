@@ -550,6 +550,15 @@ const NewStockAnalysis = () => {
                   <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-x-hidden" style={{ marginRight: 0, paddingRight: 0 }}>
                     <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'thin', marginRight: 0 }}>
                       <div className="space-y-4 pr-4">
+                    {/* Dashboard Disclaimer */}
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-800">
+                        Analyses and strategies shown here are AI-generated hypothetical trade plans
+                        based on historical data. They are <strong>not</strong> recommendations or
+                        signals to trade. Use at your own risk.
+                      </p>
+                    </div>
+                    
                     {/* Stock Selection Section */}
                     <div className="space-y-3">
                       <h3 className="text-base font-semibold text-slate-800 flex items-center">
@@ -839,6 +848,11 @@ const NewStockAnalysis = () => {
 
                       <div className="!mt-4 text-center text-sm text-slate-500">
                         Typical duration 2-3 minutes.
+                      </div>
+                      <div className="!mt-2 text-center text-xs text-slate-400 italic">
+                        By running this analysis, you acknowledge that outputs are
+                        algorithm-generated, may be wrong or delayed, and should not be relied on
+                        as financial advice.
                       </div>
                     </div>
                   </form>

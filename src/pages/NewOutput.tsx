@@ -55,6 +55,7 @@ import PriceStatisticsCardOutput from "@/components/analysis/PriceStatisticsCard
 import ActionButtonsSection from "@/components/analysis/ActionButtonsSection";
 import DisclaimerCard from "@/components/analysis/DisclaimerCard";
 import TradingLevelsCard from "@/components/analysis/TradingLevelsCard";
+import AnalysisResultBanner from "@/components/analysis/AnalysisResultBanner";
 
 import VolumeAnalysisCard from "@/components/analysis/VolumeAnalysisCard";
 
@@ -1088,7 +1089,8 @@ const NewOutput: React.FC = () => {
       <Header />
       <div className="h-16" />
       <div className="w-full px-4 py-8">
-
+        {/* Analysis Result Banner */}
+        <AnalysisResultBanner />
         
         {/* Stock Header */}
         <div className="mb-8">
@@ -1577,7 +1579,9 @@ const NewOutput: React.FC = () => {
         {/* Action Buttons and Disclaimer */}
         <div className="space-y-6 mt-8">
           <ActionButtonsSection />
-          <DisclaimerCard />
+          <DisclaimerCard 
+            analysisDate={enhancedData?.analysis_timestamp || analysisData?.metadata?.analysis_date || null}
+          />
         </div>
 
         {/* Analysis Loading Progress */}

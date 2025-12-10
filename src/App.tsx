@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, UNSAFE_future } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ProtectedRouteWithConsent from "@/components/ProtectedRouteWithConsent";
 import { validateConfig } from "@/config";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -22,6 +23,7 @@ import Dashboard from "./pages/Dashboard";
 import Charts from "./pages/Charts";
 import NotFound from "./pages/NotFound";
 import SharedAnalysis from "./pages/SharedAnalysis";
+import Disclaimer from "./pages/Disclaimer";
 
 const queryClient = new QueryClient();
 
@@ -45,36 +47,37 @@ const App = () => {
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/disclaimer" element={<Disclaimer />} />
               <Route 
                 path="/dashboard" 
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRouteWithConsent>
                     <Dashboard />
-                  </ProtectedRoute>
+                  </ProtectedRouteWithConsent>
                 } 
               />
               <Route 
                 path="/analysis" 
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRouteWithConsent>
                     <NewStockAnalysis />
-                  </ProtectedRoute>
+                  </ProtectedRouteWithConsent>
                 } 
               />
               <Route 
                 path="/output" 
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRouteWithConsent>
                     <NewOutput />
-                  </ProtectedRoute>
+                  </ProtectedRouteWithConsent>
                 } 
               />
               <Route 
                 path="/charts" 
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRouteWithConsent>
                     <Charts />
-                  </ProtectedRoute>
+                  </ProtectedRouteWithConsent>
                 } 
               />
               {/* Public, shareable analysis route */}

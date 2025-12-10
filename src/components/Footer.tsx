@@ -1,7 +1,9 @@
 import { Mail, Phone, TrendingUp } from "lucide-react";
 import { useElementAnimation } from "@/hooks/use-element-animation";
 import { useRef } from "react";
+import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
+import SiteDisclaimerRibbon from "@/components/SiteDisclaimerRibbon";
 
 const Footer = () => {
   const leftColumnAnimation = useElementAnimation({
@@ -86,8 +88,17 @@ const Footer = () => {
 
         <div className="pt-8 border-t border-border text-center text-sm text-muted-foreground">
           <p>© 2025 StockAnalyzer Pro. All rights reserved.</p>
+          <p className="mt-2">
+            <Link
+              to="/disclaimer"
+              className="text-muted-foreground hover:text-primary transition-colors underline"
+            >
+              Disclaimer & Terms of Use
+            </Link>
+          </p>
         </div>
       </div>
+      <SiteDisclaimerRibbon variant="footer" />
     </footer>
   );
 };

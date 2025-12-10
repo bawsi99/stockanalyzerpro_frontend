@@ -98,6 +98,19 @@ const Hero = () => {
                 Watch Demo
               </Button>
             </div>
+            
+            {/* Invite Disclaimer */}
+            <div className="mt-6 max-w-3xl mx-auto">
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Access to StockAnalyzer Pro is by private invite only and is intended for testing
+                AI-generated technical research tools. The platform does not provide personalised
+                financial advice, does not manage client funds, and should not be treated as a tips
+                or signal service.{" "}
+                <Link to="/disclaimer" className="text-emerald-400 hover:text-emerald-300 underline">
+                  Learn more
+                </Link>
+              </p>
+            </div>
           </div>
 
           {/* Stats */}

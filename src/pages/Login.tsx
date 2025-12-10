@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Mail, Lock, Eye, EyeOff, User, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +21,7 @@ const Login = () => {
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpPhone, setSignUpPhone] = useState("");
   const [isSigningUp, setIsSigningUp] = useState(false);
+  const [hasAcceptedDisclaimer, setHasAcceptedDisclaimer] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signIn } = useAuth();
@@ -115,66 +117,78 @@ const Login = () => {
         
         <CardContent>
           {!showSignUp ? (
-            <form onSubmit={handleSignIn} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-200">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-emerald-400"
-                  required
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-slate-200">Password</Label>
-                <Link 
-                  to="/forgot-password" 
-                  className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
+            <>
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-slate-200">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-emerald-400"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" className="text-slate-200">Password</Label>
+                    <Link 
+                      to="/forgot-password" 
+                      className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
+                    >
+                      Forgot Password?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-emerald-400"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-slate-400 hover:text-emerald-400 transition-colors"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
+                  disabled={isLoading}
                 >
-                  Forgot Password?
-                </Link>
+                  {isLoading ? "Signing in..." : "Sign In"}
+                </Button>
+              </form>
+              
+              {/* Login Disclaimer */}
+              <div className="mt-4 pt-4 border-t border-white/20">
+                <p className="text-xs text-slate-400 text-center leading-relaxed">
+                  This private beta provides AI-generated technical research for educational use only. It is not SEBI-registered investment advice. Markets are risky; please do your own research and consult a registered adviser before investing or trading.{" "}
+                  <Link to="/disclaimer" className="text-emerald-400 hover:text-emerald-300 underline">
+                    Disclaimer & Terms
+                  </Link>
+                </p>
               </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-emerald-400"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-emerald-400 transition-colors"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
-              disabled={isLoading}
-            >
-              {isLoading ? "Signing in..." : "Sign In"}
-            </Button>
-          </form>
+            </>
           ) : (
             <form onSubmit={handleSignUp} className="space-y-4">
               <div className="space-y-2">
@@ -225,10 +239,53 @@ const Login = () => {
                 </div>
               </div>
               
+              {/* Sign-Up Disclaimer Block */}
+              <div className="space-y-3 p-4 bg-amber-50/10 border border-amber-200/30 rounded-lg">
+                <h4 className="text-sm font-semibold text-amber-200">Important:</h4>
+                <ul className="space-y-2 text-xs text-slate-300 list-disc list-inside">
+                  <li>
+                    All analysis and strategies on this platform are generated by AI based on
+                    historical market data and may be inaccurate, incomplete, or delayed.
+                  </li>
+                  <li>
+                    StockAnalyzer Pro is <strong>not</strong> registered with SEBI as an Investment
+                    Adviser or Research Analyst.
+                  </li>
+                  <li>
+                    Nothing on this platform is personalised financial advice or a buy/sell/hold
+                    recommendation.
+                  </li>
+                  <li>
+                    You are solely responsible for your investment and trading decisions and should
+                    consult a SEBI-registered adviser before acting on any information.
+                  </li>
+                  <li>
+                    Past performance, backtests, or simulated results do <strong>not</strong>{" "}
+                    guarantee future returns.
+                  </li>
+                </ul>
+                
+                <div className="flex items-start space-x-2 pt-2">
+                  <Checkbox
+                    id="disclaimer-checkbox"
+                    checked={hasAcceptedDisclaimer}
+                    onCheckedChange={(checked) => setHasAcceptedDisclaimer(checked === true)}
+                    className="mt-1"
+                  />
+                  <Label
+                    htmlFor="disclaimer-checkbox"
+                    className="text-xs text-slate-300 leading-relaxed cursor-pointer"
+                  >
+                    I have read and understood the above and agree to use this platform only for
+                    research and educational purposes.
+                  </Label>
+                </div>
+              </div>
+              
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
-                disabled={isSigningUp}
+                className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold py-3 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSigningUp || !hasAcceptedDisclaimer}
               >
                 {isSigningUp ? "Submitting..." : "Submit Sign-Up Request"}
               </Button>
