@@ -96,9 +96,9 @@ const Solution = () => {
         <div className="absolute inset-0 bg-black/45 mix-blend-multiply pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
       </div>
-      {/* Network graph background */}
+      {/* Network graph background - hidden on mobile when cards stack vertically */}
       <NetworkGraph
-        className="absolute inset-0 opacity-25 md:opacity-30 mix-blend-screen pointer-events-none"
+        className="hidden md:block absolute inset-0 opacity-25 md:opacity-30 mix-blend-screen pointer-events-none"
         nodes={10}
         animated
         nodeColor="hsl(205 100% 88%)"
@@ -118,7 +118,8 @@ const Solution = () => {
         </div>
 
         <div className="relative" ref={inlineFlowRef}>
-          <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%" viewBox="0 0 1087 468" preserveAspectRatio="none">
+          {/* Static arrows - hidden on mobile when cards stack vertically */}
+          <svg className="hidden md:block absolute inset-0 pointer-events-none" width="100%" height="100%" viewBox="0 0 1087 468" preserveAspectRatio="none">
             <defs>
               <marker id="arrow" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto" markerUnits="userSpaceOnUse">
                 <path d="M0,0 L12,6 L0,12 L3,6 Z" fill="hsl(var(--accent))" />
@@ -136,8 +137,8 @@ const Solution = () => {
             <path d="M 346.328125 398 C 358.328125 398, 358.328125 234, 370.328125 234" stroke="hsl(var(--accent))" strokeWidth="2" fill="none" markerEnd="url(#arrow)" filter="url(#glow-line)" opacity="0.9" />
           </svg>
 
-          {/* Dynamic arrow between Portfolio and Trading */}
-          <svg className="absolute inset-0 pointer-events-none z-50" width="100%" height="100%">
+          {/* Dynamic arrow between Portfolio and Trading - hidden on mobile when cards stack vertically */}
+          <svg className="hidden md:block absolute inset-0 pointer-events-none z-50" width="100%" height="100%">
             <defs>
               <marker id="arrow-dyn" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto" markerUnits="userSpaceOnUse">
                 <path d="M0,0 L12,6 L0,12 L3,6 Z" fill="#FFD700" />

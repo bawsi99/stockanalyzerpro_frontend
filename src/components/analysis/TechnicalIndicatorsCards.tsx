@@ -173,19 +173,19 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid gap-3 md:gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))' }}>
       {/* ========== SECTION 1: TREND FOUNDATION ========== */}
       
       {/* Moving Averages Card - 1. Foundation of trend analysis */}
       {indicators.moving_averages && (
         <Card className="border-l-4 border-l-indigo-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <TrendingUp className="h-4 w-4" />
               Moving Averages
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">SMA 20:</span>
               <span className="font-semibold">{formatNumber(indicators.moving_averages.sma_20)}</span>
@@ -227,13 +227,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* SuperTrend Card - 2. Trend direction */}
       {indicators.supertrend && indicators.supertrend.line !== undefined && indicators.supertrend.line !== null && (
         <Card className="border-l-4 border-l-cyan-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <ArrowUpDown className="h-4 w-4" />
               SuperTrend
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">SuperTrend Value:</span>
               <span className="font-semibold">{formatNumber(indicators.supertrend.line)}</span>
@@ -265,13 +265,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* ADX Card - 3. Trend strength */}
       {indicators.adx && (
         <Card className="border-l-4 border-l-blue-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Activity className="h-4 w-4" />
               ADX (Average Directional Index)
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">ADX Value:</span>
               <span className="font-semibold">{formatNumber(indicators.adx.adx)}</span>
@@ -298,13 +298,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* Ichimoku Cloud Card - 4. Comprehensive trend analysis */}
       {indicators.ichimoku && (
         <Card className="border-l-4 border-l-teal-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Cloud className="h-4 w-4" />
               Ichimoku Cloud
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             {indicators.ichimoku.tenkan_sen !== null && (
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Tenkan-sen:</span>
@@ -351,13 +351,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* RSI Card - 5. Most important momentum indicator */}
       {indicators.rsi && (
         <Card className="border-l-4 border-l-purple-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <BarChart3 className="h-4 w-4" />
               RSI (Relative Strength Index)
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">RSI Value:</span>
               <span className="font-semibold">{formatNumber(indicators.rsi.rsi_14)}</span>
@@ -382,13 +382,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* MACD Card - 6. Momentum confirmation */}
       {indicators.macd && (
         <Card className="border-l-4 border-l-orange-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Move className="h-4 w-4" />
               MACD
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">MACD Line:</span>
               <span className="font-semibold">{formatNumber(indicators.macd.macd_line)}</span>
@@ -417,13 +417,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* Stochastic Oscillator Card - 7. Momentum oscillator */}
       {indicators.stochastic && (indicators.stochastic.stochastic_k !== null || indicators.stochastic.stochastic_d !== null) && (
         <Card className="border-l-4 border-l-pink-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <BarChart3 className="h-4 w-4" />
               Stochastic Oscillator
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             {indicators.stochastic.stochastic_k !== null && (
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">%K:</span>
@@ -450,13 +450,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* StochRSI Card - 8. Refined momentum */}
       {indicators.stochrsi && (indicators.stochrsi.stochrsi_k !== null || indicators.stochrsi.stochrsi_d !== null) && (
         <Card className="border-l-4 border-l-indigo-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Activity className="h-4 w-4" />
               StochRSI
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             {indicators.stochrsi.stochrsi_k !== null && (
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">%K:</span>
@@ -483,13 +483,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* Williams %R Card - 9. Momentum oscillator */}
       {indicators.williams_r && indicators.williams_r.value !== null && (
         <Card className="border-l-4 border-l-fuchsia-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <BarChart3 className="h-4 w-4" />
               Williams %R
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">%R Value:</span>
               <span className="font-semibold">{formatNumber(indicators.williams_r.value)}</span>
@@ -510,13 +510,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* Bollinger Bands Card - 10. Volatility and price position */}
       {indicators.bollinger_bands && (
         <Card className="border-l-4 border-l-yellow-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <BarChart3 className="h-4 w-4" />
               Bollinger Bands
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Upper Band:</span>
               <span className="font-semibold">{formatNumber(indicators.bollinger_bands.upper_band)}</span>
@@ -544,13 +544,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* Volatility (ATR) Card - 11. Volatility context */}
       {indicators.volatility && (
         <Card className="border-l-4 border-l-red-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Gauge className="h-4 w-4" />
               Volatility (ATR)
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">ATR Value:</span>
               <span className="font-semibold">{formatNumber(indicators.volatility.atr)}</span>
@@ -588,13 +588,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* Keltner Channels Card - 12. Volatility bands */}
       {indicators.keltner && (indicators.keltner.upper !== null || indicators.keltner.middle !== null || indicators.keltner.lower !== null) && (
         <Card className="border-l-4 border-l-rose-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Layers className="h-4 w-4" />
               Keltner Channels
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             {indicators.keltner.upper !== null && (
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Upper Band:</span>
@@ -627,13 +627,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* Donchian Channels Card - 13. Breakout levels */}
       {indicators.donchian && (indicators.donchian.upper !== null || indicators.donchian.middle !== null || indicators.donchian.lower !== null) && (
         <Card className="border-l-4 border-l-violet-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Layers className="h-4 w-4" />
               Donchian Channels
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             {indicators.donchian.upper !== null && (
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Upper Band:</span>
@@ -668,13 +668,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* Volume Analysis Card - 14. Volume confirmation */}
       {indicators.volume && (
         <Card className="border-l-4 border-l-green-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Volume2 className="h-4 w-4" />
               Volume Analysis
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">OBV:</span>
               <span className="font-semibold">{formatNumber(indicators.volume.obv)}</span>
@@ -697,13 +697,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* A/D Line Card - 15. Accumulation/Distribution */}
       {indicators.ad_line && indicators.ad_line.value !== null && (
         <Card className="border-l-4 border-l-lime-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <TrendingUp className="h-4 w-4" />
               A/D Line (Accumulation/Distribution)
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">A/D Value:</span>
               <span className="font-semibold">{formatNumber(indicators.ad_line.value)}</span>
@@ -731,13 +731,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* DPO Card - 16. Advanced oscillator */}
       {indicators.dpo && indicators.dpo.value !== null && (
         <Card className="border-l-4 border-l-slate-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Activity className="h-4 w-4" />
               DPO (Detrended Price Oscillator)
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Value:</span>
               <span className="font-semibold">{formatNumber(indicators.dpo.value)}</span>
@@ -763,13 +763,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* Efficiency Ratio Card - 17. Trend quality */}
       {indicators.efficiency_ratio && indicators.efficiency_ratio.value !== null && (
         <Card className="border-l-4 border-l-amber-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <TrendingUp className="h-4 w-4" />
               Efficiency Ratio
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Value:</span>
               <span className="font-semibold">{formatNumber(indicators.efficiency_ratio.value, 3)}</span>
@@ -794,13 +794,13 @@ const TechnicalIndicatorsCards: React.FC<TechnicalIndicatorsCardsProps> = ({ ind
       {/* Relative Strength Card - 18. Market/sector comparison */}
       {indicators.relative_strength && (
         <Card className="border-l-4 border-l-emerald-500">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm">
               <ArrowUpDown className="h-4 w-4" />
               Relative Strength
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 p-4 md:p-6 pt-0">
             {indicators.relative_strength.rs_vs_market !== null && (
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">RS vs Market:</span>

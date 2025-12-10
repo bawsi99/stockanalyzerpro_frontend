@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Network, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getDiversificationInterpretation, getDiversificationQualityColor } from '@/utils/diversificationUtils';
 
 interface CorrelationMatrixCardProps {
@@ -46,6 +47,23 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
   // Get all sectors from the correlation matrix
   const sectors = Object.keys(correlation_matrix);
   
+  // Initialize selected column: use currentSector if valid, otherwise first sector
+  const defaultColumn = useMemo(() => {
+    if (currentSector && sectors.includes(currentSector)) {
+      return currentSector;
+    }
+    return sectors[0] || '';
+  }, [currentSector, sectors]);
+  
+  const [selectedColumn, setSelectedColumn] = useState<string>(defaultColumn);
+  
+  // Update selectedColumn if currentSector changes and is valid
+  React.useEffect(() => {
+    if (currentSector && sectors.includes(currentSector)) {
+      setSelectedColumn(currentSector);
+    }
+  }, [currentSector, sectors]);
+  
   // Get correlations with respect to the current stock's sector
   const currentSectorCorrelations = correlation_matrix[currentSector] || {};
   
@@ -80,7 +98,7 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
           Sector Correlation Analysis
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 relative">
         
         {/* Summary Metrics & Top Correlations */}
         <div className="flex justify-center">
@@ -139,7 +157,72 @@ const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
         {/* Full Correlation Matrix */}
         <div className="space-y-4">
           <h4 className="text-lg font-semibold text-slate-800">Full Correlation Matrix</h4>
-          <div className="w-full">
+          
+          {/* Mobile View: Single Column with Dropdown */}
+          <div className="block md:hidden space-y-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-slate-700">
+                View correlations for:
+              </label>
+              <Select value={selectedColumn} onValueChange={setSelectedColumn}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select sector" />
+                </SelectTrigger>
+                <SelectContent className="z-[9999] max-h-[300px]">
+                  {sectors.map(sector => (
+                    <SelectItem key={sector} value={sector} className="cursor-pointer">
+                      {sector.replace(/_/g, ' ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Single Column Matrix */}
+            <div className="w-full border border-slate-200 rounded-lg overflow-hidden">
+              <div className="grid grid-cols-2">
+                {/* Header row */}
+                <div className="h-12 flex items-center justify-center font-semibold text-slate-600 bg-slate-50 border-b border-r border-slate-200 px-2">
+                  Sector
+                </div>
+                <div className="h-12 flex items-center justify-center text-xs font-semibold text-slate-600 bg-slate-50 border-b border-slate-200 px-2">
+                  <div className="text-center leading-tight text-[11px]">
+                    {selectedColumn.replace(/_/g, ' ')}
+                  </div>
+                </div>
+                
+                {/* Data rows */}
+                {sectors.map(sector => {
+                  const correlation = correlation_matrix[sector]?.[selectedColumn];
+                  const isCurrentSector = sector === currentSector;
+                  const isSelectedSector = sector === selectedColumn;
+                  
+                  return (
+                    <React.Fragment key={sector}>
+                      <div className={`h-12 flex items-center justify-center text-xs font-medium text-slate-700 border-b border-r border-slate-200 px-2 ${
+                        isCurrentSector ? 'bg-blue-50' : 'bg-slate-50'
+                      }`}>
+                        <div className="text-center leading-tight text-[11px]">
+                          {sector.replace(/_/g, ' ')}
+                        </div>
+                      </div>
+                      <div 
+                        className={`h-12 flex items-center justify-center text-sm border-b border-slate-200 px-2 ${
+                          isSelectedSector ? 'bg-slate-100 font-bold' : 
+                          isCurrentSector ? 'bg-blue-50 font-medium' : 'bg-white'
+                        }`}
+                      >
+                        {isSelectedSector ? '100%' : correlation != null ? `${(correlation * 100).toFixed(0)}%` : 'N/A'}
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          
+          {/* Desktop View: Full Matrix */}
+          <div className="hidden md:block w-full overflow-x-auto">
             <div className="grid" style={{
               gridTemplateColumns: `minmax(100px, 1fr) repeat(${sectors.length}, minmax(80px, 1fr))`
             }}>

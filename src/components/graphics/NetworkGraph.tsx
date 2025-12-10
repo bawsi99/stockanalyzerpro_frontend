@@ -103,7 +103,19 @@ export const NetworkGraph = ({
     return { pts, edges, w, h };
   }, [size.width, size.height, nodes, avoidRects]);
 
-  // Gentle float animation
+  // Calculate scale factor based on viewBox size for responsive visual elements
+  // Normalize to reference size (1920px width) to maintain consistent appearance
+  const scaleFactor = useMemo(() => {
+    if (points.w === 0 || points.h === 0) return 1;
+    // Use average dimension for consistent scaling across different aspect ratios
+    const avgDimension = (points.w + points.h) / 2;
+    const referenceSize = 1920; // Reference width for desktop (1920x1080)
+    const scale = avgDimension / referenceSize;
+    // Clamp scale factor to reasonable bounds (0.3 to 2.0)
+    return Math.max(0.3, Math.min(2.0, scale));
+  }, [points.w, points.h]);
+
+  // Gentle float animation with responsive distance
   const float = animated ? {
     animation: "networkFloat 12s ease-in-out infinite alternate",
   } : undefined;
@@ -119,7 +131,7 @@ export const NetworkGraph = ({
       >
         <defs>
           <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+            <feGaussianBlur stdDeviation={2 * scaleFactor} result="coloredBlur" />
             <feMerge>
               <feMergeNode in="coloredBlur" />
               <feMergeNode in="SourceGraphic" />
@@ -129,7 +141,7 @@ export const NetworkGraph = ({
             {`
             @keyframes networkFloat {
               0% { transform: translateY(0px); }
-              100% { transform: translateY(-6px); }
+              100% { transform: translateY(${-6 * scaleFactor}px); }
             }
           `}
           </style>
@@ -137,7 +149,7 @@ export const NetworkGraph = ({
 
         <g style={float}>
           {/* edges */}
-          <g stroke={lineColor} strokeWidth={1.25} strokeLinecap="round" strokeOpacity={0.6}>
+          <g stroke={lineColor} strokeWidth={1.25 * scaleFactor} strokeLinecap="round" strokeOpacity={0.6}>
             {points.edges.map(([a, b], i) => (
               <line
                 key={i}
@@ -152,7 +164,7 @@ export const NetworkGraph = ({
           {/* nodes */}
           <g fill={nodeColor} filter="url(#glow)">
             {points.pts.map((p, i) => (
-              <circle key={i} cx={p.x} cy={p.y} r={3} opacity={0.9} />)
+              <circle key={i} cx={p.x} cy={p.y} r={3 * scaleFactor} opacity={0.9} />)
             )}
           </g>
         </g>

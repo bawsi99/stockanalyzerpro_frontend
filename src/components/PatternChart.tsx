@@ -634,11 +634,11 @@ const PatternChart: React.FC<PatternChartProps> = ({
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center space-x-2">
-            <BarChart3 className="h-5 w-5" />
-            <span>{symbol}</span>
+      <CardHeader className="p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <CardTitle className="flex items-center space-x-2 text-lg sm:text-2xl">
+            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="truncate">{symbol}</span>
           </CardTitle>
           
           {/* Chart Type Toggle */}
@@ -647,24 +647,24 @@ const PatternChart: React.FC<PatternChartProps> = ({
               variant={chartType === 'candlestick' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setChartType('candlestick')}
-              className="flex items-center space-x-1"
+              className="flex items-center space-x-1 h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
             >
-              <BarChart3 className="h-4 w-4" />
+              <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
               <span>Candles</span>
             </Button>
             <Button
               variant={chartType === 'line' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setChartType('line')}
-              className="flex items-center space-x-1"
+              className="flex items-center space-x-1 h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
             >
-              <TrendingUp className="h-4 w-4" />
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
               <span>Line</span>
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 md:p-6 pt-0">
         {/* Chart Container */}
         <div 
           ref={chartContainerRef} 
