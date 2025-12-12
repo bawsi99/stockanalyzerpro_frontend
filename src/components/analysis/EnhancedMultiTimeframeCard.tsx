@@ -19,6 +19,44 @@ interface EnhancedMultiTimeframeCardProps {
   agentSummary?: string;
 }
 
+/**
+ * Sort timeframes in a logical order: shortest to longest duration
+ * Handles both standard timeframes (1min, 5min, etc.) and categorical (short_term, medium_term, long_term)
+ */
+const sortTimeframes = (timeframes: string[]): string[] => {
+  const timeframeOrder: Record<string, number> = {
+    // Standard timeframes (shortest to longest)
+    '1min': 1,
+    '5min': 2,
+    '15min': 3,
+    '30min': 4,
+    '1hour': 5,
+    '1day': 6,
+    '1week': 7,
+    '1month': 8,
+    // Categorical timeframes
+    'short_term': 1,
+    'medium_term': 5,
+    'long_term': 8,
+  };
+  
+  return [...timeframes].sort((a, b) => {
+    const normalizedA = a.toLowerCase();
+    const normalizedB = b.toLowerCase();
+    
+    const orderA = timeframeOrder[normalizedA] ?? 999;
+    const orderB = timeframeOrder[normalizedB] ?? 999;
+    
+    // If both have defined order, sort by order
+    if (orderA !== 999 || orderB !== 999) {
+      return orderA - orderB;
+    }
+    
+    // Otherwise, sort alphabetically
+    return normalizedA.localeCompare(normalizedB);
+  });
+};
+
 const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol, agentSummary }: EnhancedMultiTimeframeCardProps) => {
   
   // Handle both simple and complex multi-timeframe analysis structures
@@ -188,6 +226,20 @@ const EnhancedMultiTimeframeCard = ({ multiTimeframeAnalysis, symbol, agentSumma
       confidence_score: 0.5,
       conflict_severity: 'None'
     };
+  }
+
+  // Sort timeframes in logical order (shortest to longest duration)
+  timeframes = sortTimeframes(timeframes);
+  
+  // Sort validation arrays for consistency
+  if (validation.supporting_timeframes) {
+    validation.supporting_timeframes = sortTimeframes(validation.supporting_timeframes);
+  }
+  if (validation.conflicting_timeframes) {
+    validation.conflicting_timeframes = sortTimeframes(validation.conflicting_timeframes);
+  }
+  if (validation.neutral_timeframes) {
+    validation.neutral_timeframes = sortTimeframes(validation.neutral_timeframes);
   }
 
   return (
