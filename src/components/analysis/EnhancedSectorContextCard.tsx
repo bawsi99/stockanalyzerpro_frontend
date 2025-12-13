@@ -110,6 +110,11 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol, agentSummary }: Enha
                 <h4 className="font-medium text-emerald-800 mb-3 flex items-center">
                   <TrendingUp className="h-4 w-4 mr-1" />
                   vs Market
+                  {benchmarking.market_benchmarking?.benchmark && (
+                    <span className="ml-2 text-sm font-normal text-emerald-600">
+                      ({benchmarking.market_benchmarking.benchmark})
+                    </span>
+                  )}
                 </h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -217,8 +222,8 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol, agentSummary }: Enha
                 </h4>
                 <div className="space-y-1 w-full">
                   {rotation.leading_sectors.map((sector, index) => (
-                    <div key={index} className="text-sm text-emerald-700 bg-emerald-100 px-2 py-1 rounded w-full text-left">
-                      {sector}
+                    <div key={index} className="text-sm text-emerald-700 bg-emerald-100 px-2 py-1 rounded w-full text-left break-words">
+                      {sector.replace(/_/g, ' ')}
                     </div>
                   ))}
                   {rotation.leading_sectors.length === 0 && (
@@ -235,8 +240,8 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol, agentSummary }: Enha
                 </h4>
                 <div className="space-y-1 w-full">
                   {rotation.lagging_sectors.map((sector, index) => (
-                    <div key={index} className="text-sm text-red-700 bg-red-100 px-2 py-1 rounded w-full text-left">
-                      {sector}
+                    <div key={index} className="text-sm text-red-700 bg-red-100 px-2 py-1 rounded w-full text-left break-words">
+                      {sector.replace(/_/g, ' ')}
                     </div>
                   ))}
                   {rotation.lagging_sectors.length === 0 && (
@@ -252,11 +257,11 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol, agentSummary }: Enha
                   Neutral Sectors
                 </h4>
                 <div className="space-y-1 w-full">
-                  <div className="text-sm text-yellow-700 bg-yellow-100 px-2 py-1 rounded w-full text-left">
-                    NIFTY_IT
+                  <div className="text-sm text-yellow-700 bg-yellow-100 px-2 py-1 rounded w-full text-left break-words">
+                    {('NIFTY_IT').replace(/_/g, ' ')}
                   </div>
-                  <div className="text-sm text-yellow-700 bg-yellow-100 px-2 py-1 rounded w-full text-left">
-                    NIFTY_PHARMA
+                  <div className="text-sm text-yellow-700 bg-yellow-100 px-2 py-1 rounded w-full text-left break-words">
+                    {('NIFTY_PHARMA').replace(/_/g, ' ')}
                   </div>
                 </div>
               </div>
