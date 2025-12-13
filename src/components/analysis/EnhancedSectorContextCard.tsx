@@ -77,45 +77,18 @@ const EnhancedSectorContextCard = ({ sectorContext, symbol, agentSummary }: Enha
         <CardTitle className="flex items-center text-slate-800 text-xl">
           <Building2 className="h-6 w-6 mr-3 text-blue-500" />
           Sector Context
-          <Badge className="ml-2 bg-blue-100 text-blue-700">
+          <Badge className="ml-2 bg-blue-100 text-blue-700 border-transparent hover:bg-primary/80">
             {sectorContext.sector}
           </Badge>
+          {benchmarking.analysis_summary && (
+            <Badge className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-primary/80 bg-yellow-100 text-yellow-700 border-yellow-200 ml-2">
+              {benchmarking.analysis_summary.market_position || 'Neutral'}
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         
-        {/* Sector Overview */}
-        {benchmarking.analysis_summary && benchmarking.sector_info && benchmarking.sector_risk_metrics && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-blue-800">Sector Overview</h3>
-              <Badge className={getPerformanceColor(benchmarking.analysis_summary.market_position || 'neutral')}>
-                {benchmarking.analysis_summary.market_position || 'Neutral'}
-              </Badge>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="text-slate-600">Sector:</span>
-                <div className="font-medium text-slate-800">{benchmarking.sector_info.sector_name || 'N/A'}</div>
-              </div>
-              <div>
-                <span className="text-slate-600">Index:</span>
-                <div className="font-medium text-slate-800">{benchmarking.sector_info.sector_index || 'N/A'}</div>
-              </div>
-              <div>
-                <span className="text-slate-600">Stocks:</span>
-                <div className="font-medium text-slate-800">{benchmarking.sector_info.sector_stocks_count || 'N/A'}</div>
-              </div>
-              <div>
-                <span className="text-slate-600">Risk Level:</span>
-                <Badge className={`ml-1 ${getRiskLevelColor(benchmarking.sector_risk_metrics.risk_level || 'medium')}`}>
-                  {benchmarking.sector_risk_metrics.risk_level || 'Medium'}
-                </Badge>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Sector Agent Summary */}
         {agentSummary && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
